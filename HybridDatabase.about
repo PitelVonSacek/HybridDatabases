@@ -1,0 +1,330 @@
+Hybridní databáze
+-----------------
+
+Hybridní databáze je objektovou databází, která se snaží kombinovat persistenci
+a transakční přístup klasických (relačních) databází s rychlostí a a ovladatelností
+datových struktur. Data jsou organizována do uzlů, každý uzel má typ z množiny
+pevné pro konkrétní databázi.
+
+Každý uzel je složen z atributů. Atributy obsahují
+vlastní data a jejich typy jsou následující - celá čísla o 8 až 64 bitech
+s i bez znaménka -- Int16 až Int64, 32bitový se jmenuje pouze Int, unsigned verze
+mají předponu U (tedy char až long long plus unsigned verze v C), reálná čísla
+(Float, Double, LDouble, tedy float, double, long double v C).
+
+String je
+C-like textový řetězec, BinaryString má na rozdíl od Stringu uloženou i délku
+takže může obsahovat '\0'. Posledním typem je Pointer, což je ukazatel na jiný
+uzel (v paměti realizován jako Node*, na disku jako id uzlu, na který odkazuje).
+
+
+------------------
+  Základní typy:
+------------------
+
+Node - předek libovolného uzlu, obsahuje id, počítadlo referencí (uzel nelze
+       smazat, ukazuje-li na něj jiný uzel) a ukazatel na deskriptor popisující typ
+       uzlu - tento ukazatel je prvním prvek v Node
+
+     - podtřídy jsou definovány jako:
+
+  typedef struct {
+    union {
+      Node __node;
+      NodeType__##PodtřídaNode##__desc_t *__type;
+    };
+    atributy toho uzlu
+  } NodeType__##PodtřídaNode;
+
+  typedef struct {
+    NodeType __type;
+    popis atributů
+    char __dummy[0]; // žádná magie, jen kvůli generování obsahu,
+                     // kde je za každým atributem čárka
+  } NodeType__##PodtřídaNode##__desc_t;
+
+     - __type se kryje s položkou type v Node, která odkazuje na deskriptor
+       typu NodeType. Typ __type je podtřída NodaType. Tedy __type umožňuje
+       danému typu uzlu udržet s typoou informaci o svém deskriptoru.
+
+Transaction - třída představující transakci
+Database - třída představující databázi jako celek
+  - od obou vznikají podtřídy při genrování databáze s konkrétními typy uzlů
+    a indexy. K Database se přitom přídávájí kontexty indexů (tedy jejich privátní
+    data). Od Transaction se potřídy vyrábějí pouze pro zachování typové informace
+    o databázi (což je nutné pro přístup k indexům).
+
+  typedef struct {
+    Database __database;
+    data indexů
+    PokusnáDatabáze##__transaction __dummy_transaction[0]; // ze stejného důvodu
+      // jako __dummy výše plus, aby makro TrMainStart() vědělo jaký typ transakce
+      // vytvořit
+  } PokusnáDatabáze;
+
+  typedef union {
+    Transaction __transaction;
+    PokusnáDatabáze *__database;
+  } PokusnáDatabáze##__tranaction;
+
+
+Pro typy atributů (Int, String, ...) existují boxované verze Int_t, String_t, atd.
+Ty jsou definovány jako typedef struct { Typ value } Typ##_t;
+(Vyjma Pointer_t, který navíc obsahuje uint64_t id.)
+Boxované typy jsou zavedeny kvůli typové magii okolo typů atributů.
+
+Typy atributů jsou navíc popsány deskriptory typu AttributeType.
+
+
+--------------
+  Interface:
+--------------
+
+// Vytvoří objekt třídy Database a načte přísloušnou databázi z disku
+// (či vytvoří prázdnou, neexistuje-li)
+Database *database_create(DatabaseType* type, const char* dir, const char* file, unsigned int flags);
+
+int database_close(Database* D);
+
+// znovu vypsání databáz na disk
+int database_dump(Database* D, int sync);
+
+// počká na dokončení výpisu databáze na disk
+void database_wait_for_dump(Database *D);
+
+// začne zapisovat do dalšího souboru
+int database_new_file(Database* D);
+
+
+// započne hlavní transakci (tedy takovou, která při commitu skutečně data zapíše)
+Transaction* tr_main_start(Database*);
+void tr_main_abort(Transaction*);
+int tr_main_commit(Transaction*, int sync);
+
+// započne vnořenou transakci podřízenou dané hlavní transakci
+void tr_start(Transaction*);
+void tr_abort(Transaction*);
+void tr_commit(Transaction*);
+
+
+Node *node_create_(Transaction*, NodeType*);
+int node_remove(Transaction*, Node*);
+
+#define NodeCreate(Typ)
+#define DatabaseCreate(Typ)
+#define NodeCast(Typ, uzel)
+
+#define TrUncast(transakce)
+#define TrDBUncast(databáze)
+#define TrNodeUncast(uzel)
+
+#define NodeCast(Typ, uzel)
+
+Vyjma database_create a node_create_ jsou všechny tyto funkce vlastně makra,
+která je mapují na funkce stejného jména s _ na konci. Přidanou hodnotou maker
+je, že provádí bezpečné přetypování z podtříd daných objektů na vyžadované
+nadtřídy (pomocí maker TrUncast, TrDBUncast a TrNodeUncast).
+
+Pro database_create a node_create_ exsistují makra DatabaseCreate a NodeCreate,
+která jako parametr berou jméno typu vytvářeného objektu.
+
+Pro uzly existuje ještě funkce NodeCast(Typ, uzel), která daný uzel přetypuje
+na Typ (při neúspěchu vrací NULL).
+
+
+#define TrRead(uzel, Atribut)
+#define TrWrite(uzel, Atribut, hodnota)
+#define TrVerify(uzel)
+
+#define TrRead_(transakce, uzel, Atribut, VýstupníProměnná)
+#define TrWrite_(transakce, uzel, Atribut, hodnota)
+#define TrVerify_(transakce, uzel)
+
+K atributům uzlu se přistupuje pomocí maker TrRead(uzel, Atribut)
+a TrWrite(uzel, Atribut, hodnota). Nebo je možné číst atributy přímo
+pomocí uzel->Atribut a až na závěr ověřit korektrnost dat pomocí
+TrVerify(uzel). K těmto makrů existují i verze zakončené _, které berou navíc
+jako první parametr transakci (místo defaultní _transaction)
+a místo vyvolání vyjímky při chybě vrací 0.
+(TrRead_ tedy nemůže načtenou hodnotu přímo vracet a má tedy jako poslední
+parametr jméno proměnné, do níž hodnotu uloží.)
+
+
+Pro indexy existují makra pro přístup k paměti zamykané po blocích (8 bytech).
+Tyto je nutné používat pro všechnu transakční paměť nenáležející uzlům.
+
+#define TrBlockRead(ptr)
+#define TrBlockWrite(ptr, hodnota)
+#define TrBlockVerify(ptr)
+
+K nim existují příslušné varianty s _ na konci. Velikost dat se vypočítává
+pomocí typu daného ukazatele.
+
+Pro pohodlnou práci s transakcemi existují nasledující makra (která navíc
+oproti funkcím, na nichž staví, uživají výjimky):
+
+#define TrMainStart(databáze)
+#define TrMainAbort
+#define TrMainCommit(synchronní)
+
+#define TrStart
+#define TrAbort
+#define TrCommit
+
+Tato makra (vždy Start a Commit) se chovají jako závorky. Abort zruší probíhající
+transakci. TrMainAbort se od TrAbort liší tím, že neruší pouze nejhoubeji vnořenou
+transakci, ale celou hlavní transakci. Vnitřně užívají vyjímky TR_FAIL,
+TR_MAIN_ABORT a TR_ABORT. Pokud tranakce selže s výjimku TR_FAIL, je automaticky
+restartována. Pokud selhává opakovaně je restartována po uplynutí časové prodlevy.
+
+---------------------------------
+-  Výroba typů uzlů a databáze  -
+---------------------------------
+
+Typy uzlů se vyrábí jednoduše:
+
+#define NAME JménoTypu
+#define ATTRS ATTR(prvníAtribut, aJehoTyp) ATTR(druhý, aTyp)
+#include "nodetype_generate.h"
+
+Toto vygeneruje všechnny nezbytné typy a hlavičky.
+Chceme-li generovat i implementaci (tedy pár funkcí a naplnění jedné globální
+promměnné) musí být před include definováno makro IMPLEMENT_NODES.
+
+S databází se to má podobně:
+
+#define NAME JménoDatabáze
+#define NODE_TYPES NODE(prvníTypUzlu) NODE(druhýTyp)
+#define INDEXES INDEX(jménoIndexVDatabázi, typIndexu, typUzlůKteréIndexuje)
+#include "databasetype_generate.h"
+
+Opět chcemi-li i implementaci, musí být definováno makro IMPLEMENT_DATABASE.
+Po includu daných souborů jsou makra s parametry zrušena.
+
+Co se týče indexů, je potřeba definovat následující (dále vytvářený index
+se bude jmenovat Pokus):
+
+- typ jménem Index__Pokus__context, který bude přibalen ke daždé databázi
+  index Pokus obsahující.
+- funkci int Index__Pokus__callback(Index__Pokus__context*, Transaction*,
+                                    enum CallbackEvent, Node*),
+  která bude volána při změně uzlu ledovaného typu (a také při startu databáze)
+
+- funkce void Index__Pokus__context_init(Index__Pokus__context*) a
+         void Index__Pokus__context_destroy(Index__Pokus__context*),
+  které inicializují, resp. uklidí daný kontext
+
+- další funkce, které pokytují přístup k datům indexu. Jediné co by o nich mělo
+  platit je, že první dva parametry jsou ukazatele na kontext indexu a transakci.
+
+K indexům se pak přitupuje pomocí makra TrIndex(názevIndexu, funkce, argumenty)
+(či varianty TrIndex_, která bere navíc jako první parametr transakci).
+
+
+----------------------
+-  Implementace STM  -
+----------------------
+
+STM je implementována pomocí verzovaných zámků a globálních hodin. Užívá
+undo log, neboť redo log by bylo obtížné implementovat tak, aby transakce
+viděla změny, které sama provedla. To by ovšem znamenalo velké obtíže
+při implementaci indexů (ty jsou taky v STM, jen se narozdíl od uzlů nezamykají
+po objektech, ale po 8bytových slovech).
+
+Dále je udržován seznam, kolik běžících transakcí začalo v jakém čase
+(spoják databáze->tr_new a databáze->tr_old), spolu se seznamem kusů paměti,
+které byly uvolněny v daném čase, což užívá garbage collector, aby uvolňoval jen
+paměť, na kterou již nikdo nemůže mít odkaz.
+
+Každá databáze si sama vytváří tři pomocná vlákna - garbage collector vlákno,
+vlákno pro zápis na disk a vlákno pro znovuvypsání databáze. Vlákno pro zápis
+komunikuje s okolím pomocí fronty io_queue. Spolu s gc vláknem je komunikace
+řešena přes mutex databáze->mutex a podmíněnou proměnnou databáze->signal.
+
+Vlákno pro znovu vypsání komunikuje přes vlastní mutex/podmíněnou proměnnou.
+
+
+-------------
+-  Výjimky  -
+-------------
+
+Pro snadnější implementaci databáze byl vytvořen systém pro práci s výjimkami.
+Ten staví na makrech setjmp/longjmp a ke své práci potřebuje podporu thread-local
+globálních proměnných. Udržuje 3 globální thread-local proměnné - exception_handler,
+exception_exception a exception_info. Při vyvolání výjimky se ukazatel na typ
+výjimky uloží do exception_exception, do exception_info se uloží uživatelem
+předaná informace (exception_info je typu void*) a vyvolá se skok na handler.
+
+Základní konstrukce pro užívání výjímek:
+
+TRY {
+
+} CATCH(TypVýjimky1) {
+
+} CATCH(TypVýjimky2) {
+
+} CATCH_ALL {
+
+} FINALLY {
+
+} END
+
+Bloky CATCH, CATCH_ALL a FINALLY jsou nepovinné. Bloky CATCH a CATCH_ALL
+se zpracovávají odshora a výjimka je obsloužena prvním vyhovujícím blokem.
+Výjimka je v CATCH bloku k dispozici v proměnné exception.
+
+K vyvolání výjimky slouží makro THROW(výjimka, info). V CATCH blocích nesmí
+být vyvolána výjimka pomocí THROW. Chceme-li aktuální výjimku v CATCH bloku poslat
+dál užijeme makro RETHROW. Chceme-li dál poslat jinou výjimku, použijeme
+RETHROW_(výjimka, info).
+
+Pomocná makra:
+
+THROW_ - vyvolá výjimku OOPS, info je text obsahující soubor a řádek, kde
+         k výjimce došlo
+
+ENSURE(výraz, výjimka, info) - pokud je výledek výrazu pravda, vrátí hodnotu
+  výrazu, jinak vyvolá uvedenou výjimku
+
+ENSURE_(výraz) - jako ENSURE jen výjimku vyvolá pomocí THROW_
+
+
+ALWAYS(výraz1) {
+  ...
+} ALWAYS_END(výraz2)
+
+odpovídá
+
+do {
+ výraz1;
+ TRY {
+   ...
+ } FINALLY {
+   výraz2;
+ } END
+} while(0);
+
+
+------------------------
+-  Stack & Dictionary  -
+------------------------
+
+Implementace datových struktur zásobník a "slovník" -- tedy hash tabulka
+ukládající dvojice klíč - hodnota. Obě jsou implementovány jako sada maker.
+Díky tomu stejná makra pracují nad příslušnými strukturami bez ohledu na v nich
+uložený typ.
+
+
+---------------------
+-  Reader & Writer  -
+---------------------
+
+V souboru storge.h je jednoduché rozhraní pro zápis, čtení strukturovaných
+souborů (datové typy -- pole a string). Nepracují přímo se soubory. Writer
+zapisuje do bufferu v paměti a funkcemi w_ptr a w_length se dá získat jeho
+adresa a délka. Reader pak při vytvoření požaduje funkci a pointer, který
+jí bude předávat jako kontext. Ji pak volá, potřebuje-li načíst další data.
+
+
+
+

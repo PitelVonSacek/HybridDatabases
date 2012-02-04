@@ -1,0 +1,19 @@
+Transakční paměť
+----------------
+
+- globální tabulka zámků
+- zamykání po objektech
+- každé vlákno limitovánu na 1 transakci
+
+Uvolňování paměti
+ - nepotřebnou paměť sbírá garbage collector
+ - nejstarší běžící transakci zjišťuje průchodem
+   aktuálních transakcí jednotlivých vláken
+
+ - úprava interface:
+
+DatabaseHandler *thread_register(Database*);
+void thread_unregister(DatabaseHandler*);
+
++ zrušení tr_main_*, a místo transaction se užívá DatabaseHandler
+
