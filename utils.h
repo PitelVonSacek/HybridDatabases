@@ -4,7 +4,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
+
 #include "storage.h"
+#include "lock.h"
 
 static inline int ulog2(uint64_t n) {
   // FIXME there are much better ways to compute this
@@ -13,47 +15,11 @@ static inline int ulog2(uint64_t n) {
   return ret;
 }
 
-typedef struct {
-  uint64_t value;
-} Lock;
-
-static inline void l_init  (Lock* l) { l->value = 1; }
-
-// little hack for dump_thread, it needs to know old value of lock
-static inline uint64_t l_lock_(Lock* l, void* ptr, uint64_t version) {
-  uint64_t v;
-
-  while (1) {
-    v = __sync_fetch_and_add(&l->value, 0);
-    if ((v & 1) ? (v > version) : (v != (uint64_t)ptr)) return 0;
-    if (__sync_bool_compare_and_swap(&l->value, v, ptr)) return v;
-  }
-}
-
-static inline int  l_lock  (Lock* l, void* ptr, uint64_t version) {
-  uint64_t v;
-
-  while (1) {
-    v = __sync_fetch_and_add(&l->value, 0);
-    if ((v & 1) ? (v > version) : (v != (uint64_t)ptr)) return 0;
-    if (__sync_bool_compare_and_swap(&l->value, v, ptr)) return 1;
-  }
-}
-
-static inline int  l_unlock(Lock* l, void* ptr, uint64_t version) {
-  return __sync_bool_compare_and_swap(&l->value, (uint64_t)ptr, version);
-}
-
-static inline int  l_check (Lock* l, void* ptr, uint64_t version) {
-  uint64_t v = __sync_fetch_and_add(&l->value, 0);
-  return (v & 1) ? (v <= version) : (v == (uint64_t)ptr);
-}
-
 // From GNU libc documentation:
 // The address of a block returned by malloc or realloc in the GNU system is
 // always a multiple of eight (or sixteen on 64-bit systems).
 //
-// So it's aligned enought for us.
+// So it's aligned enough for us.
 
 static inline void *tr_alloc(size_t size) { return malloc(size); }
 static inline void tr_free(void *ptr) { free(ptr); }
