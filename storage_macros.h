@@ -5,6 +5,8 @@
  *  Reader macros  *
  *******************/
 
+// All of them reqire Reader* R
+
 #define R_STRINGIFY_(a) #a
 #define R_STRINGIFY(a) R_STRINGIFY_(a)
 #define R_EXC_INFO "error at " __FILE__ " line " R_STRINGIFY(__LINE__)
@@ -41,6 +43,8 @@
 /*******************
  *  Writer macros  *
  *******************/
+
+// All of them require Writer* W
 
 #define W_ARRAY do { w_array(W); do {
 #define W_ARRAY_END } while(0); w_array_end(W); } while (0);
