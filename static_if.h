@@ -3,6 +3,8 @@
 
 #define static_if(cond, a, b) __builtin_choose_expr((cond), (a), (b)) 
 
+#define types_equal(t1, t2) __builtin_types_compatible_p(t1, t2)
+
 #define type_switch(expr, opts) ({ \
     __label__ _type_switch_break_label; \
     typeof(expr) _type_switch_dummy; \
@@ -13,7 +15,7 @@
   })
 
 #define type_case(type, action) static_if( \
-  __builtin_types_compatible_p(typeof(_type_switch_dummy), type), \
+  types_equal(typeof(_type_switch_dummy), type), \
   ({ action; goto _type_switch_break_label; }), \
   (void)0);
 
