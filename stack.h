@@ -5,7 +5,12 @@
 
 // simple generic stack implementation
 
-#define AStack(Type) struct { \
+#define Stack_alloc(x)      malloc(x)
+#define Stack_free(x)       free(x)
+#define Stack_realloc(x, s) realloc(x, s)
+
+
+#define Stack(Type) struct { \
     typeof(Type) *begin, *ptr, *end; \
   }
 
@@ -17,12 +22,8 @@
     _stack_helper; \
   })
 #define stack_alloc() \
-  ((void*)stack_init((struct GenericStack*)malloc(sizeof(struct GenericStack))))
+  ((void*)stack_init((struct GenericStack*)Stack_alloc(sizeof(struct GenericStack))))
 
-#define Stack(Type) struct Stack__##Type
-#define DefineStack(Type) Stack(Type) { \
-    typeof(Type) *begin, *ptr, *end; \
-  }
 
 #define stack_push(stack, value) ({ \
     typeof(&*(stack)) _stack_helper = (stack); ({ \
@@ -64,17 +65,17 @@
     typeof(&*(stack)) _stack_helper = (stack); ({ \
     typeof(_stack_helper) _stack = _stack_helper; \
     if (stack_capacity(_stack) > 2 * stack_size(_stack) && \
-        stack_capacity(_stack) > 1000) \
+        stack_capacity(_stack) > 100) \
       _stack_shrink(sizeof(*_stack->begin), (struct GenericStack*)_stack); \
     --_stack->ptr; \
   });}))
 
-#define stack_destroy(stack) ({ free((stack)->begin); (void)0; })
+#define stack_destroy(stack) ({ Stack_free((stack)->begin); (void)0; })
 #define stack_free(stack) ({ \
     typeof(&*(stack)) _stack_helper = (stack); ({ \
     typeof(_stack_helper) _stack = _stack_helper; \
     stack_destroy(_stack); \
-    free(_stack); \
+    Stack_free(_stack); \
     (void)0; \
   });})
 
@@ -88,11 +89,11 @@
     (void)0; \
   })
 
-struct GenericStack { char *begin, *ptr, *end; };
+struct GenericStack { unsigned char *begin, *ptr, *end; };
 
 static void _stack_expand(size_t elem_size, struct GenericStack* stack) {
   size_t new_cap = stack_capacity(stack) * 2 + 20 * elem_size;
-  char *new_stack = realloc(stack->begin, new_cap);
+  char *new_stack = Stack_realloc(stack->begin, new_cap);
   stack->ptr = new_stack + (stack->ptr - stack->begin);
   stack->end = new_stack + new_cap;
   stack->begin = new_stack;
@@ -100,7 +101,7 @@ static void _stack_expand(size_t elem_size, struct GenericStack* stack) {
 
 static void _stack_shrink(size_t elem_size, struct GenericStack* stack) {
   size_t new_cap = ((stack_capacity(stack) + elem_size) / (2 * elem_size)) * elem_size;
-  char *new_stack = realloc(stack->begin, new_cap);
+  char *new_stack = Stack_realloc(stack->begin, new_cap);
   stack->ptr = new_stack + (stack->ptr - stack->begin);
   stack->end = new_stack + new_cap;
   stack->begin = new_stack;

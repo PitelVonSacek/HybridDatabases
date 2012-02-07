@@ -1,9 +1,12 @@
+#include <stdio.h>
+
 #include "stack.h"
 
-DefineStack(int);
+
+typedef Stack(int) Stack_int;
 
 void main() {
-  Stack(int) s[1] = { StackInit };
+  Stack_int s[1] = { StackInit };
 
   stack_push(stack_push(s, 1), 2);
 

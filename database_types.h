@@ -28,8 +28,8 @@ struct Node_;
 
 Dictionary(IdToNode, uint64_t, Node*, NUMBER)
 
-typedef AStack(Node*) NodeStack;
-typedef AStack(void*) VoidStack;
+typedef Stack(Node*) NodeStack;
+typedef Stack(void*) VoidStack;
 
 enum {
   TRERR_SUCCESS = 0,
@@ -206,9 +206,9 @@ typedef struct Transaction_ {
   uint64_t start_time;
   struct ReadSet read_set;
 
-  AStack(TrNestedTransaction) tr_stack[1];
+  Stack(TrNestedTransaction) tr_stack[1];
 
-  AStack(TrLogItem) write_log[1];
+  Stack(TrLogItem) write_log[1];
   Node* nodes_new, *nodes_new_end;
   NodeStack nodes_deleted[1];
   VoidStack memory_new[1];
