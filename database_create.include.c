@@ -106,12 +106,14 @@ static void node_change(Reader* R, IdToNode *nodes) {
   uint64_t id = R_NUMBER;
   int attr_id = R_NUMBER;
 
-  if (!dict_bucket(nodes, id)) {
+  typeof(dict_get_bucket(nodes, id)) dict_node = dict_get_bucket(nodes, id);
+
+  if (!dict_node) {
     R_SKIP;
     return;
   }
 
-  Node *node = dict_at(nodes, id);
+  Node *node = dict_node->value;
 
   const struct NodeAttribute *attr = &node->type->attributes[attr_id];
   attr->type->load(R, TR_OFFSET(node, attr->offset));

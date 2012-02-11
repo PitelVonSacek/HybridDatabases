@@ -37,7 +37,7 @@ static inline int l_unlock(Lock* l, void* ptr, uint64_t version) {
 }
 
 static inline int l_check (Lock* l, void* ptr, uint64_t version) {
-  uint64_t v = atomic_read(&l->value, 0);
+  uint64_t v = atomic_read(&l->value);
   return (v & 1) ? (v <= version) : (v == (uint64_t)ptr);
 }
 
