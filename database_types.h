@@ -26,7 +26,7 @@ struct Node_;
 #define Transaction struct Transaction_
 #define Node struct Node_
 
-Dictionary(IdToNode, uint64_t, Node*, NUMBER)
+typedef Dictionary(uint64_t, Node*, NUMBER) IdToNode;
 
 typedef Stack(Node*) NodeStack;
 typedef Stack(void*) VoidStack;

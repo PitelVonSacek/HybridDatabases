@@ -1,228 +1,215 @@
-#ifndef __DICTIONARY_H__
-#define __DICTIONARY_H__
+#ifndef __DICTIONARY_V2_H__
+#define __DICTIONARY_V2_H__
 
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 
-/*
- * key_type - type of key, available types:
- *   NUMBER - hash computed from value by mutilipication
- *   POINTER - like NUMBER, but takes care of a few low bites that are zeros
- *   STRING - key should char*
- */
+#include "static_if.h"
+#include "exception.h"
 
-#define Dictionary(Name, Key, Value, key_type_) \
-  struct Name##__node { \
-    struct Name##__node *next; \
-    Key key; \
-    Value value; \
-  }; \
-  typedef struct { \
+EXCEPTION_DECLARE(DictionaryKeyNotFound, NONE);
+
+#define Dictionary_alloc(x) malloc(x)
+#define Dictionary_free(x)  free(x)
+
+#define Dictionary(Key, Value, KeyType) Dictionary_(Key, Value, KeyType, __COUNTER__)
+#define Dictionary_(K, V, t, n) Dictionary__(K, V, t, n)
+#define Dictionary__(Key, Value, key_type_, n) \
+  struct { \
     DictionaryKeyType__##key_type_ key_type; \
     size_t size, capacity; \
-    struct Name##__node **buckets; \
-  } Name;
+    \
+    struct _dictionary_node__##n { \
+      struct _dictionary_node__##n *next; \
+      Key key; \
+      Value value; \
+    } **buckets; \
+  }
+
+
+/**********************
+ *  Create & destroy  *
+ **********************/
 
 #define DictionaryInit { {}, 0, 0, 0 }
 
+#define dict_alloc() \
+  ((void*)dict_init((struct GenericDictionary*)Dictionary_alloc( \
+    sizeof(struct GenericDictionary)) \
+  ))
 
-#define _dict_hash_fnc(dict, key)  __builtin_choose_expr( \
-  __builtin_types_compatible_p(DictionaryKeyType__NUMBER, typeof(dict->key_type)), \
-  _dict_hash_number(key),  __builtin_choose_expr( \
-  __builtin_types_compatible_p(DictionaryKeyType__POINTER, typeof(dict->key_type)), \
-  _dict_hash_pointer(key),  __builtin_choose_expr( \
-  __builtin_types_compatible_p(DictionaryKeyType__STRING, typeof(dict->key_type)), \
-  _dict_hash_string(*(char**)&key), 0.0 )))
-
-
-#define _dict_eq(dict, v1, v2) __builtin_choose_expr( \
-  __builtin_types_compatible_p(DictionaryKeyType__STRING, typeof(dict->key_type)), \
-  !strcmp((char*)v1, (char*)v2), (v1 == v2))
-
-
-#define _dict_get_bucket(dict, key_) \
-  (dict->buckets + (_dict_hash_fnc(_dict, key_) % (dict->capacity ?: 1)))
-
-#define dict_init(dict) ({ \
-    typeof(&*(dict)) _dict = (dict); \
-    _dict->size = _dict->capacity = 0; \
-    _dict->buckets = 0; \
-    _dict; \
-  })
-#define dict_alloc(dict) \
-  ((void*)dict_init((struct GenericDictionary*)malloc(sizeof(struct GenericDictionary))))
-
-#define dict_insert(dict_, key_, value_) ({ \
-    typeof(&*(dict_)) _dict = (dict_); \
-    if (_dict->size * 2 >= _dict->capacity) _dict_expand(_dict); \
-    typeof(_dict->buckets[0]->key) _key = (key_); \
-    typeof(_dict->buckets) _bucket = _dict_get_bucket(_dict, _key); \
-    typeof(*_bucket) _new_bucket = malloc(sizeof(**_bucket)); \
-    _new_bucket->next = *_bucket; \
-    if (__builtin_types_compatible_p(DictionaryKeyType__STRING, \
-                                     typeof(_dict->key_type))) \
-      *(char**)&_new_bucket->key = _dict_str_cp((char*)_key); \
-    else _new_bucket->key = _key; \
-    _new_bucket->value = (value_); \
-    *_bucket = _new_bucket; \
-    _dict->size++; \
-    _dict; \
+#define dict_init(dict) dict_init_(dict, __COUNTER__)
+#define dict_init_(...) dict_init__(__VA_ARGS__)
+#define dict_init__(dict, $) ({ \
+    typeof(&*(dict)) _dict##$ = (dict); \
+    _dict##$->size = _dict##$->capacity = 0; \
+    _dict##$->buckets = 0; \
+    _dict##$; \
   })
 
-#define dict_bucket(dict, key_) ({ \
-    typeof(&*(dict)) _dict = (dict); \
-    typeof(_dict->buckets[0]->key) _key = (key_); \
-    typeof(_dict->buckets[0]) *_bucket_ = _dict_get_bucket(_dict, _key); \
-    typeof(_dict->buckets[0]) _bucket = 0; \
-    if (_bucket_) { \
-      _bucket = *_bucket_; \
-      for (; _bucket; _bucket = _bucket->next) \
-        if (_dict_eq(_dict, _key, _bucket->key)) break; \
-    } \
-    _bucket; \
-  })
-
-
-#define dict_contains(dict_, key_) (!!dict_bucket(dict_, key_))
-
-#define dict_at(dict, key_) (dict_bucket(dict, key_)->value)
-
-#define dict_remove(dict, key_) ({ \
-    typeof(&*(dict)) _dict = (dict); \
-    typeof(_dict->buckets[0]->key) _key = (key_); \
-    typeof(_dict->buckets) _bucket_ptr = _dict_get_bucket(_dict, _key); \
-    for (; *_bucket_ptr; _bucket_ptr = &_bucket_ptr[0]->next) \
-      if (_dict_eq(_dict, _key, _bucket_ptr[0]->key)) { \
-        typeof(_dict->buckets[0]) _tmp = *_bucket_ptr; \
-        *_bucket_ptr = _bucket_ptr[0]->next; \
-        if (__builtin_types_compatible_p(DictionaryKeyType__STRING, \
-                                         typeof(_dict->key_type))) \
-          free((void*)_tmp->key); \
-        free(_tmp); \
-        _dict->size--; \
-        break; \
-      } \
-    if (_dict->size * 8 < _dict->capacity && dict->capacity > 1000) \
-      _dict_shrink(_dict); \
+#define dict_destroy(dict) dict_destroy_(dict, __COUNTER__)
+#define dict_destroy_(...) dict_destroy__(__VA_ARGS__)
+#define dict_destroy__(dict, $) ({ \
+    typeof(&*(dict)) _dict##$ = (dict); \
+    static_if(types_equal(DictionaryKeyType__STRING, typeof(_dict##$->key_type)), \
+      ({ DICT_FOR(_dict##$, buck) Dictionary_free(*(void**)&buck->key); DICT_FOR_END }), \
+      (void)0); \
+    _dict_free_nodes((struct GenericDictionary*)_dict##$); \
     (void)0; \
   })
 
-#define dict_size(dict) ((dict)->size)
-#define dict_capacity(dict) ((dict)->capacity)
-
-#define dict_destroy(dict) ({ \
-    typeof(&*(dict)) _dict = (dict); \
-    if (__builtin_types_compatible_p(DictionaryKeyType__STRING, typeof(_dict->key_type))) \
-      DICT_FOR(_dict, buck) free((void*)buck->key); DICT_FOR_END \
-    _dict_free_buckets((struct GenericDictionary*)_dict); \
-    free((_dict)->buckets); \
-  })
-#define dict_free(dict) ({ \
-    typeof(&*(dict)) _dict = (dict); \
-    dict_destroy(_dict); \
-    free(_dict); \
+#define dict_free(dict) dict_free_(dict, __COUNTER__)
+#define dict_free_(...) dict_free__(__VA_ARGS__)
+#define dict_free__(dict, $) ({ \
+    typeof(&*(dict)) _dict##$ = (dict); \
+    dict_destroy(_dict##$); \
+    Dictionary_free(_dict##$); \
   })
 
-#define DICT_FOR(dict, var) do { \
+
+/**********************
+ *      Access        *
+ **********************/
+
+#define dict_get_node(dict, key) dict_get_node_(dict, key, __COUNTER__)
+#define dict_get_node_(...) dict_get_node__(__VA_ARGS__)
+#define dict_get_node__(dict, key_, $) ({ \
+    typeof(&*(dict)) _dict##$ = (dict); \
+    typeof(_dict##$->buckets[0]) _node = 0; \
+    if (_dict##$->capacity) { \
+      typeof(_dict##$->buckets[0]->key) _key##$ = (key_); \
+      _node = *_dict_get_bucket(_dict##$, _key##$); \
+      while (_node) { \
+        if (_dict_keys_equal(_dict##$, _key##$, _node->key)) break; \
+        _node = _node->next; \
+      } \
+    } \
+    _node; \
+  })
+
+#define dict_contains(dict, key) (!!(dict_get_node(dict, key)))
+
+#define dict_at(dict, key) \
+  ENSURE(dict_get_node(dict, key), DictionaryKeyNotFound, 0)->value
+
+#define dict_insert(dict, key, value) dict_insert_(dict, key, value, __COUNTER__)
+#define dict_insert_(...) dict_insert__(__VA_ARGS__)
+#define dict_insert__(dict, key_, value_, $) ({ \
+    typeof(&*(dict)) _dict##$ = (dict); \
+    typeof(_dict##$->buckets[0]->key) _key##$ = (key_); \
+    typeof(_dict##$->buckets[0]->value) _value##$ = (value_); \
+    typeof(_dict##$->buckets[0]) _node = dict_get_node(_dict##$, _key##$); \
+    if (_node) _node->value = (_value##$); \
+    else { \
+      _dict_expand(_dict##$); \
+      typeof(_node) *_bucket = _dict_get_bucket(_dict##$, _key##$); \
+      _node = Dictionary_alloc(sizeof(*_node)); \
+      _node->next = *_bucket; \
+      _node->key = _dict_copy_key(_dict##$, _key##$); \
+      _node->value = (_value##$); \
+      *_bucket = _node; \
+      _dict##$->size++; \
+    } \
+    _dict##$; \
+  })
+
+#define dict_remove(dict, key) dict_remove_(dict, key, __COUNTER__)
+#define dict_remove_(...) dict_remove__(__VA_ARGS__)
+#define dict_remove__(dict, key_, $) ({ \
+    typeof(&*(dict)) _dict##$ = (dict); \
+    if (_dict##$->capacity) { \
+      typeof(_dict##$->buckets[0]->key) _key##$ = (key_); \
+      typeof(_dict##$->buckets) _node_ptr = _dict_get_bucket(_dict##$, _key##$); \
+      while (*_node_ptr) { \
+        if (_dict_keys_equal(_dict##$, _key##$, _node_ptr[0]->key)) { \
+          typeof(*_node_ptr) _tmp = *_node_ptr; \
+          *_node_ptr = _tmp->next; \
+          _dict_free_key(_dict##$, _tmp->key); \
+          Dictionary_free(_tmp); \
+          _dict##$->size--; \
+          _dict_shrink(_dict##$); \
+          break; \
+        } \
+        _node_ptr = &_node_ptr[0]->next; \
+      } \
+    } \
+    _dict##$; \
+  })
+
+
+#define DICT_FOR(dict, var) DICT_FOR_(dict, var, __COUNTER__)
+#define DICT_FOR_(...) DICT_FOR__(__VA_ARGS__)
+#define DICT_FOR__(dict, var, $) do { \
   __label__ dict_break_label, dict_continue_label; \
-  typeof(&*(dict)) _dict_helper = (dict); { \
-  typeof(_dict_helper) _dict = _dict_helper;  \
+  typeof(&*(dict)) _dict##$ = (dict); \
    \
-  for (size_t _dict_it = 0; _dict_it < _dict->capacity; _dict_it++) \
-    for (typeof(*_dict->buckets) var = _dict->buckets[_dict_it]; \
+  for (size_t _dict_it = 0; _dict_it < _dict##$->capacity; _dict_it++) \
+    for (typeof(*_dict##$->buckets) var = _dict##$->buckets[_dict_it]; \
         var; var = var->next) { \
 
 #define DICT_FOR_END \
       dict_continue_label: ; \
     } \
   dict_break_label: ; \
-  }} while (0);
-
-#define dict_break goto dict_break_label
-#define dict_continue goto dict_continue_label
+  } while (0);
 
 
-/*******************
- * Private Details *
- *******************/
+/**********************
+ *  Private details   *
+ **********************/
 
-#define _dict_hash_number(n) (((size_t)n) * 0x01008041) // this sux, needs bigger prime
-#define _dict_hash_pointer(p) (((size_t)p) * 0x01008041)
-#define _dict_hash_string(s) _dict_hash_fnc_string((char*)s)
+#ifndef dict_inline
+#define dict_inline static inline
+#endif
 
-static inline size_t _dict_hash_fnc_string(const char* s) {
-  size_t r = 1212324345;
-  while (*s) r = (r * 0x01008041) ^ *s++;
-  return r;
-}
+#include "dictionary_hash_functions.h"
 
-static inline char* _dict_str_cp(const char* a) {
-  size_t l = strlen(a) + 1;
-  char* ret = malloc(l);
-  memcpy(ret, a, l);
+struct GenericDictionary {
+  DictionaryKeyType__GENERIC key_type;
+  size_t size, capacity;
+
+  struct GenericDictionary_node {
+    struct GenericDictionary_node *next;
+    unsigned char key[0];
+  } **buckets;
+};
+
+#define _dict_get_bucket(dict, key) \
+  (dict->buckets + (_dict_get_hash(dict, (const void*)&key) % (dict->capacity ?: 1)))
+
+#define _dict_expand(dict) \
+  if (dict->capacity < dict->size * 2 + 1) _dict_resize(sizeof(dict->buckets[0]->key), \
+                                                    _dict_get_hash_function(dict), \
+                                                    (struct GenericDictionary*)dict, \
+                                                    (dict->capacity * 83) / 40 + 17)
+
+#define _dict_shrink(dict) \
+  if (dict->capacity > dict->size * 8 && dict->capacity > 37) \
+    _dict_resize(sizeof(dict->buckets[0]->key), \
+                 _dict_get_hash_function(dict), \
+                 (struct GenericDictionary*)dict, \
+                 (dict->capacity / 2) + 11)
+
+void _dict_resize(size_t key_size,
+                  size_t (*hash_fnc)(size_t, const void*),
+                  struct GenericDictionary* dict,
+                  size_t new_capacity);
+
+void _dict_free_nodes(struct GenericDictionary* dict);
+
+dict_inline char *_dict_strcp(const char* str) {
+  size_t l = 0;
+  while (str[l++]) ;
+
+  char* ret = Dictionary_alloc(sizeof(char) * l);
+
+  while (l--) ret[l] = str[l];
+
   return ret;
 }
 
-typedef struct {} DictionaryKeyType__NUMBER;
-typedef struct {} DictionaryKeyType__POINTER;
-typedef struct {} DictionaryKeyType__STRING;
-
-struct GenericDictionary__node {
-  struct GenericDictionary__node *next;
-};
-struct GenericDictionary {
-  size_t size, capacity;
-  struct GenericDictionary__node **buckets;
-};
-
-
-#define _dict_expand(dict) _dict_resize_(dict, (dict->capacity * 83) / 40 + 17)
-#define _dict_shrink(dict) _dict_resize_(dict, (dict->capacity / 2) + 3)
-
-#define _dict_resize_(dict, cap) _dict_resize( \
-    sizeof(**dict->buckets), \
-    ({ size_t _hash(typeof(dict->buckets[0]) node) { \
-      return _dict_hash_fnc(dict, node->key); \
-      } \
-     (size_t(*)(struct GenericDictionary__node*))_hash; }), \
-    (struct GenericDictionary*)dict, \
-    cap)
-
-static void _dict_resize(size_t node_size,
-                         size_t (*hash_fnc)(struct GenericDictionary__node*),
-                         struct GenericDictionary* dict,
-                         size_t new_capacity) {
-
-  struct GenericDictionary__node** buckets = malloc(sizeof(*buckets) * new_capacity);
-
-  memset(buckets, 0, sizeof(*buckets) * new_capacity);
-
-  for (size_t it = 0; it < dict->capacity; it++) {
-    typeof(*buckets) next_bucket;
-    for (typeof(*buckets) bucket = dict->buckets[it]; bucket; bucket = next_bucket) {
-      next_bucket = bucket->next;
-      size_t buck_nr = hash_fnc(bucket) % new_capacity;
-
-      bucket->next = buckets[buck_nr];
-      buckets[buck_nr] = bucket;
-    }
-  }
-
-  free(dict->buckets);
-  dict->buckets = buckets;
-  dict->capacity = new_capacity;
-}
-
-static void _dict_free_buckets(struct GenericDictionary* dict) {
-  for (size_t i = 0; i < dict->capacity; i++) {
-    typeof(*dict->buckets) next_bucket;
-    for (typeof(*dict->buckets) bucket = dict->buckets[i]; bucket; bucket = next_bucket) {
-      next_bucket = bucket->next;
-      free(bucket);
-    }
-  }
-}
+#undef dict_inline
 
 #endif
 

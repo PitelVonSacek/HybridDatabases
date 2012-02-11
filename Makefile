@@ -20,6 +20,7 @@ database_headers= \
 support_headers= \
   exception.h \
 	dictionary.h \
+	dictionary_hash_functions.h \
 	stack.h \
 	storage.h \
 	storage_macros.h \
@@ -33,8 +34,8 @@ storage_test: storage_test.c ${storage}
 stack_test: stack_test.c stack.h
 	${CC} ${CFLAGS} stack_test.c -o stack_test
 
-dictionary_test: dictionary_test.c dictionary.h
-	${CC} ${CFLAGS} dictionary_test.c -o dictionary_test
+dictionary_test: dictionary_test.c dictionary.c dictionary.h
+	${CC} ${CFLAGS} dictionary_test.c dictionary.c -o dictionary_test
 
 exception_test: exception_test.c exception.h exception.c
 	${CC} ${CFLAGS} exception_test.c exception.c -o exception_test
@@ -57,7 +58,7 @@ database.o: database.c database_create.include.c threads.include.c \
 database_test: database_test.c database.o ${storage} exception.o \
                ${database_headers} ${support_headers} attributes.o
 	${CC} ${CFLAGS} database_test.c database.o ${storage} exception.o \
-	                attributes.o -lpthread -o database_test
+	                attributes.o dictionary.o -lpthread -o database_test
 
 show_file: show_file.c storage.h storage_macros.h ${storage} exception.h exception.o
 	${CC} ${CFLAGS} show_file.c ${storage} exception.o -o show_file
