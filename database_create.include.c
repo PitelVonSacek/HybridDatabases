@@ -106,7 +106,7 @@ static void node_change(Reader* R, IdToNode *nodes) {
   uint64_t id = R_NUMBER;
   int attr_id = R_NUMBER;
 
-  typeof(dict_get_bucket(nodes, id)) dict_node = dict_get_bucket(nodes, id);
+  typeof(dict_get_node(nodes, id)) dict_node = dict_get_node(nodes, id);
 
   if (!dict_node) {
     R_SKIP;
