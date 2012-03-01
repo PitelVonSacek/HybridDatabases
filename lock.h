@@ -22,13 +22,19 @@ static inline uint64_t l_lock_(Lock* l, void* ptr, uint64_t version) {
   }
 }
 
+/*
+ * return value:
+ *  0 - fail
+ *  1 - success
+ *  2 - success, lock was already locked by us
+ */
 static inline int l_lock  (Lock* l, void* ptr, uint64_t version) {
   uint64_t v;
 
   while (1) {
     v = atomic_read(&l->value);
     if ((v & 1) ? (v > version) : (v != (uint64_t)ptr)) return 0;
-    if (atomic_cmpswp(&l->value, v, ptr)) return 1;
+    if (atomic_cmpswp(&l->value, v, ptr)) return 1 + (v == (uint64_t)ptr);
   }
 }
 
