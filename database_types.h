@@ -4,8 +4,10 @@
 #include "utils.h"
 #include "exception.h"
 #include "dictionary.h"
-#include "stack.h"
+#include "utils/stack.h"
 #include "storage.h"
+
+#include "database_enums.h"
 
 // extracted from libucw
 #include "bitarray.h"
@@ -13,23 +15,18 @@
 #include <semaphore.h>
 #include <pthread.h>
 
-#define DB_LOCKS 256
+
 
 EXCEPTION_DECLARE(TR_FAIL, NONE);
 EXCEPTION_DECLARE(TR_MAIN_ABORT, TR_FAIL);
 EXCEPTION_DECLARE(TR_ABORT, TR_MAIN_ABORT);
 
 struct Database_;
-struct Transaction_;
+struct Handler_;
 struct Node_;
 #define Database struct Database_
-#define Transaction struct Transaction_
-#define Node struct Node_
+#define Handler struct Handler_
 
-typedef Dictionary(uint64_t, Node*, NUMBER) IdToNode;
-
-typedef Stack(Node*) NodeStack;
-typedef Stack(void*) VoidStack;
 
 enum {
   TRERR_SUCCESS = 0,
@@ -39,110 +36,13 @@ enum {
   TRERR_TRANSACTION_RUNNING = -4
 };
 
-enum CallbackEvent {
-  CBE_NODE_CREATED,
-  CBE_NODE_MODIFIED,
-  CBE_NODE_DELETED,
-  CBE_NODE_LOADED // emited when creating indexes after loading database
-};
+
+
+#include "node.h"
 
 typedef struct {
   const char* name;
-  unsigned size;
-  unsigned id;
-
-  void (*init)(void*);
-  void (*destroy)(void*);
-
-  int (*copy)(Transaction*, void* dest, const void* src);
-
-  void (*load)(Reader*, void*);
-  void (*store)(Writer*, void*);
-} AttributeType;
-
-struct NodeAttribute {
-  const char * name;
-  const AttributeType *type;
-  int index;
-  int offset;
-};
-
-typedef struct NodeType_ {
-  const char * name; // this pointer is used as unique id of NodeType
-
-  size_t my_size;
-  size_t size;
-
-  void (*load)(Reader*, Node*);
-  void (*store)(Writer*, Node*);
-
-  void (*init_pointers)(IdToNode*, Node*);
-
-  // changes all pointers in node to 0, required for deleting node
-  int (*destroy_pointers)(Transaction*, Node*);
-
-  void (*init)(Node*);
-  void (*destroy)(Node*);
-
-//  void (*update_indexes)(Transaction*, enum CallbackEvent, Node*);
-  int id;
-
-  int attributes_count;
-  struct NodeAttribute attributes[0];
-} NodeType;
-
-#undef Node
-typedef struct Node_ {
-  const NodeType * const type; // have to be first
-
-  // linked list of nodes
-  struct Node_ *_prev, *_next;
-
-  // node id
-  const uint64_t id;
-  // # of references from other nodes
-  // node can be deleted only if ref_count == 0
-  uint64_t ref_count;
-
-  struct {} __node;
-} Node;
-
-struct VoidStackList {
-  struct VoidStackList *next;
-  VoidStack stack[1];
-};
-
-struct NodeStackList {
-  struct NodeStackList *next;
-  NodeStack stack[1];
-};
-
-struct TransactionList {
-  struct TransactionList* newer;
-
-  struct NodeStackList *node_list;
-  struct VoidStackList *void_list;
-
-  uint64_t time;
-
-  /* number of running transactions with start time time
-   * atomicaly decrease at commit/rollback & test result,
-   * when it's 0, grab database->mutex and do clean up
-   */
-  size_t running;
-};
-
-struct OutputQueue {
-  struct OutputQueue* next;
-  void *data;
-  size_t size;
-  int flags;
-  sem_t *lock;
-};
-
-typedef struct {
-  const char* name;
-  int (*callback)(void*, Transaction*, enum CallbackEvent, Node*);
+  int (*callback)(void*, Handler*, enum CallbackEvent, Node*);
 
   size_t context_size;
   void (*context_init)(void*);
@@ -161,7 +61,7 @@ typedef struct {
 
   void (*indexes_init)(Database*);
   void (*indexes_destroy)(Database*);
-  int  (*indexes_update)(Transaction*, enum CallbackEvent, Node*);
+  int  (*indexes_update)(Handler*, enum CallbackEvent, Node*);
 
   size_t node_types_count;
   NodeType *node_types[0];
@@ -178,50 +78,90 @@ enum {
 
 #include "attributes.h"
 
-typedef struct {
+/*
+ * type:
+ *   > 0 ... ptr is Node* & type is attr id
+ *   -MAX_ATTR_SIZE - -1 ... raw write of size -type
+ *   -1024 ... LI_NODE_CREATE
+ *   -1025 ... LI_NODE_DELETE
+ */ 
+
+enum {
+  LI_TYPE_RAW = 1,
+  LI_TYPE_NODE_MODIFY,
+
+  LI_TYPE_ATOMIC_RAW,
+  Li_TYPE_ATOMIC_NODE_MODIFY,
+
+  LI_TYPE_NODE_ALLOC,
+  LI_TYPE_NODE_DELETE,
+  LI_TYPE_MEMORY_ALLOC,
+  LI_TYPE_MEMORY_DELETE
+};
+
+struct LogItem {
   void *ptr;
-  short size;
-  char data[MAX_ATTR_SIZE];
-} TrLogItem;
+ 
+  type : 3;
+  size : 5;
+  index: 8;
+  offset: 12;
+  attr_type : 4;
+
+  char data_old[MAX_ATTR_SIZE];
+  char data_new[MAX_ATTR_SIZE];
+};
 
 struct ReadSet {
   // wrapped in structure so it can be easily copied and assigned
   BIT_ARRAY(read_set, DB_LOCKS);
 };
 
-typedef struct {
+struct Transaction {
   struct ReadSet read_set;
-  size_t write_log, nodes_deleted, memory_new, memory_deleted;
-  Node *nodes_new;
-  uint64_t writer_pos;
-} TrNestedTransaction;
+  struct LogItem *pos;
+  unsigned acquired_locks;
+  enum CommitType commit_type;
+};
 
-#undef Transaction
-typedef struct Transaction_ {
-  // const void* indexes_vtable;
+
+#undef Handler
+typedef struct Handler_ {
   Database *database;
-
-  struct TransactionList *tr_list;
 
   uint64_t start_time;
   struct ReadSet read_set;
 
-  Stack(TrNestedTransaction) tr_stack[1];
+  FastStack(struct Transaction, 10) transactions[1];
 
-  Stack(TrLogItem) write_log[1];
-  Node* nodes_new, *nodes_new_end;
-  NodeStack nodes_deleted[1];
-  VoidStack memory_new[1];
-  VoidStack memory_deleted[1];
+  FastStack(struct LogItem, 63) log[1];
 
-  Writer W[1];
+  enum CommitType commit_type;
 
-  struct {} __transaction; // required for type magic
-} Transaction;
+  // keep list of acquired lock, so we dont have to iterate
+  // through all locks when releasing them
+  InlineStack(DB_LOCK_NR_TYPE, DB_LOCKS) acquired_locks[1];
+
+  struct {} __ancestor; // required for type magic
+} Handler;
 
 #undef Database
 typedef struct Database_ {
   const DatabaseType * const type;
+  
+  /*
+   * Filenames will be:
+   * name.desc - database description
+   * name.n for n = 1.. - data files
+   */
+  char * filename;
+
+  /* nr of data file we're writing in */
+  int current_file_index;
+
+  enum DatabaseFlags {
+  
+  } flags;
 
   /* global time, read by each strarting transaction, increased during commit */
   uint64_t time;
@@ -230,44 +170,71 @@ typedef struct Database_ {
 
   Lock locks[DB_LOCKS];
 
-  /* array of lists of nodes, each member of array is for one node type */
-  Node *node_list, *node_list_end;
+  struct List node_list;
 
-  /* list with count of running transactions with specific
-   * start time, used for dealyed freeing of memory */
-  // QUESTION: is list enought, or do I need heap ??
-  struct TransactionList *tr_old, *tr_new;
-
-  /*
-   * Filenames will be:
-   * name.desc - database description
-   * name.n for n = 1.. - data files
-   */
-  char * filename;
-
-  FILE* output;
-
-  /* nr of data file we're writing in */
-  int current_file_index;
-
-  /* lock to serialize writing to file */
-  int flags, dump_flags;
+  Handler* __dummy_handler[0];  // for type magic only
+  Stack(Handler*) handlers[1];
+  pthread_mutex_t handlers_mutex[1];
 
   pthread_mutex_t mutex;
-  pthread_cond_t signal;
-
-  pthread_t gc_thread;
-
-  pthread_t dump_thread;
-  pthread_mutex_t dump_mutex;
-  pthread_cond_t dump_signal;
 
   pthread_t io_thread;
-//  sem_t oq_size;
-  struct OutputQueue *oq_head, *oq_tail;
+  pthread_t gc_thread;
 
-  struct {} __database; // required for type magic
-  Transaction __dummy_transaction[0];
+  struct {
+    NodeAllocatorInfo allocator[1];
+
+    struct OutputList {
+      struct OutputList *next;
+      
+      uint64_t end_time;
+
+      sem_t *lock;
+
+      union {
+        // FastStack(struct LogItem, 63) log[1];
+        typeof(((Handle*)0)->log[0]) log[1];
+        struct {
+          void *data;
+          size_t size;
+        };
+      };
+
+      enum {
+        DB_OUTPUT__SYNC_COMMIT = 1,
+        DB_OUTPUT__DUMP_SIGNAL = 2,
+        DB_OUTPUT__CANCELED = 4,
+        DB_OUTPUT__READY = 8,
+        DB_OUTPUT__RAW = 16,
+        DB_OUTPUT__SHUTDOWN = 32
+      } flags;
+    } *head, **tail;
+ 
+    Signal io_signal[1];
+    Signal garbage_signal[1];
+    
+    FILE *file;
+  } output;
+
+  struct {
+    enum {
+      DB_DUMP__IO_THREAD_WAITS = 1,
+      DB_DUMP__DO_DUMP = 2,
+      DB_DUMP__DUMP_RUNNING = 4,
+      DB_DUMP__DO_GC = 8,
+      DB_DUMP__GC_RUNNING = 16
+    } flags;
+ 
+    pthread_mutex_t mutex[1]; // to sync gc & io threads
+    pthread_cond_t signal[1]; // signals end of dump
+  } dump;
+
+  struct GenericAllocator tm_allocator[1];
+
+  struct {} __ancestor; // required for type magic
+
+  size_t node_types_count;
+  NodeType node_types[0];
 } Database;
 
 
