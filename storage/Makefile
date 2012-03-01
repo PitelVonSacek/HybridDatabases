@@ -1,7 +1,11 @@
-HEADERS=storage.h storage_inline.include.h storage_macros.include.h
-SOURCES=storage.c writer.include.c reader.include.c crc.include.c
+HEADERS=storage.h storage.include/*.h
+SOURCES=storage.c storage.include/*.c
 
 CC=gcc -std=gnu99
 
 storage.o: ${HEADERS} ${SOURCES}
+
+show_file.o: show_file.c ${HEADERS}
+show_file: show_file.o storage.o 
+rescuer: rescuer.o storage.o
 

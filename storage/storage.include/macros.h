@@ -7,30 +7,59 @@
 
 // when read fails, executes goto read_failed;
 
-#define rArray do { if (!read_array(R)) goto read_failed; do {
+#define readFailed goto read_failed
+
+#define rBegin \
+  do { if (reader_begin(R) != ST_READ_SUCCESS) readFailed; } while (0)
+
+#define rMayBegin \
+  ({ \
+    int __ret = reader_begin(R); \
+    if (__ret == ST_READ_FAIL) readFailed; \
+    __ret == ST_READ_SUCCESS; \
+  })
+
+#define rNext reader_next(R)
+
+#define rArray do { if (!read_array(R)) readFailed; do {
 #define rArrayEnd \
-  } while (0); if (!read_array_end(R)) goto read_failed; } while (0)
+  } while (0); if (!read_array_end(R)) readFailed; } while (0)
 
 #define rNumber \
   ({ \
     uint64_t _tmp = 0; \
-    if (!read_number(R, &_tmp)) goto read_failed; \
+    if (!read_number(R, &_tmp)) readFailed; \
     _tmp; \
   })
+
+#define rCheckNumber(num) \
+  do { \
+    if (rNumber != (num)) readFailed; \
+  } while (0)
 
 #define rCheckString(str) \
   do { \
     const char *_str = (str); \
     size_t _length = 0; \
     char *_string = 0; \
-    if (!read_string(R, &_string, &_length) || \
+    if (!read_string(R, &(void*)_string, &_length) || \
         strlen(str) != _length || \
         strncmp(_string, _str, _length)) \
-      goto read_failed; \
+      readFailed; \
   } while (0)
 
+#define rRawString(len) \
+  ({ \
+    size_t __length = 0; \
+    const void *__string = 0; \
+    if (!read_string(R, &__string, &__length) || \
+        __length != (len)) \
+      readFailed; \
+    __string; \
+  })
+
 #define rFinish(checksum) \
-  do { if (!reader_finish(R, checksum)) goto read_failed; } while (0)
+  do { if (!reader_finish(R, checksum)) readFailed; } while (0)
 
 
 /*****************

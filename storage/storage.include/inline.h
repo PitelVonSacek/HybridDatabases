@@ -8,6 +8,8 @@ static inline size_t reader_next(Reader *R) {
   switch (*R->ptr) {
     case ST_ARRAY_BEGIN:
     case ST_ARRAY_END:
+    case ST_CRC:
+    case ST_DOT:
       return *R->ptr;
     default:
       return (*R->ptr >= ST_STRING) ? ST_STRING : ST_ERROR;
@@ -87,11 +89,6 @@ void _writer_get_space(Writer *W, size_t size);
   } while (0)
 
 void _write_number(Writer *W, uint64_t n);
-#define _write_str_header(len) \
-  do { \
-    if (len < 128) *W->ptr++ = len + ST_STRING; \
-    else _write_number(W, len + ST_STRING); \
-  } while (0)
 
 static inline void write_array(Writer *W) {
   _writer_ensure_space(1);
@@ -108,6 +105,9 @@ static inline void write_array_end(Writer *W) {
 
 static inline void *write_string(Writer *W, uint64_t length) {
   _writer_ensure_space(length + 9);
+  if (length + ST_STRING < 128) *W->ptr++ = length + ST_STRING;
+  else _write_number(W, length + ST_STRING);
+  
   void *ret = W->ptr;
   W->ptr += length;
   return ret;

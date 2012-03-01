@@ -53,14 +53,14 @@ void _write_number(Writer *W, uint64_t n) {
   }
 }
 
-
 void writer_finish(Writer *W, bool checksum) {
   assert(W->depth == 0);
 
   _writer_ensure_space(16); // 1 DOT, 5 CRC, 10 next header
 
   if (checksum) {
-    unsigned crc = crc32_c(W->begin, W->end, 0);
+    unsigned crc = crc32_c(W->begin, W->ptr, 0);
+    storageDebug("CRC: %x\n", crc);
     *W->ptr++ = ST_CRC;
     for (int i = 0; i < 4; i++, crc >>= 8) *W->ptr++ = crc & 0xFF;
   }
@@ -85,7 +85,7 @@ void *writer_ptr(Writer *W) {
   return W->real_begin;
 }
 
-size_t writer_lenght(Writer *W) {
+size_t writer_length(Writer *W) {
   assert(W->begin == W->ptr);
   return (W->ptr - W->real_begin) - 10;
 }

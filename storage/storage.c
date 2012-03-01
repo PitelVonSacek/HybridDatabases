@@ -4,7 +4,7 @@ static unsigned crc32_c(const unsigned char *b,
                         const unsigned char *e, 
                         unsigned x);
 
-#include "writer.include.c"
-#include "reader.include.c"
-#include "crc.include.c"
+#include "storage.include/writer.c"
+#include "storage.include/reader.c"
+#include "storage.include/crc.c"
 
