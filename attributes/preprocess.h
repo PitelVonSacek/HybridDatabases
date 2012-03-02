@@ -1,19 +1,4 @@
-#define DefineAttrType(name, ...) name,
-
-enum {
-#include "definitions.h"
-  attribute_types_count
-};
-
-#undef DefineAttrType
-
 #define DefineAttrType(name, Internal_type, P, init, destroy, copy, load, store) \
-  typedef struct { \
-    Internal_type value; \
-    P is_primitive; \
-    StaticInt(name) type_index; \
-  } name##_t; \
-  typedef typeof(((name##_t*)0)->value.value) name##_value_t; \
   static inline void attribute_init_##name (void *attr) {  init; } \
   static inline void attribute_destroy_##name (struct GenericAllocatorInfo *allocator, \
       uint64_t end_time, void *attr) { destroy; } \
@@ -30,6 +15,8 @@ enum {
 #include "definitions.h"
 
 #undef DefineAttrType
+
+
 
 #define DefineAttrType(name, ...) case name: attribute_init_##name(attr); break;
 void attribute_init (int type, void *attr) {
