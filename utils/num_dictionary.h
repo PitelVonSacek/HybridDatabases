@@ -6,8 +6,10 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdint.h>
 
 typedef struct {} IsNumDictionaryDummy;
+typedef uint64_t GenericKey;
 
 typedef struct {
   IsNumDictionaryDummy __dummy;
@@ -15,7 +17,7 @@ typedef struct {
 
   struct NumDictionaryNode {
     struct NumDictionaryNode *next;
-    size_t generic_key;
+    GenericKey generic_key;
   } **buckets;
 } NumDictionary;
 
@@ -30,14 +32,14 @@ typedef struct {
       struct _dictionary_node__##n *next; \
       union { \
         Key key; \
-        size_t generic_key; \
+        GenericKey generic_key; \
       }; \
       Value value; \
     } **buckets; \
     \
     struct { \
       char key_size_must_be_less_or_equal_to_size_t \
-        [(sizeof(Key) <= sizeof(size_t)) ? 1 : -1]; \
+        [(sizeof(Key) <= sizeof(GenericKey)) ? 1 : -1]; \
     } __static_assert[0]; \
   }
 
@@ -54,7 +56,7 @@ typedef struct {
   ({ \
     union { \
       typeof((dict)->buckets[0]->key) key; \
-      size_t generic_key; \
+      GenericKey generic_key; \
     } __tmp; \
     __tmp.generic_key = 0; \
     __tmp.key = (key_); \
@@ -82,7 +84,7 @@ typedef struct {
 
 #define ndict_remove(dict, key) \
   ndict_generic_remove(_ndict_uncast(dict), \
-                       _ndict_key_uncast(dict, key)); \
+                       _ndict_key_uncast(dict, key)) \
 
 
 #define ndictFor(var, dict) ndictFor_(dict, var, __COUNTER__)
@@ -109,12 +111,13 @@ typedef struct {
 Inline void ndict_generic_init(NumDictionary *dict);
 Inline void ndict_generic_destroy(NumDictionary *dict);
 
-Inline struct NumDictionaryNode *ndict_generic_get_node(NumDictionary *dict, size_t key);
+Inline struct NumDictionaryNode *ndict_generic_get_node(NumDictionary *dict, 
+                                                        GenericKey key);
 
 // fails if key already exists
 Inline bool ndict_generic_insert(NumDictionary *dict, struct NumDictionaryNode*);
 // fails if key is not in dictionary
-Inline bool ndict_generic_remove(NumDictionary *dict, size_t key);
+Inline bool ndict_generic_remove(NumDictionary *dict, GenericKey key);
 
 
 // Implementation
@@ -184,7 +187,11 @@ static const size_t _ndict_capacities[] = {
   0
 };
 
-Inline size_t _ndict_hash(size_t capacity, size_t key) {
+#ifndef _num_dict_debug
+#define _num_dict_debug(...)
+#endif
+
+Inline size_t _ndict_hash(size_t capacity, GenericKey key) {
   return (key * 2971215073) % capacity;
 }
 
@@ -213,7 +220,8 @@ Inline void ndict_generic_destroy(NumDictionary *dict) {
   };
 }
 
-Inline struct NumDictionaryNode *ndict_generic_get_node(NumDictionary *dict, size_t key) {
+Inline struct NumDictionaryNode *ndict_generic_get_node(NumDictionary *dict, 
+                                                        GenericKey key) {
   if (!dict->capacity) return 0;
 
   struct NumDictionaryNode *node = dict->buckets[_ndict_hash(dict->capacity, key)];
@@ -228,6 +236,7 @@ Inline struct NumDictionaryNode *ndict_generic_get_node(NumDictionary *dict, siz
 
 Inline bool ndict_generic_insert(NumDictionary *dict, struct NumDictionaryNode *node) {
   if (ndict_generic_get_node(dict, node->generic_key)) {
+    _num_dict_debug("Insert: failed, %li already in dict", node->generic_key);
     free(node);
     return false;
   }
@@ -245,8 +254,11 @@ Inline bool ndict_generic_insert(NumDictionary *dict, struct NumDictionaryNode *
   return true;
 }
 
-Inline bool ndict_generic_remove(NumDictionary *dict, size_t key) {
-  if (!dict->capacity) return false;
+Inline bool ndict_generic_remove(NumDictionary *dict, GenericKey key) {
+  if (!dict->capacity) {
+    _num_dict_debug("Remove: returning cause of 0 capacity");
+    return false;
+  }
 
   struct NumDictionaryNode **node_ptr;
   node_ptr = dict->buckets + _ndict_hash(dict->capacity, key);
@@ -261,6 +273,7 @@ Inline bool ndict_generic_remove(NumDictionary *dict, size_t key) {
     node_ptr = &node_ptr[0]->next;
   }
 
+  _num_dict_debug("Remove: %li not found", key);
   return false;
   end:
 
@@ -274,6 +287,8 @@ Inline bool ndict_generic_remove(NumDictionary *dict, size_t key) {
 
 static void _ndict_resize(NumDictionary *dict, int cap_index_diff) {
   size_t new_cap = _ndict_capacities[dict->capacity_index + cap_index_diff];
+
+  _num_dict_debug("Resize: diff %i, old cap %i\n", cap_index_diff, (int)dict->capacity);
 
   if (!new_cap) {
     if (cap_index_diff == -1) return;
@@ -290,7 +305,7 @@ static void _ndict_resize(NumDictionary *dict, int cap_index_diff) {
       next = node->next;
 
       struct NumDictionaryNode **new_bucket = buckets + 
-          _ndict_hash(dict->capacity, node->generic_key);
+          _ndict_hash(new_cap, node->generic_key);
 
       node->next = *new_bucket;
       *new_bucket = node;
@@ -303,5 +318,6 @@ static void _ndict_resize(NumDictionary *dict, int cap_index_diff) {
   dict->capacity = new_cap;
 }
 
+#undef _num_dict_debug
 #endif
 
