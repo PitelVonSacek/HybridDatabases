@@ -1,6 +1,8 @@
 #ifndef __FAST_STACK_H__
 #define __FAST_STACK_H__
 
+#include <stddef.h>
+
 #include "../node_allocator.h"
 #include "list.h"
 
@@ -20,14 +22,14 @@
 #define fstack_init(stack, alloc) \
   ({ \
     typeof(&*(stack)) __stack = (stack); \
-    *__stack = (*typeof(__stack)){ \
+    *__stack = (typeof(*__stack)){ \
       .allocator = alloc, \
       .block_count = 0, \
       .blocks = ListInit(__stack->blocks), \
       \
-      .begin = (((char*)(&stack->blocks)) + _fstack_offset_begin), \
-      .ptr = (((char*)(&stack->blocks)) + _fstack_offset_end), \
-      .end = (((char*)(&stack->blocks)) + _fstack_offset_end) \
+      .begin = (void*)(((char*)(&stack->blocks)) + _fstack_offset_begin), \
+      .ptr = (void*)(((char*)(&stack->blocks)) + _fstack_offset_end), \
+      .end = (void*)(((char*)(&stack->blocks)) + _fstack_offset_end) \
     }; \
     __stack; \
   })
@@ -37,7 +39,7 @@
     typeof(&*(stack)) __stack_ = (stack); \
     while (!list_empty(&__stack_->blocks)) \
       node_free(__stack_->allocator, list_remove(__stack_->blocks.next), 0); \
-    fstack_init(__stack_); \
+    fstack_init(__stack_, __stack_->allocator); \
   })
 
 #define fstack_block_size(stack) \
@@ -97,10 +99,10 @@
 
 
 #define _fstack_offsets _fstack_offset_begin, _fstack_offset_end 
-#define _fstack_offset_begin  offsetof(typeof(*__stack), data[0])
-#define _fstack_offset_end  offsetof(typeof(*__stack), data[fstack_block_size(__stack)])
+#define _fstack_offset_begin  offsetof(typeof(__stack->__block[0]), data[0])
+#define _fstack_offset_end  offsetof(typeof(__stack->__block[0]), data[fstack_block_size(__stack)])
 
-typedef FastStack(void*) GenericFastStack;
+typedef FastStack(void*, 1) GenericFastStack;
 
 static void _fstack_expand(GenericFastStack *stack, 
                            ptrdiff_t offset_begin, ptrdiff_t offset_end) {
