@@ -37,8 +37,9 @@ enum {
 };
 
 
-
+#include "attributes.h"
 #include "node.h"
+#include "handler.h"
 
 typedef struct {
   const char* name;
@@ -76,74 +77,8 @@ enum {
   DB_DUMP_RUNNING = 4
 };
 
-#include "attributes.h"
-
-/*
- * type:
- *   > 0 ... ptr is Node* & type is attr id
- *   -MAX_ATTR_SIZE - -1 ... raw write of size -type
- *   -1024 ... LI_NODE_CREATE
- *   -1025 ... LI_NODE_DELETE
- */ 
-
-enum {
-  LI_TYPE_RAW = 1,
-  LI_TYPE_NODE_MODIFY,
-
-  LI_TYPE_ATOMIC_RAW,
-  Li_TYPE_ATOMIC_NODE_MODIFY,
-
-  LI_TYPE_NODE_ALLOC,
-  LI_TYPE_NODE_DELETE,
-  LI_TYPE_MEMORY_ALLOC,
-  LI_TYPE_MEMORY_DELETE
-};
-
-struct LogItem {
-  void *ptr;
- 
-  type : 3;
-  size : 5;
-  index: 8;
-  offset: 12;
-  attr_type : 4;
-
-  char data_old[MAX_ATTR_SIZE];
-  char data_new[MAX_ATTR_SIZE];
-};
-
-struct ReadSet {
-  // wrapped in structure so it can be easily copied and assigned
-  BIT_ARRAY(read_set, DB_LOCKS);
-};
-
-struct Transaction {
-  struct ReadSet read_set;
-  struct LogItem *pos;
-  unsigned acquired_locks;
-  enum CommitType commit_type;
-};
 
 
-#undef Handler
-typedef struct Handler_ {
-  Database *database;
-
-  uint64_t start_time;
-  struct ReadSet read_set;
-
-  FastStack(struct Transaction, 10) transactions[1];
-
-  FastStack(struct LogItem, 63) log[1];
-
-  enum CommitType commit_type;
-
-  // keep list of acquired lock, so we dont have to iterate
-  // through all locks when releasing them
-  InlineStack(DB_LOCK_NR_TYPE, DB_LOCKS) acquired_locks[1];
-
-  struct {} __ancestor; // required for type magic
-} Handler;
 
 #undef Database
 typedef struct Database_ {

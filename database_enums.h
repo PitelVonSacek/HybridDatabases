@@ -18,5 +18,18 @@ enum CallbackEvent {
   CBE_NODE_LOADED // emited when creating indexes after loading database
 };
 
+enum {
+  LI_TYPE_RAW = 1,
+  LI_TYPE_NODE_MODIFY,
+
+  LI_TYPE_ATOMIC_RAW,
+  LI_TYPE_ATOMIC_NODE_MODIFY,
+
+  LI_TYPE_NODE_ALLOC,
+  LI_TYPE_NODE_DELETE,
+  LI_TYPE_MEMORY_ALLOC,
+  LI_TYPE_MEMORY_DELETE
+};
+
 #endif
 
