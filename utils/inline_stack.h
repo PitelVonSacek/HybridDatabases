@@ -1,12 +1,12 @@
 #ifndef __INLINE_STACK_H__
 #define __INLINE_STACK_H__
 
-
+#include <stddef.h>
 
 #define InlineStack(Type, Size) \
   struct { \
-    size_t ptr;
-    Type data[Size];
+    size_t ptr; \
+    Type data[Size]; \
   }
 
 #define InlineStackInit { 0, {} }

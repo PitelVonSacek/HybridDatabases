@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "database_enums.h"
+#include "attributes/attributes_defs.h"
 
 #include "utils/fast_stack.h"
 #include "utils/inline_stack.h"
@@ -50,7 +51,7 @@ typedef struct Handler_ {
 
   // keep list of acquired lock, so we dont have to iterate
   // through all locks when releasing them
-  InlineStack(DB_LOCK_NR_TYPE, DB_LOCKS) acquired_locks[1];
+  InlineStack(DB_LOCKS_NR_TYPE, DB_LOCKS) acquired_locks[1];
 
   struct {} __ancestor; // required for type magic
 } Handler;
