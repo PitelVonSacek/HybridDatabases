@@ -40,7 +40,8 @@ static inline bool attribute_write(int type, Handler *H,
                                    uint64_t end_time, void *dest, const void *src);
 
 static inline void attribute_store(int type, Writer *W, void *attr);
-static inline bool attribute_load(int type, Reader *R, struct GenericAllocatorInfo *allocator, 
+static inline bool attribute_load(int type, Reader *R, 
+                                  struct GenericAllocatorInfo *allocator, 
                                   void *attr);
 
 #pragma push_macro("readFailed")

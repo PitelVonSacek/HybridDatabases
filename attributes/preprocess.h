@@ -7,22 +7,24 @@ enum {
 
 #undef DefineAttrType
 
-#define DefineAttrType(name, Internal_type, P, read, init, destroy, copy, load, store) \
+#define DefineAttrType(name, Internal_type, P, init, destroy, copy, load, store) \
   typedef struct { \
     Internal_type value; \
     P is_primitive; \
     StaticInt(name) type_index; \
   } name##_t; \
   typedef typeof(((name##_t*)0)->value.value) name##_value_t; \
-  static inline name##_t attribute_native_read_##name () \
   static inline void attribute_init_##name (void *attr) {  init; } \
-  static inline void attribute_destroy_##name (struct GenericAllocatorInfo *allocator, uint64_t end_time, \
-    void *attr) { destroy; } \
+  static inline void attribute_destroy_##name (struct GenericAllocatorInfo *allocator, \
+      uint64_t end_time, void *attr) { destroy; } \
   static inline bool attribute_write_##name (Handler *H, uint64_t end_time, \
-    void *dest, const void *src) { struct GenericAllocatorInfo *allocator = H->database->tm_allocator; \
-                                   copy; return true; } \
+      void *dest, const void *src) { \
+    struct GenericAllocatorInfo *allocator = H->database->tm_allocator; \
+    copy; return true; \
+  } \
   static inline void attribute_store_##name (Writer *W, void *attr) { store; } \
-  static inline bool attribute_load_##name (Reader *R, struct GenericAllocatorInfo *allocator, void *attr) \
+  static inline bool attribute_load_##name (Reader *R, \
+      struct GenericAllocatorInfo *allocator, void *attr) \
     { load; return true; }
 
 #include "definitions.h"

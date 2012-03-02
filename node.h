@@ -2,10 +2,13 @@
 #define __NODE_H__
 
 #include "storage/storage.h"
+
 #include "node_allocator.h"
 #include "generic_allocator.h"
+
 #include "utils/list.h"
-#include "dictionary.h"
+#include "utils/num_dictionary.h"
+
 #include "database_enums.h"
 
 struct NodeAttribute {
@@ -20,7 +23,7 @@ struct NodeAttribute {
 struct Node_;
 struct Handler_;
 
-typedef Dictionary(uint64_t, Node*, NUMBER) IdToNode;
+typedef NumDictionary(uint64_t, Node*) IdToNode;
 
 typedef struct {
   const char * name; // this pointer is used as unique id of NodeType

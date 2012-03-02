@@ -50,7 +50,7 @@ DefineAttrType(String, struct { const char *value; }, StaticFalse,
     size_t len = strlen(s) + 1;
     d = generic_alloc(allocator, len);
     memcpy((void*)d, s, len);
-    atomic_write((String_t*)dest, d);
+    *(String_t*)dest = d;
   } while (0),
 
   do { // load
@@ -85,7 +85,7 @@ DefineAttrType(RawString, struct { BinaryString *value; }, StaticFalse,
     RawString_t s = *(RawString_t*)src;
     d = generic_alloc(allocator, s->length + sizeof(*((RawString_t)0)));
     memcpy(d, s, s->length + sizeof(*((RawString_t)0)));
-    atomic_write((RawString_t*)dest, d);
+    *(RawString_t*)dest = d;
   } while (0),
 
   do { // load
@@ -113,7 +113,7 @@ DefineAttrType(Pointer, union { Node* value; uint64_t id; }, StaticFalse,
     Node *_src = *(Node**)src;
     if (!_node_ref_count_decrease(H, *(Node**)dest) ||
         !_node_ref_count_increase(H, _src)) return false;
-    atomic_write((Node**)dest, _src);
+    *(Node**)dest = _src;
   } while (0),
   
   *(uint64_t*)attr = rNumber, //load
