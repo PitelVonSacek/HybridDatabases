@@ -18,9 +18,9 @@
         (void)0, \
       ), \
       ({ \
-        Node *__node = (node);
+        Node *__node = (node); \
         (__node->type->name == Type##_desc->name) ? \
-          ((Type*)__node) : (Type*)0;
+          ((Type*)__node) : (Type*)0; \
       }) \
     ) \
   )
@@ -93,7 +93,7 @@
   ({ \
     Node *__node = tr_node_create(H, Type##_desc); \
     if (!__node) trFail; \
-    (Type*)__node;
+    (Type*)__node; \
   })
 
 #define trNodeDelete_(H, node) \
@@ -116,7 +116,7 @@ void _tr_retry_wait(int loop);
 #define trBegin_(H) \
   do { \
     __label__ _tr_success_label; _tr_restart_label; \
-    do {
+    do { \
       __label__ tr_failed, _tr_retry_label; \
       int _tr_retry = 0; \
       _tr_retry_label: \
@@ -129,15 +129,15 @@ void _tr_retry_wait(int loop);
         if (0) { \
           tr_failed: \
           if (!tr_is_main(H)) goto _tr_restart_label; \
-          tr_hard_abort(H);
+          tr_hard_abort(H); \
         } \
         _tr_retry_wait(++_tr_retry); \
         goto _tr_retry_label; \
       } \
     } while (0); \
     if (0) { _tr_restart_label: restart_command; } \
-    _tr_success_label: ;
-  } while (0);
+    _tr_success_label: ; \
+  } while (0)
 
 
 #define trAbort_(H) do { tr_abort(H); goto _tr_success_label; } while (0)
