@@ -1,4 +1,6 @@
 Node *tr_node_create(Handler *H, NodeType *type) {
+  // FIXME what if we have global NodeType and need database specific one?
+
   Node *node = node_alloc(type->allocator_info);
   *(NodeType**)&(node->type) = type
   node->id = atomic_add_and_fetch(&H->database->node_id_counter, 1);
@@ -43,23 +45,37 @@ bool tr_node_read(Handler *H, Node *node, int attr, void *buffer) {
 
   bit_array_set(H->read_set.read_set, hash_ptr(node));
 
-#ifndef USE_ATTRIBUTE_ATOMIC_ACCESS
   memcpy(buffer, utilOffset(node, a.offset), attribute_size(a.type));
-#else
-  assert(0); // FIXME
-#endif
 
-  return true;
+  return tr_node_check(H, node);
 }
 
 bool tr_node_write(Handler *H, Node *node, int attr, const void *value) {
   assert(attr >= node->type->attributes_count || attr < 0);
   
   struct NodeAttribute a = node->type->attributes[attr];
-  
+      
+  struct LogItem log_item = {
+    .ptr = node,
+    .type = LI_TYPE_NODE_MODIFY,
+    .size = a.size,
+    .index = attr,
+    .offset = a.offset,
+    .attr_type = a.type
+  };
+
+  memcpy(log_item->data_old, utilOffset(node, a.offset), a.size);
+
   utilLock(H, node);
-  return attribute_copy(a.type, H, atomic_read(&H->database->time), 
-                        utilOffset(node, a.offset), value);
+  if (!attribute_write(a.type, H, atomic_read(&H->database->time), 
+                       utilOffset(node, a.offset), value))
+    return false;
+
+  memcpy(log_item->data_new, utilOffset(node, a.offset), a.size);
+
+  fstack_push(H->log, log_item);
+
+  return true;
 }
 
 

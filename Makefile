@@ -56,7 +56,7 @@ database.o: database.c database_create.include.c threads.include.c \
 	${CC} ${CFLAGS} -c database.c -o database.o
 
 database_test: database_test.c database.o ${storage} exception.o \
-               ${database_headers} ${support_headers} attributes.o
+               ${database_headers} ${support_headers} attributes.o dictionary.o
 	${CC} ${CFLAGS} database_test.c database.o ${storage} exception.o \
 	                attributes.o dictionary.o -lpthread -o database_test
 

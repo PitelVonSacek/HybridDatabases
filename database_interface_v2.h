@@ -38,7 +38,10 @@ void db_handler_destroy(Handler*);
 
 static inline void tr_begin(Handler *H);
 static inline void tr_abort(Handler *H);
-static inline bool tr_commit(Handler *H, enum CommitType commit_type); 
+static inline bool tr_commit(Handler *H, enum CommitType commit_type);
+static inline void tr_hard_abort(Handler *H);
+
+static inline bool tr_is_main(Handler *H);
 
 static inline bool tr_validate(Handler *H);
 
@@ -65,6 +68,8 @@ bool tr_node_delete(Handler *H, Node *node);
 // Those functions are slow, use macros instead whenever possible
 bool tr_node_read(Handler *H, Node *node, int attr, void *buffer);
 bool tr_node_write(Handler *H, Node *node, int attr, const void *value);
+
+static inline bool tr_node_check(Handler *H, Node *node);
 
 int tr_attr_count(NodeType*);
 const char *tr_attr_get_name(NodeType*, int;

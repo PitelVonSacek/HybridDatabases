@@ -6,6 +6,18 @@ static void _tr_unlock(Handler* H, uint64_t ver) {
     l_unlock(locks + istack_pop(H->acquired_locks), H, ver);
 }
 
+void _tr_retry_wait(int loop) {
+  uint64_t t = (loop < 14) ? (10000 << loop) : 180000000;
+  t = (rand() * rand()) % t;
+
+  struct timespec timeout = { 
+    .tv_sec = 0, 
+    .tv_nsec = t
+  };
+
+  nanosleep(&timeout, 0);
+}
+
 static void handler_cleanup(Handler *H) {
   atomic_write(&H->start_time, 0);
 

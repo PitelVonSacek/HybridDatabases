@@ -24,34 +24,66 @@ static inline int ulog2(uint64_t n) {
 static inline void *tr_alloc(size_t size) { return malloc(size); }
 static inline void tr_free(void *ptr) { free(ptr); }
 
+#define utilLock(H, ptr) \
+  do { \
+    switch (l_lock(hash_ptr(node), H, H->start_time)) { \
+      case 0: return false; \
+      case 1: istack_push(H->acquired_locks, hash_ptr(node)); \
+    } \ 
+  while (0)
+
+static inline unsigned hash_ptr(void *ptr) {
+  return (((size_t)ptr) * 997) % DB_LOCKS; // find betterr prime :-)
+}
+
+#define util_read(ptr, dest, size, atomic)
+#define util_write(ptr, src, size, atomic)
+
+#define util_offset(ptr, offset) ((void*)(((char*)(ptr)) + (offset)))
+#define utilOffset(ptr, offset) ((void*)(((char*)(ptr)) + (offset)))
 #define TR_OFFSET(ptr, offset) ((void*)(((char*)ptr) + offset))
 
-struct reader_fread_context {
-  FILE *f;
-  size_t size;
-  size_t offset;
-  unsigned char *data;
+typedef struct {
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
+} Signal;
+
+static inline void util_signal_wait(Signal *signal) {
+  pthread_mutex_lock(&signal->mutex);
+  pthread_cond_wait(&signal->cond);
+  pthread_mutex_unlock(&signal->mutex);
+} 
+
+static inline void util_signal_signal(Signal *signal) {
+  pthread_cond_broadcast(&signal->cond);
+}
+
+static inline void util_signal_init(Signal *s) {
+  pthread_mutex_init(&s->mutex, 0);
+  pthread_cond_init(&s->cond);
+}
+
+static inline void util_signal_destroy(Signal *s) {
+  pthread_cond_destroy(&s->cond);
+  pthread_mutex_destroy(&s->mutex);
+}
+
+enum {
+  DB_ERROR = 0,
+  DB_OOPS = 1,
+  DB_WARNING = 2,
+  DB_INFO = 3
 };
 
-static void reader_fread_release_context(struct reader_fread_context *ctx) {
-  fclose(ctx->f);
-  free(ctx->data);
-}
-static size_t reader_fread(struct reader_fread_context* ctx, size_t l, unsigned char** out) {
-  if (l > ctx->size) ctx->data = realloc(ctx->data, l);
-  *out = ctx->data;
-  return fread(ctx->data, 1, l, ctx->f);
-}
-
-static Reader* reader_fread_create(struct reader_fread_context* context, const char* file) {
-  if (!(context->f = fopen(file, "rb"))) return 0;
-
-  context->size = context->offset = 0;
-  context->data = 0;
-
-  return reader_create((size_t (*)(void *, size_t,  unsigned char **))reader_fread,
-                       context, (void(*)(void*))reader_fread_release_context);
-}
+#define dbDebug(level, ...) \
+  do { \
+    const char *message_type[] = { \
+      "Error", "Oops", "Warning", "Info" \
+    }; \
+    fprintf(stderr, "%s at '%s' line %i: ", message_type[level], __FILE__, __LINE__); \
+    fprintf(stderr, "" __VA_ARGS__); \
+    fprintf(stderr, "\n"); \
+  } while (0)
 
 
 #endif

@@ -1,11 +1,11 @@
 
-// DefineAttrType(name, C_type,
+// DefineAttrType(name, Internal_type, is_primitive
 //                init, destroy,
 //                write,
 //                load, store)
 
 #define UnsignedType(name, C_type) \
-  DefineAttrType(name, struct { C_type value; }, *attr, \
+  DefineAttrType(name, struct { C_type value; }, StaticTrue, \
                  *(C_type*)attr = 0, (void)0, \
                  *(C_type*)dest = *(C_type*)src, \
                  *(C_type*)attr = rNumber, \
@@ -13,7 +13,7 @@
 
 // FIXME dirty uses unaligned access
 #define SignedType(name, C_type) \
-  DefineAttrType(name, struct { C_type value; }, *attr, \
+  DefineAttrType(name, struct { C_type value; }, StaticTrue, \
                  *(C_type*)attr = 0, (void)0, \
                  *(C_type*)dest = *(C_type*)src, \
                  *(C_type*)attr = *(C_type*)(rRawString(sizeof(C_type))), \
@@ -33,7 +33,7 @@ SignedType(Float, float)
 SignedType(Double, double)
 SignedType(LDouble, long double)
 
-DefineAttrType(String, const char*, 1, *attr,
+DefineAttrType(String, struct { const char *value; }, StaticFalse,
   *(String_t*)attr = 0,
 
   do { // destroy
@@ -69,7 +69,7 @@ DefineAttrType(String, const char*, 1, *attr,
 )
 
 
-DefineAttrType(RawString, BinaryString*, 1, *attr,
+DefineAttrType(RawString, struct { BinaryString *value; }, StaticFalse,
   *(RawString_t*)attr = 0,  
   
   do { // destroy
@@ -105,7 +105,7 @@ DefineAttrType(RawString, BinaryString*, 1, *attr,
 )
 
 
-DefineAttrType(Pointer, union { Node *ptr; uint64_t id; }, 1, attr->ptr,
+DefineAttrType(Pointer, union { Node* value; uint64_t id; }, StaticFalse,
   *(Node**)attr = 0,
   (void)0,
 

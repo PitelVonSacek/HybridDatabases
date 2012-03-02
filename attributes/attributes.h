@@ -25,7 +25,9 @@ typedef struct {
   char data[0]; 
 } BinaryString;
 
+
 static inline size_t attribute_size(int type);
+static inline bool attribute_is_primitive(int type);
 
 static inline void attribute_read(int type, const void *attr, void *buffer);
 
@@ -34,8 +36,8 @@ static inline void attribute_destroy(int type, struct GenericAllocatorInfo *allo
                                      uint64_t end_time, void *attr);
 
 // FIXME lock node when modifing its ref_count
-static inline bool attribute_copy(int type, Handler *H, 
-                                  uint64_t end_time, void *dest, const void *src);
+static inline bool attribute_write(int type, Handler *H, 
+                                   uint64_t end_time, void *dest, const void *src);
 
 static inline void attribute_store(int type, Writer *W, void *attr);
 static inline bool attribute_load(int type, Reader *R, struct GenericAllocatorInfo *allocator, 

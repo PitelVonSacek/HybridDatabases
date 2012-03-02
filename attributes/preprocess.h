@@ -7,14 +7,18 @@ enum {
 
 #undef DefineAttrType
 
-#define DefineAttrType(name, C_type, atomic, read, init, destroy, copy, load, store) \
-  typedef C_type name##_t; \
-  typedef typeof(((name##_t*)0)->value) name##_value_t;
-  static inline name##_t attribute_native_read_##name ()
+#define DefineAttrType(name, Internal_type, P, read, init, destroy, copy, load, store) \
+  typedef struct { \
+    Internal_type value; \
+    P is_primitive; \
+    StaticInt(name) type_index; \
+  } name##_t; \
+  typedef typeof(((name##_t*)0)->value.value) name##_value_t; \
+  static inline name##_t attribute_native_read_##name () \
   static inline void attribute_init_##name (void *attr) {  init; } \
   static inline void attribute_destroy_##name (struct GenericAllocatorInfo *allocator, uint64_t end_time, \
     void *attr) { destroy; } \
-  static inline bool attribute_copy_##name (Handler *H, uint64_t end_time, \
+  static inline bool attribute_write_##name (Handler *H, uint64_t end_time, \
     void *dest, const void *src) { struct GenericAllocatorInfo *allocator = H->database->tm_allocator; \
                                    copy; return true; } \
   static inline void attribute_store_##name (Writer *W, void *attr) { store; } \
@@ -34,7 +38,8 @@ void attribute_init (int type, void *attr) {
 }
 #undef DefineAttrType
 
-#define DefineAttrType(name, ...) case name: attribute_destroy_##name(allocator, end_time, attr); break;
+#define DefineAttrType(name, ...) \
+  case name: attribute_destroy_##name(allocator, end_time, attr); break;
 void attribute_destroy (int type, struct GenericAllocatorInfo *allocator, uint64_t end_time, void *attr) {
   switch (type) {
 #include "definitions.h"
@@ -43,8 +48,9 @@ void attribute_destroy (int type, struct GenericAllocatorInfo *allocator, uint64
 }
 #undef DefineAttrType
 
-#define DefineAttrType(name, ...) case name: return attribute_copy_##name(H, end_time, dest, src); break;
-bool attribute_copy (int type, Handler *H, uint64_t end_time, void *dest, const void *src) {
+#define DefineAttrType(name, ...) \
+  case name: return attribute_write_##name(H, end_time, dest, src); break;
+bool attribute_write (int type, Handler *H, uint64_t end_time, void *dest, const void *src) {
   switch (type) {
 #include "definitions.h"
     default: assert(0);
@@ -61,7 +67,8 @@ void attribute_store (int type, Writer *W, void *attr) {
 }
 #undef DefineAttrType
 
-#define DefineAttrType(name, ...) case name: return attribute_load_##name(R, allocator, attr); break;
+#define DefineAttrType(name, ...) \
+  case name: return attribute_load_##name(R, allocator, attr); break;
 bool attribute_load (int type, Reader *R, struct GenericAllocatorInfo *allocator, void *attr) {
   switch (type) {
 #include "definitions.h"
@@ -79,3 +86,12 @@ static inline size_t attribute_size(int type) {
 }
 #undef DefineAttrType
 
+#define DefineAttrType(name, ...) \
+  case name: return StaticIsTrue(((name##_t*)0)->is_primitive);
+static inline bool attribute_is_primitive(int type) {
+  switch (type) {
+#include "definitions.h"
+    default: assert(0);
+  }
+}
+#undef DefineAttrType

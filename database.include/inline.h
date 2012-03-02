@@ -1,6 +1,14 @@
 void _tr_abort_main(Handler*);
 bool _tr_commit_main(Handler*, enum CommitType);
 
+static inline void tr_hard_abort(Handler *H) {
+  _tr_abort_main(H);
+}
+
+static inline bool tr_is_main(Handler *H) {
+  return fstack_empty(H->transactions);
+}
+
 static inline void tr_begin(Handler *H) {
   if (H->start_time) { // create nested transaction
     struct Transaction nt = {
@@ -49,5 +57,9 @@ static inline bool tr_validate(Handler *H) {
       valid = false;
 
   return valid;
+}
+
+static inline bool tr_node_check(Handler *H, Node *n) {
+  return l_check(H->database->locks + hash_ptr(node), H, H->start_time);
 }
 

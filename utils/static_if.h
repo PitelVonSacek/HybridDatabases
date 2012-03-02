@@ -1,5 +1,18 @@
-#ifndef STATIC_IF_H__
-#define STATIC_IF_H__
+#ifndef __STATIC_IF_H__
+#define __STATIC_IF_H__
+
+typedef struct {} StaticTrue;
+typedef struct {} StaticFalse;
+
+#define StaticIsTrue(var) type_equals(typeof(var), StaticTrue)
+
+
+
+#define StaticInt(val) \
+  struct { struct { char value[val]; } _static_int[0]; }
+#define StaticGetInt(var) sizeof((var)._static_int->value)
+
+
 
 #define STATIC_ASSERT(x) switch (0) { case 0: case (x): ; }
 

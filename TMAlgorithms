@@ -3,17 +3,53 @@ Transakční paměť
 
 - globální tabulka zámků
 - zamykání po objektech
+- indexy zamykají jak chtějí, ale zamykat objekty je doporučováno
 - každé vlákno limitovánu na 1 transakci
 
-Uvolňování paměti
- - nepotřebnou paměť sbírá garbage collector
- - nejstarší běžící transakci zjišťuje průchodem
-   aktuálních transakcí jednotlivých vláken
+- uživatel sám musí volat update_indexes()
 
- - úprava interface:
+Transakční log:
+---------------
+- prvky:
+  struct LogItem {
+    void *ptr;
+    char old_data[MAX_ATTR_SIZE];
+    char new_data[MAX_ATTR_SIZE];
+    int info;
+  };
 
-DatabaseHandler *thread_register(Database*);
-void thread_unregister(DatabaseHandler*);
+- druh operace určen hodnotou info:
+  >= 0 - index atributu v (Node*)ptr
+  -MAX_ATTR_SIZE - -1 - velikost dat, raw operace
 
-+ zrušení tr_main_*, a místo transaction se užívá DatabaseHandler
+Průběh commitu:
+---------------
+- prohodíme-li kroky 3 a 4 můžeme zmenšit struct LogItem z 32 na 24 bytů
+
+1) atomické vložení do seznamu dokončených transakcí
+2) validace read setu - pokud selže, označíme transakci za zrušenou
+   a provedeme rollback
+3) odemkneme držené zámky
+
+-- následující kroky přesuneme do io a gc vláken, zjednodušší to implementaci
+ 4) serializujeme provedené změny do diskového formátu
+   + signalizujeme, že transakce je připravena k vypsání
+ 5) uvolníme všechnu pamět kromě nodů samotných (jejich obsah uvolníme)
+   + signalizujeme garbage collectoru
+
+
+IO thread:
+----------
+- načítá dokončené transakce, až dostane signál tak je vypíše
+  a předá dál gc threadu
+
+GC thread:
+----------
+- načítá dokončené transakce předan io threadem, až dostane
+  signál tak je uvolní - především uvolní zrušené nody, což
+  znamená, že modifikuje seznam všech nodů - přesunutím této
+  práce do jednoho vlákna odpadají problémy se synchronizací
+
+
+
 
