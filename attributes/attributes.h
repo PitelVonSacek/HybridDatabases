@@ -1,10 +1,13 @@
 #ifndef __ATTRIBUTES_H__
 #define __ATTRIBUTES_H__
 
+#include <stdint.h>
+
+#include "../node.h"
+#include "../handler.h"
+
 #include "../storage/storage.h"
 #include "../generic_allocator.h"
-#include "../node.h"
-#include <stdint.h>
 
 /*
  * Attribute types:
