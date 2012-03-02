@@ -1,7 +1,7 @@
 #ifndef __FAST_STACK_H__
 #define __FAST_STACK_H__
 
-#include "node_allocator.h"
+#include "../node_allocator.h"
 #include "list.h"
 
 #define FastStack(Type, BlockSize) \
