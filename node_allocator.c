@@ -1,6 +1,15 @@
-#include "node_allocator.h"
-#include "stdlib.h"
+#include <stdlib.h>
 #include <time.h>
+
+#include "node_allocator.h"
+
+#ifdef NODE_ALLOCATOR_DEBUG
+#include <stdio.h>
+#define dbg(...) \
+  do { printf("%4i: ", __LINE__); printf("" __VA_ARGS__); printf("\n"); } while (0)
+#else
+#define dbg(...)
+#endif
 
 void *node_alloc_nodes(struct NodeAllocatorInfo *info) {
   // TODO: do something smarter, allocate bunch of nodes at once
@@ -17,7 +26,7 @@ bool node_free_nodes(struct NodeAllocatorInfo *info, size_t limit, uint64_t olde
   while (atomic_read(&(info->counter)) > limit) {
     loop:  
     do {
-      node = atomic_swap(&info->free_nodes, (struct FreeNode*)(char*)1);
+      node = atomic_swp(&info->free_nodes, (struct FreeNode*)(char*)1);
     } while ((size_t)node == 1);
     
     if (node) {
@@ -37,6 +46,7 @@ bool node_free_nodes(struct NodeAllocatorInfo *info, size_t limit, uint64_t olde
   return true;
   
   too_new_nodes:
+  dbg("too_new_nodes");
   // ugly solution, we steal whole list and then return too new items
   // back into the list
   do {
@@ -53,6 +63,8 @@ bool node_free_nodes(struct NodeAllocatorInfo *info, size_t limit, uint64_t olde
     node = n;
   }
 
-  return atomic_read(&info->counter) <= limit;
+  bool ret = atomic_read(&info->counter) <= limit;
+  dbg("ret %i", (int)ret);
+  return ret;
 }
 

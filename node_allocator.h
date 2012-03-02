@@ -1,6 +1,9 @@
 #ifndef __NODE_ALLOCATOR_H__
 #define __NODE_ALLOCATOR_H__
 
+#include <stdint.h>
+#include <stdbool.h>
+
 #include "atomic.h"
 
 struct FreeNode {
