@@ -5,7 +5,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "storage.h"
+#include <semaphore.h>
+#include <pthread.h>
+
 #include "lock.h"
 
 static inline int ulog2(uint64_t n) {
@@ -19,18 +21,15 @@ static inline int ulog2(uint64_t n) {
 // The address of a block returned by malloc or realloc in the GNU system is
 // always a multiple of eight (or sixteen on 64-bit systems).
 //
-// So it's aligned enough for us.
 
-static inline void *tr_alloc(size_t size) { return malloc(size); }
-static inline void tr_free(void *ptr) { free(ptr); }
 
 #define utilLock(H, ptr) \
   do { \
     switch (l_lock(hash_ptr(node), H, H->start_time)) { \
       case 0: return false; \
       case 1: istack_push(H->acquired_locks, hash_ptr(node)); \
-    } \ 
-  while (0)
+    } \
+  } while (0)
 
 static inline unsigned hash_ptr(void *ptr) {
   return (((size_t)ptr) * 997) % DB_LOCKS; // find betterr prime :-)
@@ -50,7 +49,7 @@ typedef struct {
 
 static inline void util_signal_wait(Signal *signal) {
   pthread_mutex_lock(&signal->mutex);
-  pthread_cond_wait(&signal->cond);
+  pthread_cond_wait(&signal->cond, &signal->mutex);
   pthread_mutex_unlock(&signal->mutex);
 } 
 
@@ -60,7 +59,7 @@ static inline void util_signal_signal(Signal *signal) {
 
 static inline void util_signal_init(Signal *s) {
   pthread_mutex_init(&s->mutex, 0);
-  pthread_cond_init(&s->cond);
+  pthread_cond_init(&s->cond, 0);
 }
 
 static inline void util_signal_destroy(Signal *s) {
