@@ -75,7 +75,7 @@ static inline size_t reader_next(Reader *R);
 static inline bool read_array(Reader *R);
 static inline bool read_array_end(Reader *R);
 
-static inline bool read_string(Reader *R, void **ptr, size_t *length);
+static inline bool read_string(Reader *R, const void **ptr, size_t *length);
 static inline bool read_number(Reader *R, uint64_t *value);
 
 /* Macros (requires Reader* named R):

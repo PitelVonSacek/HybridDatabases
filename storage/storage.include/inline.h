@@ -32,7 +32,7 @@ static inline bool read_array_end(Reader *R) {
   return *R->ptr++ == ST_ARRAY_END;
 }
 
-static inline bool read_string(Reader *R, void **ptr, size_t *length) {
+static inline bool read_string(Reader *R, const void **ptr, size_t *length) {
   _reader_ensure_space(1);
   unsigned char first = *R->ptr++;
   if (first < ST_STRING) return false;
