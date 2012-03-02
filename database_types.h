@@ -1,25 +1,17 @@
 #ifndef __DATABASE_TYPES_H__
 #define __DATABASE_TYPES_H__
 
+#include <pthread.h>
+#include <semaphore.h>
+
 #include "utils.h"
-#include "exception.h"
-#include "dictionary.h"
 #include "utils/stack.h"
-#include "storage.h"
 
 #include "database_enums.h"
 
-// extracted from libucw
-#include "bitarray.h"
+#include "node_allocator.h"
+#include "generic_allocator.h"
 
-#include <semaphore.h>
-#include <pthread.h>
-
-
-
-EXCEPTION_DECLARE(TR_FAIL, NONE);
-EXCEPTION_DECLARE(TR_MAIN_ABORT, TR_FAIL);
-EXCEPTION_DECLARE(TR_ABORT, TR_MAIN_ABORT);
 
 struct Database_;
 struct Handler_;
@@ -28,16 +20,7 @@ struct Node_;
 #define Handler struct Handler_
 
 
-enum {
-  TRERR_SUCCESS = 0,
-  TRERR_COLLISION = -1,
-  TRERR_DUMP_RUNNING = -2,
-  TRERR_NONZERO_REF_COUNT = -3,
-  TRERR_TRANSACTION_RUNNING = -4
-};
-
-
-#include "attributes.h"
+#include "attributes/attributes_defs.h"
 #include "node.h"
 #include "handler.h"
 
@@ -54,6 +37,7 @@ struct DatabaseIndex {
   IndexDesc* desc;
   size_t offset;
 };
+
 
 typedef struct {
   const char *name;
@@ -95,7 +79,7 @@ typedef struct Database_ {
   int current_file_index;
 
   enum DatabaseFlags {
-  
+    DUMMY_FLAG_ON_LINE_80
   } flags;
 
   /* global time, read by each strarting transaction, increased during commit */
@@ -117,7 +101,7 @@ typedef struct Database_ {
   pthread_t gc_thread;
 
   struct {
-    NodeAllocatorInfo allocator[1];
+    struct NodeAllocatorInfo allocator[1];
 
     struct OutputList {
       struct OutputList *next;
@@ -128,7 +112,7 @@ typedef struct Database_ {
 
       union {
         // FastStack(struct LogItem, 63) log[1];
-        typeof(((Handle*)0)->log[0]) log[1];
+        typeof(((Handler*)0)->log[0]) log[1];
         struct {
           void *data;
           size_t size;
@@ -164,7 +148,7 @@ typedef struct Database_ {
     pthread_cond_t signal[1]; // signals end of dump
   } dump;
 
-  struct GenericAllocator tm_allocator[1];
+  struct GenericAllocatorInfo tm_allocator[1];
 
   struct {} __ancestor; // required for type magic
 
