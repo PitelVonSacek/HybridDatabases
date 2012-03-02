@@ -4,7 +4,7 @@
 typedef struct {} StaticTrue;
 typedef struct {} StaticFalse;
 
-#define StaticIsTrue(var) type_equals(typeof(var), StaticTrue)
+#define StaticIsTrue(var) types_equal(typeof(var), StaticTrue)
 
 
 
