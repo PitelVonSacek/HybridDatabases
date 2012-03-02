@@ -1,41 +1,58 @@
 static void *io_thread(Database *D) {
   struct OutputList *job;
+  Writer W[1];
 
-  TrDebug("IO thread on");
+  dbDebug(DB_INFO, "IO thread on");
+  writer_init(W);
 
-  sem_wait(D->output.writer_sem);
+  utilSignalWaitUntil(D->output.io_signal, atomic_read(&D->output.head));
  
-  for (job = D->output.head; job; job = job->next) {
+  for (job = D->output.head; 1; job = job->next) {
+    if (atomic_read(&job->flags) & DB_OUTPUT__SHUTDOWN) break;
+
 #ifdef LOCKLESS_COMMIT
-    while (!(atomic_read(job->output.flags) & DB_OUTPUT__READY)) ;
+    while (!(atomic_read(&job->flags) & DB_OUTPUT__READY)) ;
 
-    if (job->output.flags & DB_OUTPUT__CANCELED) goto end;
-#endif
+    if (job->flags & DB_OUTPUT__CANCELED) goto end;
+#endif    
 
-    fwrite(job->output.data, 1, job->output.size, D->output.file);
-
-    if (job->output.flags & DB_OUTPUT__SYNC_COMMIT) fflush(D->output.file);
-    if (job->output.lock) sem_post(job->output.lock);
-
-    if (job->output.flags & DB_OUTPUT__DUMP_SIGNAL) {
+    if (job->flags & DB_OUTPUT__DUMP_SIGNAL) {
       // FIXME sync with new file creation
-      pthread_mutex_lock(D->dump.mutex);
-      D->dump.flags |= DB_DUMP__IO_THREAD_WAITS;
-      pthread_cond_wait(D->dump.signal, D->dump.mutex);
-      pthread_mutex_unlock(D->dump.mutex);
+      atomic_add(&D->dump.flags, DB_DUMP__IO_THREAD_WAITS);
+      util_signal_signal(D->dump.singal);
+
+      utilSignalWaitUntil(D->dump.signal, 
+          atomic_read(&D->dump.flags) & DB_DUMP__RESUME_IO_THREAD);
+
+      atomic_add(&D->dump.flags, -DB_DUMP__RESUME_IO_THREAD);
+
+      goto end;
     }
 
-#ifdef LOCKLESS_COMMIT
+    if (job->flags & DB_OUTPUT__RAW) 
+      fwrite(job->data, 1, job->size, D->output.file);
+    else {
+      write_log(W, job->log);
+      fwrite(write_ptr(W), 1, writer_length(W), D->output.file);
+      writer_discart(W);
+    }
+
+    if (job->flags & DB_OUTPUT__SYNC_COMMIT) fflush(D->output.file);
+    if (job->lock) sem_post(job->lock);
+
     end:
-#endif
-
     atomic_inc(&D->output.garbage_counter);
-    pthread_cond_broadcast(D->output.garbage_signal);
+    util_signal_signal(D->output.gc_signal);
 
-    sem_wait(D->output.writer_sem);
+    utilSignalWaitUntil(D->output.io_signal, atomic_read(&job->next));
   }
 
-  TrDebug("IO thread off");
+  // pass the message to gc thread
+  atomic_inc(&D->output.garbage_counter);
+  util_signal_signal(D->output.gc_signal);
+
+  write_destroy(W);
+  dbDebug(DB_INFO, "IO thread off");
   return 0;
 }
 

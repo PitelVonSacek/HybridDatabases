@@ -42,6 +42,16 @@ static void write_file_footer(Writer *W, Database *D, uint64_t magic) {
   wFinish(false);
 }
 
+static void write_dump_begin(Writer *W) {
+  wString("DUMP BEGIN");
+  wFinish(0);
+}
+
+static void write_dump_end(Writer *W) {
+  wString("DUMP END");
+  wFinish(0);
+}
+
 static void write_node_alloc(Writer *W, NodeType *type, uint64_t id) {
   wArray {
     wNumber(CBE_NODE_CREATED);
@@ -57,15 +67,36 @@ static void write_node_delete(Writer *W, uint64_t id) {
   } wArrayEnd;
 }
 
-static void write_node_modify(Writer *W, Node *node, unsigned attr, 
+static void write_node_modify(Writer *W, uint64_t node_id, unsigned attr, 
                               unsigned attr_type, const void *value) {
   wArray {
     wNumber(CBE_NODE_MODIFIED);
-    wNumber(node->id);
+    wNumber(node_id);
     wNumber(attr);
     attribute_store(attr_type, W, value);
-    // node->type->attributes[attr].type->store(W, value);
   } wArrayEnd;
 }
 
+
+static void write_log(Writer *W, TransactionLog *log) {
+  wArray {
+    fstack_for_each(item, log) {
+      Node *node = (Node*)item->ptr;
+      switch (item->type) {
+        case LI_TYPE_NODE_MODIFY:
+        case LI_TYPE_ATOMIC_NODE_MODIFY: 
+          write_node_modify(W, node->id, item->index, 
+                            item->attr_type, item->data_new);
+          break;
+        case LI_TYPE_NODE_ALLOC: 
+          write_node_alloc(W, node->type, node->id);
+          break;
+        case LI_TYPE_NODE_DELETE:
+          write_node_delete(W, node->id);
+      }
+    }
+  } wArrayEnd;
+  
+  wFinish(1);
+}
 

@@ -73,7 +73,7 @@ typedef struct Database_ {
    * name.desc - database description
    * name.n for n = 1.. - data files
    */
-  char * filename;
+  const char *filename;
 
   /* nr of data file we're writing in */
   int current_file_index;
@@ -111,8 +111,7 @@ typedef struct Database_ {
       sem_t *lock;
 
       union {
-        // FastStack(struct LogItem, 63) log[1];
-        typeof(((Handler*)0)->log[0]) log[1];
+        TransactionLog log[1];
         struct {
           void *data;
           size_t size;
@@ -141,11 +140,14 @@ typedef struct Database_ {
       DB_DUMP__DO_DUMP = 2,
       DB_DUMP__DUMP_RUNNING = 4,
       DB_DUMP__DO_GC = 8,
-      DB_DUMP__GC_RUNNING = 16
+      DB_DUMP__GC_RUNNING = 16,
+      DB_DUMP__RESUME_IO_THREAD = 32
     } flags;
  
-    pthread_mutex_t mutex[1]; // to sync gc & io threads
-    pthread_cond_t signal[1]; // signals end of dump
+    Signal signal[1];
+
+//    pthread_mutex_t mutex[1]; // to sync gc & io threads
+//    pthread_cond_t signal[1]; // signals end of dump
   } dump;
 
   struct GenericAllocatorInfo tm_allocator[1];

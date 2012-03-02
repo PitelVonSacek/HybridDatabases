@@ -47,6 +47,12 @@ typedef struct {
   pthread_cond_t cond;
 } Signal;
 
+#define utilSignalWaitUntil(signal, cond) \
+  do { \
+    if (cond) break; \
+    util_signal_wait(signal); \
+  } while (1)
+
 static inline void util_signal_wait(Signal *signal) {
   pthread_mutex_lock(&signal->mutex);
   pthread_cond_wait(&signal->cond, &signal->mutex);

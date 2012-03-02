@@ -88,6 +88,16 @@ void _tr_abort_main(Handler *H) {
   handler_cleanup(H);
 }
 
+static void output_queue_push(Database *D, struct OutputList *item) {
+#ifdef LOCKLESS_COMMIT
+  while (!atomic_cmpswp(atomic_read(&db->output.tail), 0, O)) ;
+  atomic_write(&db->output.tail, &O->next);
+#else
+  *(D->output.tail) = O;
+  D->output.tail = &O->next;
+#endif
+}
+
 bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   Database * const db = H->database;
   uint64_t end_time;
@@ -118,8 +128,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   end_time = atomic_add_and_fetch(&db->time, 2);
   O->end_time = end_time;
 
-  while (!atomic_cmpswp(atomic_read(&db->output.tail), 0, O)) ;
-  atomic_write(&db->output.tail, &O->next);
+  output_queue_push(D, O);
 
   if (!tr_validate(H)) {
     atomic_add(&O->output.flags, BD_OUTPUT__READY | DB_OUTPUT__CANCELED);
@@ -148,8 +157,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 
     O->garbage.end_time = end_time;
 
-    *(db->output.tail) = O;
-    db->output.tail = &O->next;
+    output_queue_push(D, O);
   } pthread_mutex_unlock(&db->mutex);
 #endif
 

@@ -48,8 +48,8 @@ static bool read_file_header(Reader *R, Database *D, uint64_t *magic) {
   return true;
 }
 
-static bool read_file_footer(Writer *W, Database *D, uint64_t *magic) {
-  rBegin;
+static bool read_file_footer(Reader *R, Database *D, uint64_t *magic) {
+  // rBegin; no rBegin cause look-forward function does it
   rCheckString("END OF FILE");
   rFinish(false);
 
@@ -57,6 +57,18 @@ static bool read_file_footer(Writer *W, Database *D, uint64_t *magic) {
   *magic = rNumber;
   rFinish(false);
 
+  return true;
+}
+
+static bool read_dump_begin(Reader *R) {
+  rCheckString("DUMP BEGIN");
+  rFinish(0);
+  return true;
+}
+
+static bool read_dump_end(Reader *R) {
+  rCheckString("DUMP END");
+  rFinish(0);
   return true;
 }
 

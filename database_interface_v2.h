@@ -9,7 +9,7 @@
  *************************/
 
 Database *database_create(const DatabaseType *type, 
-                          const char *dir, 
+//                          const char *dir,  not needed
                           const char *file,
                           unsigned flags);
 

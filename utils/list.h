@@ -5,7 +5,7 @@ struct List {
   struct List *next, *prev;
 };
 
-#define list_get_container(ContainerType, ListMember, list) \
+#define listGetContainer(ContainerType, ListMember, list) \
   ((ContainerType*)(((char*)(list)) - offsetof(ContainerType, ListMember)))
 
 #define ListInit(name) { &name, &name }
@@ -58,9 +58,9 @@ static inline struct List *list_remove(struct List *item) {
   for (struct List *var = list->next; var != list; var = var->next)
 
 #define list_for_each_item(var, list, Type, Member) \
-  for (Type *var = list_get_container(Type, Member, (list)->next); \
+  for (Type *var = listGetContainer(Type, Member, (list)->next); \
        &var->Member != (list); \
-       var = list_get_container(Type, Member, var->Member.next))
+       var = listGetContainer(Type, Member, var->Member.next))
 
 #endif
 

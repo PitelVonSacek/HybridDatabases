@@ -35,6 +35,8 @@ struct Transaction {
   enum CommitType commit_type;
 };
 
+typedef FastStack(struct LogItem, 63) TransactionLog;
+
 struct Database_;
 
 typedef struct Handler_ {
@@ -45,7 +47,7 @@ typedef struct Handler_ {
 
   FastStack(struct Transaction, 10) transactions[1];
 
-  FastStack(struct LogItem, 63) log[1];
+  TransactionLog log[1];
 
   enum CommitType commit_type;
 
