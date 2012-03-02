@@ -1,5 +1,20 @@
 Node *tr_node_create(Handler *H, NodeType *type) {
-  // FIXME what if we have global NodeType and need database specific one?
+  NodeType *types = H->database->node_types;
+  size_t types_count = H->database->node_types_count;
+  ptrdiff_t diff = type - types;
+  
+  if (diff < 0 || diff >= types_count) {
+    // type if not in database->node_types, so we must find equivalent one there
+    // FIXME correct but very stupid algorithm
+    for (size_t i = 0; i < types_count; i++)
+      if (types[i].name == type->name) {
+        type = types + i;
+        goto success;
+      }
+  
+    return 0;
+    found: ;
+  }
 
   Node *node = node_alloc(type->allocator_info);
   *(NodeType**)&(node->type) = type
