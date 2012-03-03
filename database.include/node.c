@@ -32,6 +32,9 @@ Node *tr_node_create(Handler *H, NodeType *type) {
 
   fstack_push(H->log, log_item);
 
+  if (!node->type->update_indexies(H, CBE_NODE_CREATED, node)) 
+    return 0;
+
   return node;
 }
 
@@ -40,6 +43,9 @@ bool tr_node_delete(Handler *H, Node *node) {
   utilLock(H, node);
 
   if (node->ref_count) return false;
+
+  if (!node->type->update_indexies(H, CBE_NODE_DELETED, node))
+    return false;
 
   node->type->destroy_pointers(H, node);
 

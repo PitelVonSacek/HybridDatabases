@@ -59,6 +59,10 @@ static inline bool tr_validate(Handler *H) {
   return valid;
 }
 
+static inline bool tr_node_update_indexies(Handler *H, Node *node) {
+  return node->type->update_indexies(H, CBE_NODE_MODIFIED, node);
+}
+
 static inline bool tr_node_check(Handler *H, Node *n) {
   return l_check(H->database->locks + hash_ptr(node), H, H->start_time);
 }

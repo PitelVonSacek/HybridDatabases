@@ -68,6 +68,7 @@ bool tr_node_delete(Handler *H, Node *node);
 // Those functions are slow, use macros instead whenever possible
 bool tr_node_read(Handler *H, Node *node, int attr, void *buffer);
 bool tr_node_write(Handler *H, Node *node, int attr, const void *value);
+static inline bool tr_node_update_indexies(Handler *H, Node *node);
 
 static inline bool tr_node_check(Handler *H, Node *node);
 
@@ -91,6 +92,9 @@ const AttributeType *tr_attr_get_type(NodeType *type, int index);
 
 #define trRead(node, AttrName)
 #define trWrite(node, AttrName, value)
+
+#define trUpdateIndexies(node)
+
 #define trCheck(node) -- validates lock for node
 
 #define trNodeCreate(NodeType)

@@ -1,6 +1,7 @@
 #define trRead(...) trRead_(H, __VA_ARGS__)
 #define trUncheckedRead(...) trUncheckedRead_(H, __VA_ARGS__)
 #define trWrite(...) trWrite_(H, __VA_ARGS__)
+#define trUpdateIndexies(...) trUpdateIndexies_(H, __VA_ARGS__)
 #define trCheck(...) trCheck_(H, __VA_ARGS__)
 
 #define trInternalRead(...) trInternalRead_(H, __VA_ARGS__)
@@ -82,6 +83,13 @@
     if (!l_lock(H->database->locks + hash_ptr(__node), H, H->start_time) || \
         !trInternalWrite_(H, __node, AttrName, value))  trFail; \
   } while (0)
+
+
+#define trUpdateIndexies_(H, node) \
+  do { \
+    if (!tr_node_update_indexies(H, node)) trFail; \
+  } while (0)
+
 
 #define trCheck_(H, node) \
   do { \
