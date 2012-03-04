@@ -11,10 +11,12 @@ static void process_transaction_log(TransactionLog *log, Database *D,
           write_node_modify(W, node->id, item->index, 
                             item->attr_type, item->data_new);
           break;
+
         case LI_TYPE_NODE_ALLOC: 
           write_node_alloc(W, node->type, node->id);
           list_add_end(&D->node_list, &node->__list);
           break;
+
         case LI_TYPE_NODE_DELETE:
           write_node_delete(W, node->id);
 
@@ -25,11 +27,11 @@ static void process_transaction_log(TransactionLog *log, Database *D,
           node->type->destroy(node);
           node_free(node->type->allocator_info, node, end_time);
           break;
+
         case LI_TYPE_MEMORY_DELETE:
           generic_free(D->tm_allocator, node, end_time);
       }
     }
-
   } wArrayEnd;
   
   wFinish(1);
@@ -88,6 +90,7 @@ static void *service_thread(Database *D) {
         for (int i = 0, i < sizeof(magic_nr); i++) 
           magic_nr = (magic_nr << 8) | (rand() & 0xFF);
 
+        // FIXME what if new_file() fails ???
         _database_new_file(D, false, magic_nr);
         break;
       }
@@ -98,6 +101,7 @@ static void *service_thread(Database *D) {
           magic_nr = (magic_nr << 8) | (rand() & 0xFF);
  
         pthread_mutex_lock(D->output.dump_running);
+        // FIXME what if new_file() fails ???
         _database_new_file(D, true, magic_nr);
         dump_running = true;
         dump_ptr = listGetContainer(Node, __list, D->node_list.next);
@@ -108,7 +112,7 @@ static void *service_thread(Database *D) {
       do {
         for (int i = 0; i < DUMP__NODES_PER_TRANSACTION; i++) {
           if (&dump_ptr->__list == &D->node_list) { // dump finished
-            dump_running = 0;
+            dump_running = false;
             
             write_dump_end(W);
             fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
@@ -126,7 +130,7 @@ static void *service_thread(Database *D) {
           dump_ptr = listGetContainer(Node, __list, dump_ptr->__list.next);
         }
 
-        // dirty, trywait() can fail for other reason than
+        // FIXME dirty, trywait() can fail for other reason than
         // semaphore having value 0 !!!
       } while (sem_trywait(D->output.counter));
     } else {

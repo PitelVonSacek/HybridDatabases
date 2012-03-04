@@ -4,11 +4,13 @@
 #include <string.h>
 
 #include "database_enums.h"
-#include "attributes/attributes_defs.h"
+#include "attributes.h"
 
-#include "utils/fast_stack.h"
-#include "utils/inline_stack.h"
-#include "utils/bitarray.h"
+#include "../utils/fast_stack.h"
+#include "../utils/inline_stack.h"
+#include "../utils/bitarray.h"
+
+#include "../utils/type_magic.h"
 
 struct LogItem {
   void *ptr;
@@ -57,8 +59,21 @@ typedef struct Handler_ {
 
   sem_t write_finished[1];
 
-  struct {} __ancestor; // required for type magic
+  DummyAncestor __ancestor; // required for type magic
 } Handler;
+
+/*
+  Database type specific handler:
+
+typedef struct {
+  union {
+    Database *database;
+    MyDatabase *my_database;
+    Handler __ancestor;
+  };
+} MyHandler;
+
+*/
 
 #endif
 

@@ -20,6 +20,13 @@ void database_wait_for_dump(Database*);
 
 int database_create_new_file(Database*);
 
+/*
+  Macros:
+ 
+#define databaseCreate(Type, file, flags)
+
+*/
+
 
 /*************************
  *   Handler functions   *
@@ -30,6 +37,13 @@ void db_handler_free(Handler*);
 
 Handler *db_handler_init(Database*, Handler*);
 void db_handler_destroy(Handler*);
+
+/*
+  Macros:
+
+#define dbHandlerCreate(database)
+
+*/
 
 
 /*************************
@@ -102,6 +116,7 @@ const AttributeType *tr_attr_get_type(NodeType *type, int index);
 
 */
 
+#include "database.include/type_magic.h"
 #include "database.include/inline.h"
 
 #endif

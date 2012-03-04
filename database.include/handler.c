@@ -1,15 +1,15 @@
-Handler *db_handler_create(Database *D) {
+Handler *db_handler_create (Database *D) {
   Handler *H = db_alloc(sizeof(Handler));
   db_handler_init(D, H);
   return H;
 }
 
-void db_handler_free(Handler *H) {
+void db_handler_free (Handler *H) {
   db_handler_destroy(H);
   db_free(H);
 }
 
-void db_handler_init(Database *D, Handler *H) {
+void db_handler_init (Database *D, Handler *H) {
   *H = (Handler){  
     .database = D,
     .start_time = 0,
@@ -32,7 +32,7 @@ void db_handler_init(Database *D, Handler *H) {
   return H;
 }
 
-void db_handler_destroy(Handler *H) {
+void db_handler_destroy (Handler *H) {
   if (H->start_time) _tr_abort_main(H);
 
   typeof(&*H->database->handlers) handlers = H->database->handlers;

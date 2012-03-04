@@ -7,6 +7,8 @@
 #include "../utils.h"
 #include "../utils/stack.h"
 
+#include "../utils/type_magic.h"
+
 #include "../node_allocator.h"
 #include "../generic_allocator.h"
 
@@ -22,7 +24,6 @@ typedef struct {
 
   void (*indexes_init)(Database*);
   void (*indexes_destroy)(Database*);
-  int  (*indexes_update)(Handler*, enum CallbackEvent, Node*);
 
   size_t node_types_count;
   NodeType *node_types[0];
@@ -30,6 +31,26 @@ typedef struct {
   // size_t indexes_count;
   // struct DatabaseIndex indexes[0];
 } DatabaseType;
+
+/*
+ Real DatabaseType:
+
+struct {
+  DatabseType desc;
+    
+  struct {
+    NodeType *NodeType1_desc;
+    ...
+  } node_types;
+
+  struct {
+    Index1_desc_t *Index1_desc;
+    ...
+  } indexies;
+
+} MyDatabase_desc_t;
+
+*/
 
 
 typedef struct Database_ {
@@ -150,12 +171,37 @@ typedef struct Database_ {
 
   struct GenericAllocatorInfo tm_allocator[1];
 
-  struct {} __ancestor; // required for type magic
+  DummyAncestor __ancestor; // required for type magic
 
   size_t node_types_count;
   NodeType node_types[0];
 } Database;
 
+/*
+ Real Database:
+
+typedef struct {
+  union {
+    DatabaseType *type;
+    MyDatabase_desc_t *my_type;
+    Database __ancestor;
+  };
+
+  struct {
+    NodeType node_type_1;
+    NodeType node_type_2;
+    ...
+  } node_types;
+
+  struct {
+    Context1 index1;
+    Context2 index2;
+    ...
+  } indexies;
+
+} MyDatabase;
+
+*/
 
 #endif
 

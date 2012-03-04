@@ -1,6 +1,12 @@
 static void database_alloc(DatabaseType *type);
 
 static void database_free(Database *database) {
+#ifdef SINGLE_SERVICE_THREAD
+  sem_post(D->output.counter);
+
+  dbDebug(DB_INFO, "Waiting for service thread");
+  pthread_join(D->service_thread, 0);
+#else
   {
     struct OutputList *out = node_alloc(D->output.allocator);
     out->flags = DB_OUTPUT__SHUTDOWN;
@@ -8,10 +14,6 @@ static void database_free(Database *database) {
     util_signal_signal(D->output.io_signal);
   }
 
-#ifdef SINGLE_SERVICE_THREAD
-  dbDebug(DB_INFO, "Waiting for service thread");
-  pthread_join(D->service_thread, 0);
-#else
   dbDebug(DB_INFO, "Waiting for IO thread");
   pthread_join(D->io_thread, 0);
   dbDebug(DB_INFO, "Waiting for GC thread");

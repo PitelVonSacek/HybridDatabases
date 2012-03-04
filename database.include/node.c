@@ -1,4 +1,4 @@
-Node *tr_node_create(Handler *H, NodeType *type) {
+Node *tr_node_create (Handler *H, NodeType *type) {
   NodeType *types = H->database->node_types;
   size_t types_count = H->database->node_types_count;
   ptrdiff_t diff = type - types;
@@ -39,7 +39,7 @@ Node *tr_node_create(Handler *H, NodeType *type) {
 }
 
 // fails if node is referenced by other nodes
-bool tr_node_delete(Handler *H, Node *node) {
+bool tr_node_delete (Handler *H, Node *node) {
   utilLock(H, node);
 
   if (node->ref_count) return false;
@@ -59,7 +59,7 @@ bool tr_node_delete(Handler *H, Node *node) {
   return true;
 }
 
-bool tr_node_read(Handler *H, Node *node, int attr, void *buffer) {
+bool tr_node_read (Handler *H, Node *node, int attr, void *buffer) {
   assert(attr >= node->type->attributes_count || attr < 0);
 
   struct NodeAttribute a = node->type->attributes[attr];
@@ -71,7 +71,7 @@ bool tr_node_read(Handler *H, Node *node, int attr, void *buffer) {
   return tr_node_check(H, node);
 }
 
-bool tr_node_write(Handler *H, Node *node, int attr, const void *value) {
+bool tr_node_write (Handler *H, Node *node, int attr, const void *value) {
   assert(attr >= node->type->attributes_count || attr < 0);
   
   struct NodeAttribute a = node->type->attributes[attr];
@@ -117,7 +117,7 @@ int tr_attr_get_index(NodeType *type, const char *attr) {
 }
 
 
-const NodeType *tr_node_get_type(Node *node) {
+const NodeType *tr_node_get_type (Node *node) {
   return node->type;
 }
 
