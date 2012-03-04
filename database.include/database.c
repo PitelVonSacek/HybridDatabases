@@ -162,6 +162,11 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
   dbDebug(DB_INFO, "Creating new file (dump begin = %s, magic_nr = %Li)", 
           (dump_begin ? "true" : "false"), (unsigned long long)magic_nr);
 
+  if (D->flags & DB_READ_ONLY) {
+    dbDebug(W, "Trying to create new file while database is open read-only");
+    return true;
+  }
+
   Writer W[1];
   writer_init(W);
 

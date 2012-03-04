@@ -64,8 +64,9 @@ typedef struct Database_ {
   /* nr of data file we're writing in */
   int current_file_index;
 
-  enum DatabaseFlags {
-    DUMMY_FLAG
+  enum {
+    DB_READ_ONLY = 1,  // if set, output.file is /dev/null
+    DB_NO_FAIL = 2
   } flags;
 
   /* global time, read by each strarting transaction, increased during commit */
