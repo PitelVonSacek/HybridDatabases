@@ -1,15 +1,15 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
-#include "storage/storage.h"
+#include "../storage/storage.h"
 
-#include "node_allocator.h"
-#include "generic_allocator.h"
+#include "../node_allocator.h"
+#include "../generic_allocator.h"
 
-#include "utils/list.h"
-#include "utils/num_dictionary.h"
+#include "../utils/list.h"
+#include "../utils/num_dictionary.h"
 
-#include "database_enums.h"
+#include "enums.h"
 
 struct NodeAttribute {
   const char * name;

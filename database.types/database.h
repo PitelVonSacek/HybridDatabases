@@ -4,40 +4,16 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#include "utils.h"
-#include "utils/stack.h"
+#include "../utils.h"
+#include "../utils/stack.h"
 
-#include "database_enums.h"
+#include "../node_allocator.h"
+#include "../generic_allocator.h"
 
-#include "node_allocator.h"
-#include "generic_allocator.h"
-
-
-struct Database_;
-struct Handler_;
-struct Node_;
-#define Database struct Database_
-#define Handler struct Handler_
-
-
-#include "attributes/attributes_defs.h"
+#include "enums.h"
+#include "attributes.h"
 #include "node.h"
 #include "handler.h"
-
-typedef struct {
-  const char* name;
-  int (*callback)(void*, Handler*, enum CallbackEvent, Node*);
-
-  size_t context_size;
-  void (*context_init)(void*);
-  void (*context_destroy)(void*);
-} IndexDesc;
-
-struct DatabaseIndex {
-  IndexDesc* desc;
-  size_t offset;
-};
-
 
 typedef struct {
   const char *name;
@@ -55,16 +31,7 @@ typedef struct {
   // struct DatabaseIndex indexes[0];
 } DatabaseType;
 
-enum {
-  DB_SHUT_DOWN = 1,
-  DB_DO_DUMP = 2,
-  DB_DUMP_RUNNING = 4
-};
 
-
-
-
-#undef Database
 typedef struct Database_ {
   const DatabaseType * const type;
   
@@ -79,7 +46,7 @@ typedef struct Database_ {
   int current_file_index;
 
   enum DatabaseFlags {
-    DUMMY_FLAG_ON_LINE_80
+    DUMMY_FLAG
   } flags;
 
   /* global time, read by each strarting transaction, increased during commit */

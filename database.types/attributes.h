@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "../node.h"
+#include "node.h"
 
 #include "../storage/storage.h"
 #include "../generic_allocator.h"
@@ -29,7 +29,7 @@ typedef struct {
 
 #define MAX_ATTR_SIZE sizeof(union UniversalAttribute)
 
-#include "generated_defs.h"
+#include "../attributes/generated_defs.h"
 
 #endif
 
