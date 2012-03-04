@@ -101,7 +101,7 @@ typedef struct {
       _ndict_continue_label: ; \
     } \
   _ndict_break_label: ; \
-  } while (0);
+  } while (0)
 
 #define ndictContinue goto _ndict_continue_label
 #define ndictBreak goto _ndict_break_label;

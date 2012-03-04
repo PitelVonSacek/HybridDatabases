@@ -42,7 +42,7 @@ typedef struct {
 
   struct NodeAllocatorInfo allocator_info[1];
 
-  int (*update_indexes)(Handler*, enum CallbackEvent, Node*);
+  bool (*update_indexes)(Handler*, enum CallbackEvent, Node*);
 
   int size;
   int extra_space;
