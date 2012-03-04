@@ -8,10 +8,15 @@ static void database_free(Database *database) {
     util_signal_signal(D->output.io_signal);
   }
 
+#ifdef SINGLE_SERVICE_THREAD
+  dbDebug(DB_INFO, "Waiting for service thread");
+  pthread_join(D->service_thread, 0);
+#else
   dbDebug(DB_INFO, "Waiting for IO thread");
   pthread_join(D->io_thread, 0);
   dbDebug(DB_INFO, "Waiting for GC thread");
   pthread_join(D->gc_thread, 0);
+#endif
   dbDebug(DB_INFO, "Waiting done");
 
   struct List item;
@@ -39,11 +44,12 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
 
   Writer W[1];
   writer_init(W);
-  
+
+#if !defined(SINGLE_SERVICE_THREAD) || defined(LOCKLESS_COMMIT)  
   {
     struct OutputList *out = node_alloc(D->output.allocator);
     out->flags = DB_OUTPUT__DUMP_SIGNAL;
-    output_queue_push(D, out);
+    output_queue_push(D, out, 0);
     util_signal_signal(D->output.io_signal);
   }
 
@@ -51,6 +57,7 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
                       atomic_read(&D->dump.flags) & DB_DUMP__IO_THREAD_WAITS);
 
   atomic_add(&D->dump.flags, -DB_DUMP__IO_THREAD_WAITS);
+#endif
 
   if (D->output.file) { 
     // first close current file
@@ -89,10 +96,12 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
 
   D->output.file = new_file;
 
+#if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)
   atomic_add(&D->dump.flags, DB_DUMP__RESUME_IO_THREAD);
   util_signal_signal(D->dump.signal);
+#endif
 
-  return false;
+  return true;
 }
 
 

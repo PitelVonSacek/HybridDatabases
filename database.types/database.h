@@ -62,11 +62,41 @@ typedef struct Database_ {
   Stack(Handler*) handlers[1];
   pthread_mutex_t handlers_mutex[1];
 
+#ifndef LOCKLESS_COMMIT
   pthread_mutex_t mutex;
+#endif
 
+#ifdef SINGLE_SERVICE_THREAD
+  pthread_t service_thread;
+#else
   pthread_t io_thread;
   pthread_t gc_thread;
+#endif
 
+#if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)
+  struct {
+    struct NodeAllocatorInfo allocator[1];
+    FILE *file;
+    sem_t counter[1];
+
+    pthread_mutex_t dump_running[1];
+
+    struct OutputList {
+      struct OutputList *next;
+
+      enum {
+        DB_SERVICE__COMMIT = 1,
+        DB_SERVICE__SYNC_COMMIT,
+        DB_DERVICE__START_DUMP,
+        DB_SERVICE__CREATE_NEW_FILE
+      } type;
+
+      uint64_t end_time;
+      sem_t *lock;
+      TransactionLog log[1];
+    } *head, **tail;
+  } output;
+#else
   struct {
     struct NodeAllocatorInfo allocator[1];
 
@@ -94,10 +124,10 @@ typedef struct Database_ {
         DB_OUTPUT__SHUTDOWN = 32
       } flags;
     } *head, **tail;
- 
+
     Signal io_signal[1];
     Signal garbage_signal[1];
-    
+
     FILE *file;
   } output;
 
@@ -116,6 +146,7 @@ typedef struct Database_ {
 //    pthread_mutex_t mutex[1]; // to sync gc & io threads
 //    pthread_cond_t signal[1]; // signals end of dump
   } dump;
+#endif    
 
   struct GenericAllocatorInfo tm_allocator[1];
 

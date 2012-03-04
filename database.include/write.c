@@ -77,7 +77,8 @@ static void write_node_modify(Writer *W, uint64_t node_id, unsigned attr,
   } wArrayEnd;
 }
 
-
+#ifndef SINGLE_SERVICE_THREAD
+// unused with SINGLE_SERVICE_THREAD
 static void write_log(Writer *W, TransactionLog *log) {
   wArray {
     fstack_for_each(item, log) {
@@ -99,4 +100,5 @@ static void write_log(Writer *W, TransactionLog *log) {
   
   wFinish(1);
 }
+#endif
 

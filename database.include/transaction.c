@@ -88,13 +88,15 @@ void _tr_abort_main(Handler *H) {
   handler_cleanup(H);
 }
 
-static void output_queue_push(Database *D, struct OutputList *item) {
+static void output_queue_push(Database *D, struct OutputList *item, bool has_lock) {
 #ifdef LOCKLESS_COMMIT
   while (!atomic_cmpswp(atomic_read(&db->output.tail), 0, O)) ;
   atomic_write(&db->output.tail, &O->next);
 #else
+  if (!has_lock) pthread_mutex_lock(&D->mutex);
   *(D->output.tail) = O;
   D->output.tail = &O->next;
+  if (!has_lock) pthread_mutex_lock(&D->mutex);
 #endif
 }
 
@@ -114,9 +116,13 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   struct OutputList *O = node_alloc(db->output.allocator);
   *O = (struct OutputList){
     .next = 0,
-    
-    .flags = ((commit_type == CT_SYNC) ? DB_DUMP__SYNC_COMMIT : 0),
-    .lock = ((commit_type == CT_SYNC) ? H->write_finished : 0)
+ 
+    .lock = ((commit_type == CT_SYNC) ? H->write_finished : 0),
+#if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)  
+    .type = ((commit_type == CT_SYNC) ? DB_SERVICE__SYNC_COMMIT: DB_SERVICE__COMMIT)
+#else
+    .flags = ((commit_type == CT_SYNC) ? DB_DUMP__SYNC_COMMIT : 0)
+#endif
   };
 
   fstack_init(O->log, H->log->allocator);
@@ -131,7 +137,6 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   if (!tr_validate(H)) {
     atomic_add(&O->output.flags, BD_OUTPUT__READY | DB_OUTPUT__CANCELED);
 
-    if (commit_type == CT_SYNC) sem_destroy(finished);
     fstack_swap(O->log, H->log);
     _tr_abort_main(H);
     return false;
@@ -144,7 +149,6 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
       // readset invalid, abort
       pthread_mutex_unlock(&db->mutex);
       
-      if (commit_type == CT_SYNC) sem_destroy(finished);
       fstack_swap(O->log, H->log);
       node_free(db->output.allocator, O);
       _tr_abort_main(H);
@@ -153,13 +157,17 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 
     end_time = atomic_add_and_fetch(&db->time, 2);
 
-    O->garbage.end_time = end_time;
+    O->end_time = end_time;
 
-    output_queue_push(D, O);
+    output_queue_push(D, O, 1);
   } pthread_mutex_unlock(&db->mutex);
 #endif
 
-  pthread_cond_broadcast(db->output.it_signal);
+#if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)
+  sem_post(D->output.counter);
+#else
+  pthread_cond_broadcast(db->output.io_signal);
+#endif
 
   _tr_unlock(H, end_time);
 

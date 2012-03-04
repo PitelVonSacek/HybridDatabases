@@ -20,7 +20,9 @@ static void write_node_delete(Writer *W, uint64_t id);
 static void write_node_modify(Writer *W, uint64_t node_id, unsigned attr, 
                               unsigned attr_type, const void *value);
 
+#ifndef SINGLE_SERVICE_THREAD
 static void write_log(Writer *W, TransactionLog *log);
+#endif
 
 // read.c
 static bool read_schema(Reader *R, Database *D);
