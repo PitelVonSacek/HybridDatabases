@@ -74,10 +74,15 @@ static inline void util_signal_destroy(Signal *s) {
 }
 
 enum {
-  DB_ERROR = 0,
-  DB_OOPS = 1,
-  DB_WARNING = 2,
-  DB_INFO = 3
+  DB_DBG_LEVEL_DB_ERROR = 0,
+  DB_DBG_LEVEL_DB_OOPS = 1,
+  DB_DBG_LEVEL_DB_WARNING = 2,
+  DB_DBG_LEVEL_DB_INFO = 3,
+
+  DB_DBG_LEVEL_E = 0,
+  DB_DBG_LEVEL_O = 1,
+  DB_DBG_LEVEL_W = 2,
+  DB_DBD_LEVEL_I = 3
 };
 
 #define dbDebug(level, ...) \
@@ -85,7 +90,8 @@ enum {
     const char *message_type[] = { \
       "Error", "Oops", "Warning", "Info" \
     }; \
-    fprintf(stderr, "%s at '%s' line %i: ", message_type[level], __FILE__, __LINE__); \
+    fprintf(stderr, "%s at '%s' line %i: ", \
+      message_type[DB_DBG_LEVEL_##level], __FILE__, __LINE__); \
     fprintf(stderr, "" __VA_ARGS__); \
     fprintf(stderr, "\n"); \
   } while (0)

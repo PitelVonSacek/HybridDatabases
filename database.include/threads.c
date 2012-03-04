@@ -44,7 +44,8 @@ static void dump_node(Database *D, Writer *W, Node *node) {
   uint64_t version = l_lock_(lock, 0, ~(uint64_t)0);
 
   if (!version) {
-    // may be sleep a while ?
+    // FIXME may be sleep a while ?
+    dbDebug(I, "Dump collision");
     return;
   }
 
@@ -84,20 +85,22 @@ static void *service_thread(Database *D) {
 
       case DB_SERVICE__CREATE_NEW_FILE: {
         if (dump_running) {
-          dbDebug(DB_OOPS, "Cannot create new file because dump is running");
+          dbDebug(O, "Cannot create new file because dump is running");
           *job->answer = DB_ERROR__DUMP_RUNNING;
         } else if (!_database_new_file(D, false, _generate_magic_nr())) {
-          dbDebug(DB_OOPS, "Cannot create new file");
+          dbDebug(O, "Cannot create new file");
           *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
-        } else
+        } else {
           *job->answer = DB_SUCCESS;
+          dbDebug(I, "New file created");
+        }
 
         sem_post(job->lock);
         break;
       }
 
       case DB_SERVICE__START_DUMP: {
-        f (dump_running) {
+        if (dump_running) {
           dbDebug(DB_OOPS, "Cannot start dump, dump already running");
           *job->answer = DB_ERROR__DUMP_RUNNING;
         } else if (!_database_new_file(D, true, _generate_magic_nr())) {
@@ -107,9 +110,11 @@ static void *service_thread(Database *D) {
           *job->answer = DB_SUCCESS;
           
           pthread_mutex_lock(D->output.dump_running);
+          dbDebug(DB_INFO, "Dump started");
           dump_running = true;
           dump_ptr = listGetContainer(Node, __list, D->node_list.next);
         }
+
         sem_post(job->lock);
       }  
     }
@@ -125,6 +130,7 @@ static void *service_thread(Database *D) {
             writer_discart(W);
             fflush(D->output.file);
             
+            dbDebug(DB_INFO, "Dump finished");
             pthread_mutex_unlock(D->output.dump_running);
             goto dump_finished;
           }
@@ -160,6 +166,7 @@ static void *service_thread(Database *D) {
         writer_discart(W);
         fflush(D->output.file);
         
+        dbDebug(DB_INFO, "Dump finished");
         pthread_mutex_unlock(D->output.dump_running);
         break;
       }

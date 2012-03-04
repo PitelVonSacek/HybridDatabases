@@ -21,7 +21,7 @@ Database *database_create (const DatabaseType *type, const char *file, unsigned 
   return D;
 
   error:
-  dbDebug(DB_ERROR, "Database creation failed");
+  dbDebug(E, "Database creation failed");
   return 0;
 }
 
