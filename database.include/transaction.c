@@ -110,15 +110,13 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   }
   
   if (commit_type == CT_ASYNC) commit_type = H->commit_type;
-  sem_t finished[1];
-  if (commit_type == CT_SYNC) sem_init(finished, 0, 0);
 
   struct OutputList *O = node_alloc(db->output.allocator);
   *O = (struct OutputList){
     .next = 0,
     
     .flags = ((commit_type == CT_SYNC) ? DB_DUMP__SYNC_COMMIT : 0),
-    .lock = ((commit_type == CT_SYNC) ? finished : 0)
+    .lock = ((commit_type == CT_SYNC) ? H->write_finished : 0)
   };
 
   fstack_init(O->log, H->log->allocator);
@@ -167,10 +165,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 
   handler_cleanup(H);
 
-  if (commit_type == CT_SYNC) {
-    sem_wait(finished);
-    sem_destroy(finished);
-  }
+  if (commit_type == CT_SYNC) sem_wait(H->write_finished);
 
   return true;
 }

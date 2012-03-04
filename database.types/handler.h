@@ -55,6 +55,8 @@ typedef struct Handler_ {
   // through all locks when releasing them
   InlineStack(DB_LOCKS_NR_TYPE, DB_LOCKS) acquired_locks[1];
 
+  sem_t write_finished[1];
+
   struct {} __ancestor; // required for type magic
 } Handler;
 

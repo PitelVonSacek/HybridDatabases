@@ -21,7 +21,6 @@ static inline void tr_begin(Handler *H) {
     fstack_push(H->transactions, nt);
   } else { // start main transaction
     atomic_write(&H->start_time, atomic_read(&(H->database->time)));
-    w_array(H->W);
   }
 }
 

@@ -18,6 +18,8 @@ void db_handler_init(Database *D, Handler *H) {
     .acquired_locks = { InlineStackInit }
   };
 
+  sem_init(H->write_finished, 0, 0);
+
   fstack_init(H->transactions);
   fstack_init(H->log);
 
@@ -41,6 +43,8 @@ void db_handler_destroy(Handler *H) {
       break;
     }
   } pthread_mutex_unlock(H->database->handlers_mutex);
+
+  sem_destroy(H->write_finished);
 
   fstack_destroy(H->transactions);
   fstack_destroy(H->log);
