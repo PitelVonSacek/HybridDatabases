@@ -8,6 +8,7 @@
 
 #include "../utils/list.h"
 #include "../utils/num_dictionary.h"
+#include "../utils/type_magic.h"
 
 #include "enums.h"
 
@@ -28,7 +29,7 @@ typedef NumDictionary(uint64_t, Node*) IdToNode;
 typedef struct {
   const char * name; // this pointer is used as unique id of NodeType
 
-  bool (*load)(Reader*, Node*);
+  bool (*load)(Reader*, struct GenericAllocatorInfo*, Node*);
   void (*store)(Writer*, Node*);
 
   void (*init_pointers)(IdToNode*, Node*);
@@ -65,7 +66,7 @@ typedef struct Node_ {
   // node can be deleted only if ref_count == 0
   uint64_t ref_count;
 
-  struct {} __ancestor;
+  DummyAncestor __ancestor;
 } Node;
 
 static inline bool _node_ref_count_increase(Node *node) {

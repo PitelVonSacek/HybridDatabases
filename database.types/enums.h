@@ -39,5 +39,11 @@ enum {
   LI_TYPE_MEMORY_DELETE
 };
 
+enum DbError {
+  DB_SUCCESS = 0,
+  DB_ERROR__DUMP_RUNNIG,
+  DB_ERROR__CANNOT_CREATE_NEW_FILE
+};
+
 #endif
 

@@ -22,14 +22,11 @@ typedef struct {
   const char *version;
   size_t size;
 
-  void (*indexes_init)(Database*);
+  void (*init)(Database*);
   void (*indexes_destroy)(Database*);
 
   size_t node_types_count;
   NodeType *node_types[0];
-
-  // size_t indexes_count;
-  // struct DatabaseIndex indexes[0];
 } DatabaseType;
 
 /*
@@ -40,6 +37,7 @@ struct {
     
   struct {
     NodeType *NodeType1_desc;
+    bool (*NodeType1_update_indexies)(...);
     ...
   } node_types;
 
@@ -114,7 +112,10 @@ typedef struct Database_ {
 
       uint64_t end_time;
       sem_t *lock;
-      TransactionLog log[1];
+      union {
+        TransactionLog log[1];
+        uint64_t *answer;
+      };
     } *head, **tail;
   } output;
 #else

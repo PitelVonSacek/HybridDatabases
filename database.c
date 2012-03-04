@@ -8,6 +8,13 @@ static struct NodeAllocatorInfo log_allocator = {
 };
 
 
+#define sendServiceMsg(D, msg) \
+  do { \
+    struct OutputList *__out = node_alloc(D->output.allocator); \
+    *__out = (struct OutputList)msg; \
+    output_queue_push(D, __out, false); \
+  } while (0)
+
 // write.c
 static void write_schema(Writer *W, Database *D);
 static void write_file_header(Writer *W, Database *D, uint64_t magic);
@@ -53,12 +60,15 @@ static void output_queue_push(Database *D, struct OutputList *item);
 // bool _tr_commit_main(Handler *H, enum CommitType commit_type);
 
 // database.c
-static void database_alloc(DatabaseType *type);
-static void database_free(Database *database);
+static Database *database_alloc(DatabaseType *type);
+// database_close()
+// ...
 
+static uint64_t _generate_magic_nr();
 static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr);
 
 #include "database.include/database.c"
+#include "database.include/database_create.c"
 #include "database.include/handler.c"
 #include "database.include/node.c"
 #include "database.include/read.c"

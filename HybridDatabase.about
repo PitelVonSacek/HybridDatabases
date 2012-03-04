@@ -13,7 +13,7 @@ mají předponu U (tedy char až long long plus unsigned verze v C), reálná č
 (Float, Double, LDouble, tedy float, double, long double v C).
 
 String je
-C-like textový řetězec, BinaryString má na rozdíl od Stringu uloženou i délku
+C-like textový řetězec, RawString má na rozdíl od Stringu uloženou i délku
 takže může obsahovat '\0'. Posledním typem je Pointer, což je ukazatel na jiný
 uzel (v paměti realizován jako Node*, na disku jako id uzlu, na který odkazuje).
 
@@ -30,18 +30,18 @@ Node - předek libovolného uzlu, obsahuje id, počítadlo referencí (uzel nelz
 
   typedef struct {
     union {
-      Node __node;
-      NodeType__##PodtřídaNode##__desc_t *__type;
+      Node __ancestor;
+      PodtřídaNode##__desc_t *__type;
     };
     atributy toho uzlu
-  } NodeType__##PodtřídaNode;
+  } PodtřídaNode;
 
   typedef struct {
     NodeType __type;
     popis atributů
     char __dummy[0]; // žádná magie, jen kvůli generování obsahu,
                      // kde je za každým atributem čárka
-  } NodeType__##PodtřídaNode##__desc_t;
+  } PodtřídaNode##__desc_t;
 
      - __type se kryje s položkou type v Node, která odkazuje na deskriptor
        typu NodeType. Typ __type je podtřída NodaType. Tedy __type umožňuje

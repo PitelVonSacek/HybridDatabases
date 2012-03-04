@@ -49,7 +49,7 @@
       *(typeof(&__node->AttrName.value.value))&__log_item.data_new = __value; \
       __node->AttrName.value.value = __value; \
     } else { \
-      __ret = attribute_write(StatiGetInt(__node->AttrName.type_index), \
+      __ret = attribute_write(StaticGetInt(__node->AttrName.type_index), \
         H, atomic_read(&H->database->time), &__node->AttrName.value, &__value); \
       *(typeof(&__node->AttrName.value.value))&__log_item.data_new = \
           __node->AttrName.value.value; \

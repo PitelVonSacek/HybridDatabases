@@ -13,12 +13,12 @@ Database *database_create(const DatabaseType *type,
                           const char *file,
                           unsigned flags);
 
-int database_close(Database*);
+void database_close(Database*);
 
-int database_dump(Database*);
+enum DbError database_dump(Database*);
 void database_wait_for_dump(Database*);
 
-int database_create_new_file(Database*);
+enum DbError database_create_new_file(Database*);
 
 /*
   Macros:

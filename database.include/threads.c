@@ -64,6 +64,8 @@ static void *service_thread(Database *D) {
   bool dump_running = false;
   Node *dump_ptr = 0;
 
+  dbDebug(DB_INFO, "Service thread started");
+
   writer_init(W);
 
   sem_wait(D->output.counter);
@@ -82,29 +84,33 @@ static void *service_thread(Database *D) {
 
       case DB_SERVICE__CREATE_NEW_FILE: {
         if (dump_running) {
-          dbDebug(DB_ERROR, "Cannot create new file because dump is running");
-          break;
-        }
+          dbDebug(DB_OOPS, "Cannot create new file because dump is running");
+          *job->answer = DB_ERROR__DUMP_RUNNING;
+        } else if (!_database_new_file(D, false, _generate_magic_nr())) {
+          dbDebug(DB_OOPS, "Cannot create new file");
+          *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
+        } else
+          *job->answer = DB_SUCCESS;
 
-        uint64_t magic_nr = 0;
-        for (int i = 0, i < sizeof(magic_nr); i++) 
-          magic_nr = (magic_nr << 8) | (rand() & 0xFF);
-
-        // FIXME what if new_file() fails ???
-        _database_new_file(D, false, magic_nr);
+        sem_post(job->lock);
         break;
       }
 
       case DB_SERVICE__START_DUMP: {
-        uint64_t magic_nr = 0;
-        for (int i = 0, i < sizeof(magic_nr); i++) 
-          magic_nr = (magic_nr << 8) | (rand() & 0xFF);
- 
-        pthread_mutex_lock(D->output.dump_running);
-        // FIXME what if new_file() fails ???
-        _database_new_file(D, true, magic_nr);
-        dump_running = true;
-        dump_ptr = listGetContainer(Node, __list, D->node_list.next);
+        f (dump_running) {
+          dbDebug(DB_OOPS, "Cannot start dump, dump already running");
+          *job->answer = DB_ERROR__DUMP_RUNNING;
+        } else if (!_database_new_file(D, true, _generate_magic_nr())) {
+          dbDebug(DB_OOPS, "Dump failed, cannot create new file");
+          *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
+        } else {
+          *job->answer = DB_SUCCESS;
+          
+          pthread_mutex_lock(D->output.dump_running);
+          dump_running = true;
+          dump_ptr = listGetContainer(Node, __list, D->node_list.next);
+        }
+        sem_post(job->lock);
       }  
     }
 
@@ -142,7 +148,34 @@ static void *service_thread(Database *D) {
     node_free(D->output.allocator, job, 0);
   }
 
+  if (dump_running) {
+    dbDebug(DB_WARNING, "Exit requests while doing dump");
+
+    while (1) {
+      if (&dump_ptr->__list == &D->node_list) { // dump finished
+        dump_running = false;
+        
+        write_dump_end(W);
+        fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
+        writer_discart(W);
+        fflush(D->output.file);
+        
+        pthread_mutex_unlock(D->output.dump_running);
+        break;
+      }
+
+      dump_node(D, W, dump_ptr);
+      fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
+      writer_discart(W);
+
+      dump_ptr = listGetContainer(Node, __list, dump_ptr->__list.next);
+    }
+  }
+
   writer_destroy(W);
+
+  dbDebug(DB_INFO, "Service thread stopping");
+
   return 0;
 }
 

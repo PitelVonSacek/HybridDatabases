@@ -51,6 +51,7 @@ typedef struct Handler_ {
 
   TransactionLog log[1];
 
+  bool allocated;
   enum CommitType commit_type;
 
   // keep list of acquired lock, so we dont have to iterate

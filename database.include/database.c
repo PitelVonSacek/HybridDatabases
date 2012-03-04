@@ -1,6 +1,46 @@
-static void database_alloc(DatabaseType *type);
+static Database *database_alloc(DatabaseType *type) {
+  Database *D = malloc(type->size);
 
-static void database_free(Database *database) {
+  *(DatabaseType**)D = type;
+  D->filename = 0;
+  D->current_file_index = 0;
+  D->flags = 0;
+
+  D->time = 1;
+  D->node_id_counter = 1;
+
+  memset(D->locks, 0, sizeof(D->locks));
+
+  list_init_head(&D->node_list);
+
+  stack_init(D->handlers);
+  pthread_mutex_init(D->handlers_mutex, 0);
+
+#ifndef LOCKLESS_COMMIT
+  pthread_mutex_init(D->mutex, 0);
+#endif
+
+  // FIXME init tm_allocator
+
+  D->node_types_count = type->node_types_count;
+
+  D->output.allocator[0] = (struct NodeAllocatorInfo){
+    sizeof(struct OutputList), 0, 0
+  };
+
+  D->output.file = 0;
+  sem_init(D->output.counter, 0);
+  pthread_mutex_init(D->output.dump_running);
+  D->output.head = 0;
+  D->output.tail = &D->output.head;
+
+  type->init(D);
+
+  return D;
+}
+
+
+void database_close (Database *database) {
 #ifdef SINGLE_SERVICE_THREAD
   sem_post(D->output.counter);
 
@@ -37,8 +77,86 @@ static void database_free(Database *database) {
   if (D->output.file) fclose(D->output.file);
 
   free(D->filename);
+
+  // FIXME free tm_allocator
+
+  node_free_nodes(D->output.allocator, 0, ~(uint64_t)0);
+  sem_destroy(D->output.counter);
+  pthread_mutex_destroy(D->output.dump_running);
+  
+  pthread_mutex_destroy(D->mutex);
+  
+  pthread_mutex_destroy(D->handlers_mutex);
+  if (!stack_empty(D->handlers)) {
+    dbDebug(DB_WARNING, "Destroying database, but some Handlers still exist");
+    while (!stack_empty(D->handlers)) {
+      Handler *H = stack_pop(D->handlers);
+      if (H->allocated) db_handler_free(H);
+      else db_handler_destroy(H);
+    }
+  }
+  stack_destroy(D->handlers);
+
   free(D);
 }
+
+
+enum DbError database_dump (Database *D) {
+  sem_t signal;
+  uint64_t ans = 0;
+
+  sem_init(&signal, 0, 0);
+
+  sendServiceMsg(D, {
+    .type = DB_SERVICE__START_DUMP,
+    .lock = &signal,
+    .answer = &ans
+  });
+
+  sem_wait(&signal);
+  sem_destroy(&signal);
+
+  return ans;
+}
+
+
+void database_wait_for_dump (Database *D) {
+  pthread_mutex_lock(D->output.dump_running);
+  pthread_mutex_unlock(D->output.dump_running);
+}
+
+
+enum DbError database_create_new_file (Database *D) {
+  sem_t signal;
+  uint64_t ans = 0;
+
+  sem_init(&signal, 0, 0);
+
+  sendServiceMsg(D, {
+    .type = DB_SERVICE__CREATE_NEW_FILE,
+    .lock = &signal,
+    .answer = &ans
+  });
+
+  sem_wait(&signal);
+  sem_destroy(&signal);
+
+  return ans;
+}
+
+
+static uint64_t _generate_magic_nr() {
+  uint64_t magic_nr;
+
+  do {
+    magic_nr = 0;
+    for (int i = 0, i < sizeof(magic_nr); i++) 
+      magic_nr = (magic_nr << 8) | (rand() & 0xFF);
+  } while (!magic_nr);
+
+  return magic_nr;
+}
+
 
 static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) {
   dbDebug(DB_INFO, "Creating new file (dump begin = %s, magic_nr = %Li)", 
@@ -105,5 +223,4 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
 
   return true;
 }
-
 

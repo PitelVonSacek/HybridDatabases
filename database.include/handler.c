@@ -1,6 +1,7 @@
 Handler *db_handler_create (Database *D) {
   Handler *H = db_alloc(sizeof(Handler));
   db_handler_init(D, H);
+  H->allocated = true;
   return H;
 }
 
@@ -13,7 +14,8 @@ void db_handler_init (Database *D, Handler *H) {
   *H = (Handler){  
     .database = D,
     .start_time = 0,
-    
+    .allocated = false,
+
     .commit_type = CT_ASYNC,
     .acquired_locks = { InlineStackInit }
   };
