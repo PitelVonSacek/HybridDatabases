@@ -1,6 +1,13 @@
 #ifndef __GENERIC_ALLOCATOR_H__ 
 #define __GENERIC_ALLOCATOR_H__ 
 
+#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+#include "atomic.h"
+
 // extremely stupid but correct implementation
 
 struct GenericAllocatorInfo {

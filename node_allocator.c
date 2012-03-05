@@ -69,7 +69,7 @@ bool node_free_nodes(struct NodeAllocatorInfo *info, size_t limit, uint64_t olde
 }
 
 void node_allocator_init(struct NodeAllocatorInfo *info, size_t item_size) {
-  info->size = size;
+  info->size = item_size;
   info->counter = 0;
   info->free_nodes = 0;
 }
