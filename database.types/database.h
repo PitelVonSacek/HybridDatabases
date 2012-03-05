@@ -69,7 +69,7 @@ typedef struct Database_ {
 
   enum {
     DB_READ_ONLY = 1,  // if set, output.file is /dev/null
-    DB_NO_FAIL = 2
+    DB_CREATE = 2
   } flags;
 
   /* global time, read by each strarting transaction, increased during commit */

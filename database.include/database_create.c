@@ -105,6 +105,15 @@ static void fill_indexies(Database *D) {
   db_handler_destroy(H);
 }
 
+#define Ensure(cond, do_always, ...) \
+  do { \
+    if (!(cond)) { \
+      dbDebug(E, __VA_ARGS__); \
+      do_always; \
+      goto error; \
+    } \
+    do_always; \
+  } while (0)
 static bool load_data(Database *D, IdToNode *nodes) {
   if (!D->filename || D->filename[0] == '\0') {
     dbDebug(I, "No input files specified, using /dev/null");
@@ -126,17 +135,11 @@ static bool load_data(Database *D, IdToNode *nodes) {
   char *file = basename(_file);
   char *buffer = malloc(strlen(D->filename) + 30);
 
-  if (!strcmp(file, "/") || !strcmp(file, ".") || !strcmp(file, "..")) {
-    dbDebug(E, "Bad database name '%s' (complete path was '%s')", file, D->filename);
-    goto error;
-  }
+  Ensure(strcmp(file, "/") && strcmp(file, ".") && strcmp(file, ".."),,
+        "Bad database name '%s' (complete path was '%s')", file, D->filename);
 
-  // FIXME verify schema
-  sprintf(buffer, "%s/%s.schema", dir, file);
-  if (!(F = fopen(buffer, "rb"))) {
-  
-  }
 
+  // load file list
   sprintf(buffer, "%s.", file);
 
   struct dirent **files = 0;
@@ -145,6 +148,27 @@ static bool load_data(Database *D, IdToNode *nodes) {
   dbDebug(I, "Files found (%i):", files_count);
   for (int i = 0; i < files_count; i++) dbDebug(I, "  '%s'", files[i]->d_name);
 
+
+  //  verify schema
+  sprintf(buffer, "%s/%s.schema", dir, file);
+  if (!(F = fopen(buffer, "rb"))) {
+    if (!files_count) {
+      dbDebug(I, "Failed to open schema but there are no data files too", buffer);
+      Ensure(D->flags & DB_CREATE,);
+
+      Ensure(F = fopen(buffer, "wb"),, "Failed to open '%s' for writing", buffer);
+      Writer W[1];
+      writer_init(W);
+      write_schema(W, D);
+      Ensure(fwrite(writer_ptr(W), 1, writer_length(W), F) == writer_length(W),
+             ({ fclose(F); writer_destroy(W); }), "Failed to write schema");
+    }
+
+    Ensure(0,, "Failed to open schema, but data files exists");
+  }
+  file_reader_init(R, F, true);
+  Ensure(read_schema(R, D), reader_destroy(R), "Database schema corrupted");
+
   if (files_count) {
     size_t l = strlen(buffer);
     long first = atol(files[0]->d_name + l);
@@ -152,10 +176,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
 
     D->current_file_index = last;
 
-    if (last - first != files_count - 1) {
-      dbDebug(E, "Some file is missing");
-      goto error;
-    }
+    Ensure(last - first == files_count - 1,, "Some file is missing");
   }
 
   uint64_t magic_nr = 0;
@@ -163,10 +184,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
 
   for (int i = 0; i < files_count; i++) {
     sprintf(buffer, "%s/%s.%i", dir, file, i);
-    if (!(F = fopen(buffer, "rb"))) {
-      dbDebug(E, "Opening file '%s' failed", buffer);
-      goto error;
-    }
+    Ensure(F = fopen(buffer, "rb"),, "Opening file '%s' failed", buffer)
     file_reader_init(R, F, true);
 
     switch (load_file(D, R, &magic_nr, nodes, i == 0)) {
@@ -193,6 +211,8 @@ static bool load_data(Database *D, IdToNode *nodes) {
           dbDebug(I, "Last file is closed, creating new data file");
         }
         break;
+
+      default: Ensure(0,);
     }
 
     reader_destroy(R);
@@ -200,20 +220,13 @@ static bool load_data(Database *D, IdToNode *nodes) {
   end:
 
   if (!(D->flags & DB_READ_ONLY)) {
-    if (create_new_file) {
-      if (!_database_new_file(D, 0, magic_nr)) {
-        dbDebug(E, "Failed to create new file");
-        goto error;
-      }
-    } else if (!(D->output.file = fopen(buffer, "ab"))) {
-      dbDebug(E, "Failed to open '%s' for append", buffer);
-      goto error;
-    } 
+    if (create_new_file) 
+      Ensure(_database_new_file(D, 0, magic_nr),, "Failed to create new file");
+    else 
+      Ensure(D->output.file = fopen(buffer, "ab"),,
+             "Failed to open '%s' for append", buffer);
   } else {
-    if (!(D->output.file = fopen("/dev/null", "wb"))) {
-      dbDebug(E, "Failed to open '/dev/null'");
-      goto error;
-    }
+    Ensure(D->output.file = fopen("/dev/null", "wb"),, "Failed to open '/dev/null'");
   }
 
   if (0) {
@@ -226,6 +239,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
 
   return ret;
 }
+#undef Ensure
 
 #define Ensure(cond, ...) \
   do { \
