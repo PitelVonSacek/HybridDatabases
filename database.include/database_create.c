@@ -117,6 +117,8 @@ static bool load_data(Database *D, IdToNode *nodes) {
   }
 
   bool ret = true;
+  FILE *F;
+  Reader R[1];
 
   char *_dir = strdup(D->filename);
   char *_file = strdup(_dir);
@@ -130,6 +132,10 @@ static bool load_data(Database *D, IdToNode *nodes) {
   }
 
   // FIXME verify schema
+  sprintf(buffer, "%s/%s.schema", dir, file);
+  if (!(F = fopen(buffer, "rb"))) {
+  
+  }
 
   sptrinf(buffer, "%s.", file);
 
@@ -152,8 +158,6 @@ static bool load_data(Database *D, IdToNode *nodes) {
     }
   }
 
-  FILE *F;
-  Reader R[1];
   uint64_t magic_nr = 0;
   bool create_new_file = true;
 
@@ -235,12 +239,14 @@ static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
                      IdToNode *nodes, bool first_file) {
   uint64_t new_magic_nr = 0;
   read_file_header(R, D, &new_magic_nr);
+  bool dump_on = false;
   
-  Ensure(*magic_nr && *magic_nr != new_magic_nr, "File header corrupted");
+  Ensure(!*magic_nr || *magic_nr == new_magic_nr, "File header corrupted");
 
   if (first_file) {
     Ensure(read_begin(R) == ST_READ_SUCCESS && read_dump_begin(R),
            "First file must begin with dump");
+    dump_on = true;
   }
 
   while (rMayBegin) switch (rNext) {
@@ -267,6 +273,7 @@ static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
 
           case ST_STRING: // dump transaction
             rCheckNumber(0);
+            Ensure(dump_on, "Dump transaction outside of dump");
             if (first_file) Ensure(read_node_load(R, D, nodes));
             else rSkip;
             break;
@@ -276,11 +283,32 @@ static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
       } rArrayEnd;
       rFinish(1);
 
-    case ST_STRING:
-      // TODO read special values
+    case ST_STRING: {
+      size_t pos = reader_get_pos(R);
+      if (read_dump_begin(R)) {
+        Ensure(!dump_on);
+        dump_on = true;
+        break;
+      } 
+      reader_set_pos(R, pos);
+      if (read_dump_end(R)) {
+        Ensure(dump_on);
+        dump_on = false;
+        break;
+      }
+      reader_set_pos(R, pos);
+      if (read_file_footer(R)) {
+        dbDebug(I, "EOF");
+        return LOAD_SUCCESS;
+      }
+      Ensure(0, "Unknown string");
       break;
+    }
     
+    default: Ensure(0);
   }
+
+  return LOAD_UNFINISHED_FILE;
  
   read_failed:
   return LOAD_CORRUPTED_FILE;
