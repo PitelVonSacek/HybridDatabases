@@ -65,8 +65,11 @@ void _tr_handler_rollback(Handler *H, struct Transaction *tr) {
   H->read_set = tr->read_set;
 
   const uint64_t end_time = atomic_read(&H->database->time);
- 
-  while (&fstack_top(H->log) != tr->pos) {
+
+  if (tr->pos) while (&fstack_top(H->log) != tr->pos) {
+    log_undo_item(H, &fstack_top(H->log), end_time);
+    fstack_pop(H->log);
+  } else while (!fstack_empty(H->log)) {
     log_undo_item(H, &fstack_top(H->log), end_time);
     fstack_pop(H->log);
   }

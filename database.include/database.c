@@ -20,13 +20,10 @@ static Database *database_alloc(const DatabaseType *type) {
   pthread_mutex_init(&D->mutex, 0);
 #endif
 
-  // FIXME init tm_allocator
-
   D->node_types_count = type->node_types_count;
 
-  D->output.allocator[0] = (struct NodeAllocatorInfo){
-    sizeof(struct OutputList), 0, 0
-  };
+  node_allocator_init(D->output.allocator, sizeof(struct OutputList));
+  generic_allocator_init(D->tm_allocator);
 
   D->output.file = 0;
   sem_init(D->output.counter, 0, 0);
@@ -78,9 +75,9 @@ void database_close(Database *D) {
 
   free((void*)D->filename);
 
-  // FIXME free tm_allocator
+  node_allocator_destroy(D->output.allocator);
+  generic_allocator_destroy(D->tm_allocator);
 
-  node_free_nodes(D->output.allocator, 0, ~(uint64_t)0);
   sem_destroy(D->output.counter);
   pthread_mutex_destroy(D->output.dump_running);
   

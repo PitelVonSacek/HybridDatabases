@@ -68,3 +68,14 @@ bool node_free_nodes(struct NodeAllocatorInfo *info, size_t limit, uint64_t olde
   return ret;
 }
 
+void node_allocator_init(struct NodeAllocatorInfo *info, size_t item_size) {
+  info->size = size;
+  info->counter = 0;
+  info->free_nodes = 0;
+}
+
+void node_allocator_destroy(struct NodeAllocatorInfo *info) {
+  node_free_nodes(info, 0, ~(uint64_t)0);
+  node_allocator_init(info, info->size);
+}
+

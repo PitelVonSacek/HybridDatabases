@@ -45,3 +45,4 @@ utils/num_dictionary.h
 utils/stack.h
 utils/static_if.h
 utils/type_magic.h
+generic_allocator.c

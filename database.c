@@ -41,6 +41,11 @@ static struct NodeAllocatorInfo transaction_allocator = {
   .free_nodes = 0
 };
 
+__attribute__((destructor)) static void static_allocators_destroy() {
+  node_allocator_destroy(&log_allocator);
+  node_allocator_destroy(&transaction_allocator);
+}
+
 #define sendServiceMsg(D, ...) \
   do { \
     struct OutputList *__out = node_alloc(D->output.allocator); \

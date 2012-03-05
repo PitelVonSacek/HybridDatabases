@@ -24,6 +24,9 @@ void *node_alloc_nodes(struct NodeAllocatorInfo*);
 // false when unable to resease enough nodes because they're too new
 bool node_free_nodes(struct NodeAllocatorInfo*, size_t remaining, uint64_t older_than);
 
+void node_allocator_init(struct NodeAllocatorInfo *info, size_t item_size);
+void node_allocator_destroy(struct NodeAllocatorInfo *info);
+
 static inline void *node_alloc(struct NodeAllocatorInfo *info) {
   struct FreeNode *node;
  
@@ -38,18 +41,6 @@ static inline void *node_alloc(struct NodeAllocatorInfo *info) {
     atomic_swp(&info->free_nodes, 0);
     return node_alloc_nodes(info);
   }
-
-#if 0
-  // locking could fail when releasing nodes
-  loop:
-  if (node = atomic_read(&(info->free_nodes))) {
-    if (!atomic_cmpswp(&(info->free_nodes), node, node->next)) goto loop;
-    atomic_dec(&(info->counter));
-  } else 
-    return node_alloc_nodes(info);
-
-  return node;
-#endif
 }
 
 static inline void _node_free(struct NodeAllocatorInfo* info, struct FreeNode *node) {

@@ -29,7 +29,7 @@ typedef struct {
   void (*indexes_destroy)(Database*);
 
   size_t node_types_count;
-  NodeType *node_types[0];
+  NodeType **node_types;
 } DatabaseType;
 
 /*

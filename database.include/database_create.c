@@ -134,6 +134,8 @@ static bool load_data(Database *D, IdToNode *nodes) {
   char *dir = dirname(_dir);
   char *file = basename(_file);
   char *buffer = malloc(strlen(D->filename) + 30);
+  struct dirent **files = 0;
+  int files_count = 0;
 
   Ensure(strcmp(file, "/") && strcmp(file, ".") && strcmp(file, ".."),,
         "Bad database name '%s' (complete path was '%s')", file, D->filename);
@@ -142,9 +144,8 @@ static bool load_data(Database *D, IdToNode *nodes) {
   // load file list
   sprintf(buffer, "%s.", file);
 
-  struct dirent **files = 0;
   dbDebug(I, "Getting file list...");
-  int files_count = get_db_files(&files, dir, buffer);
+  files_count = get_db_files(&files, dir, buffer);
   dbDebug(I, "Files found (%i):", files_count);
   for (int i = 0; i < files_count; i++) dbDebug(I, "  '%s'", files[i]->d_name);
 
@@ -162,14 +163,14 @@ static bool load_data(Database *D, IdToNode *nodes) {
       write_schema(W, D);
       Ensure(fwrite(writer_ptr(W), 1, writer_length(W), F) == writer_length(W),
              ({ fclose(F); writer_destroy(W); }), "Failed to write schema");
-    }
-
-    Ensure(0,, "Failed to open schema, but data files exists");
+    } else
+      Ensure(0,, "Failed to open schema, but data files exists");
   }
   file_reader_init(R, F, true);
   Ensure(read_schema(R, D), reader_destroy(R), "Database schema corrupted");
 
   if (files_count) {
+    sprintf(buffer, "%s.", file);
     size_t l = strlen(buffer);
     long first = atol(files[0]->d_name + l);
     long last = atol(files[files_count - 1]->d_name + l);
@@ -183,13 +184,13 @@ static bool load_data(Database *D, IdToNode *nodes) {
   bool create_new_file = true;
 
   for (int i = 0; i < files_count; i++) {
-    sprintf(buffer, "%s/%s.%i", dir, file, i);
+    sprintf(buffer, "%s/%s", dir, files[i]->d_name);
     Ensure(F = fopen(buffer, "rb"),, "Opening file '%s' failed", buffer);
     file_reader_init(R, F, true);
 
     switch (load_file(D, R, &magic_nr, nodes, i == 0)) {
       case LOAD_CORRUPTED_FILE: 
-        dbDebug(E, "File '%s' is corrupted, switching to read-only mode", buffer);
+        dbDebug(E, "File '%s' is corrupted, switching to read-only mode",  buffer);
         D->flags |= DB_READ_ONLY;
         reader_destroy(R);
         goto end;
@@ -221,7 +222,15 @@ static bool load_data(Database *D, IdToNode *nodes) {
 
   if (!(D->flags & DB_READ_ONLY)) {
     if (create_new_file) 
-      Ensure(_database_new_file(D, 0, magic_nr),, "Failed to create new file");
+      Ensure(_database_new_file(D, !files_count, magic_nr),, 
+             "Failed to create new file");
+      if (!files_count) {
+        Writer W[1];
+        writer_init(W);
+        write_dump_end(W);      
+        Ensure(fwrite(writer_ptr(W), 1, writer_length(W), D->output.file) == 
+               writer_length(W), writer_destroy(W), "Failed to write schema");
+      }
     else 
       Ensure(D->output.file = fopen(buffer, "ab"),,
              "Failed to open '%s' for append", buffer);
@@ -233,6 +242,8 @@ static bool load_data(Database *D, IdToNode *nodes) {
     error:
     ret = false;
   }
+  for (int i = 0; i < files_count; i++) free(files[i]);
+  free(files);
   free(_dir);
   free(_file);
   free(buffer);
