@@ -78,6 +78,13 @@ static inline bool read_number(Reader *R, uint64_t *value) {
   return true;
 }
 
+static inline size_t reader_get_pos(Reader *R) {
+  return R->ptr - R->begin;
+}
+
+static inline void reader_set_pos(Reader *R, size_t pos) {
+  R->ptr = R->begin + pos;
+}
 
 // Writer
 

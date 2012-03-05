@@ -80,6 +80,9 @@ static inline bool read_array_end(Reader *R);
 static inline bool read_string(Reader *R, const void **ptr, size_t *length);
 static inline bool read_number(Reader *R, uint64_t *value);
 
+static inline size_t reader_get_pos(Reader *R);
+static inline void reader_set_pos(Reader *R, size_t pos);
+
 /* Macros (requires Reader* named R):
 #define rBegin
 #define rMayBegin
