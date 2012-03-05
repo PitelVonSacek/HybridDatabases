@@ -21,6 +21,8 @@
 
 #define rNext reader_next(R)
 
+#define rSkip do { if (!reader_skip(R)) readFailed; } while (0)
+
 #define rArray do { if (!read_array(R)) readFailed; do {
 #define rArrayEnd \
   } while (0); if (!read_array_end(R)) readFailed; } while (0)

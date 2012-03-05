@@ -139,3 +139,28 @@ bool reader_finish(Reader *R, bool checksum) {
   return (R->ptr + 1 == R->end) && (*R->ptr == ST_DOT) && !checksum;
 }
 
+
+bool reader_skip(Reader *R) {
+  const void *ptr;
+  size_t length;
+  int depth = 0;
+
+  while (1) switch (rNext) {
+    case ST_ARRAY_BEGIN:
+      if (!read_array(R)) goto read_failed;
+      depth++;
+      break;
+    case ST_STRING:
+      if (!read_string(R, &ptr, &length)) goto read_failed;
+      break;
+    case ST_ARRAY_END:
+      if (!depth--) return true;
+      if (!read_array_end(R)) goto read_failed;
+      break;
+    default: goto read_failed;
+  }
+
+  read_failed:
+  return false;
+}
+

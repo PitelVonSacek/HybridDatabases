@@ -68,6 +68,8 @@ void reader_destroy(Reader *R);
 int reader_begin(Reader *R); // returns ST_READ_*
 bool reader_finish(Reader *R, bool checksum);
 
+bool reader_skip(Reader *R);
+
 // Defined in storage_inline.include.h:
  
 static inline size_t reader_next(Reader *R);
@@ -83,6 +85,7 @@ static inline bool read_number(Reader *R, uint64_t *value);
 #define rMayBegin
 
 #define rNext
+#define rSkip
 
 #define rArray
 #define rArrayEnd
