@@ -42,10 +42,10 @@
       .index = StaticGetInt(__node->_internal_##AttrName##__index), \
       .offset = utilGetOffset(__node, &__node->AttrName.value.value), \
       .attr_type = StaticGetInt(__node->AttrName.type_index) \
-    }; \      
+    }; \
     *(typeof(&__node->AttrName.value.value))&__log_item.data_old = \
         __node->AttrName.value.value; \
-    if (StaticIsTrue((node)->AttrName.is_primitive)) { \    
+    if (StaticIsTrue((node)->AttrName.is_primitive)) { \
       *(typeof(&__node->AttrName.value.value))&__log_item.data_new = __value; \
       __node->AttrName.value.value = __value; \
     } else { \

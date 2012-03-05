@@ -26,13 +26,12 @@ static void handler_cleanup(Handler *H) {
   fstack_erase(H->transactions);
   
   fstack_erase(H->log);
-  list_init_head(&H->nodes_new);
   istack_erase(H->acquired_locks);
 
   H->commit_type = CT_ASYNC;
 }
 
-static void log_undo_item(Hanler *H, struct LogItem *item, uint64_t end_time) {
+static void log_undo_item(Handler *H, struct LogItem *item, uint64_t end_time) {
   switch (item->type) {
     case LI_TYPE_RAW:
     case LI_TYPE_NODE_MODIFY:
@@ -47,7 +46,7 @@ static void log_undo_item(Hanler *H, struct LogItem *item, uint64_t end_time) {
 
     case LI_TYPE_NODE_ALLOC: {
       Node *n = (Node*)item->ptr;
-      n->type->destroy(n);
+      n->type->destroy(H->database->tm_allocator, n, end_time);
       node_free(n->type->allocator_info, n, end_time);
       break;
     }
@@ -62,13 +61,13 @@ static void log_undo_item(Hanler *H, struct LogItem *item, uint64_t end_time) {
   }
 }
 
-static void handler_rollback(Handler *H, struct Transaction *tr) {
+void _tr_handler_rollback(Handler *H, struct Transaction *tr) {
   H->read_set = tr->read_set;
 
   const uint64_t end_time = atomic_read(&H->database->time);
  
   while (&fstack_top(H->log) != tr->pos) {
-    log_undo_item(H, fstack_top(H->log), end_time);
+    log_undo_item(H, &fstack_top(H->log), end_time);
     fstack_pop(H->log);
   }
 
@@ -77,18 +76,18 @@ static void handler_rollback(Handler *H, struct Transaction *tr) {
 }
 
 void _tr_abort_main(Handler *H) {
-  const struct Transaction empty_transaction;
+  struct Transaction empty_transaction;
   memset(&empty_transaction, 0, sizeof(empty_transaction));
 
-  handler_rollback(H, &empty_transaction);
+  _tr_handler_rollback(H, &empty_transaction);
 
-  uint64_t end_time = atomic_add_and_fetch(&db->time, 2);
+  uint64_t end_time = atomic_add_and_fetch(&H->database->time, 2);
   _tr_unlock(H, end_time);
   
   handler_cleanup(H);
 }
 
-static void output_queue_push(Database *D, struct OutputList *item, bool has_lock) {
+static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) {
 #ifdef LOCKLESS_COMMIT
   while (!atomic_cmpswp(atomic_read(&db->output.tail), 0, O)) ;
   atomic_write(&db->output.tail, &O->next);
@@ -150,7 +149,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
       pthread_mutex_unlock(&db->mutex);
       
       fstack_swap(O->log, H->log);
-      node_free(db->output.allocator, O);
+      node_free(db->output.allocator, O, 0);
       _tr_abort_main(H);
       return false;
     }
@@ -159,12 +158,12 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 
     O->end_time = end_time;
 
-    output_queue_push(D, O, 1);
+    output_queue_push(db, O, 1);
   } pthread_mutex_unlock(&db->mutex);
 #endif
 
 #if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)
-  sem_post(D->output.counter);
+  sem_post(db->output.counter);
 #else
   pthread_cond_broadcast(db->output.io_signal);
 #endif

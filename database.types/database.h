@@ -17,6 +17,9 @@
 #include "node.h"
 #include "handler.h"
 
+struct Database_;
+#define Database struct Database_
+
 typedef struct {
   const char *name;
   const char *version;
@@ -50,7 +53,7 @@ struct {
 
 */
 
-
+#undef Database
 typedef struct Database_ {
   const DatabaseType * const type;
   
@@ -107,16 +110,14 @@ typedef struct Database_ {
       enum {
         DB_SERVICE__COMMIT = 1,
         DB_SERVICE__SYNC_COMMIT,
-        DB_DERVICE__START_DUMP,
+        DB_SERVICE__START_DUMP,
         DB_SERVICE__CREATE_NEW_FILE
       } type;
 
       uint64_t end_time;
       sem_t *lock;
-      union {
-        TransactionLog log[1];
-        uint64_t *answer;
-      };
+      TransactionLog log[1];
+      uint64_t *answer;
     } *head, **tail;
   } output;
 #else

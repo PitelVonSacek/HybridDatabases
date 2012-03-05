@@ -12,7 +12,7 @@ static void write_schema(Writer *W, Database *D) {
 
       for (int e = 0; e < n_type[i]->attributes_count; e++) wArray {
         wString(n_type[i]->attributes[i].name);
-        wNumber(n_type[i]->attributes[i].type->id);
+        wNumber(n_type[i]->attributes[i].type);
       } wArrayEnd;
 
     } wArrayEnd;
@@ -22,7 +22,7 @@ static void write_schema(Writer *W, Database *D) {
 }
 
 
-static void write_file_header(Writer *W, Database *D, uint64_t magic) {
+static void write_file_header(Writer *W, Database *D, uint64_t magic_nr) {
   wArray {
     wString("HybridDatabase Data File");
     wString(D->type->name);
@@ -34,7 +34,7 @@ static void write_file_header(Writer *W, Database *D, uint64_t magic) {
   wFinish(false);
 }
 
-static void write_file_footer(Writer *W, Database *D, uint64_t magic) {
+static void write_file_footer(Writer *W, uint64_t magic) {
   wString("END OF FILE");
   wFinish(false);
 
@@ -56,7 +56,7 @@ static void write_node_alloc(Writer *W, NodeType *type, uint64_t id) {
   wArray {
     wNumber(CBE_NODE_CREATED);
     wNumber(type->id);
-    wNumber(node->id);
+    wNumber(id);
   } wArrayEnd;
 }
 

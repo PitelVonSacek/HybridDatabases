@@ -4,7 +4,7 @@
 #define readFailed \
   do { \
     dbDebug(DB_INFO); \
-    return false;
+    return false; \
   } while (0)
 
 static bool read_schema(Reader *R, Database *D) {
@@ -22,7 +22,7 @@ static bool read_schema(Reader *R, Database *D) {
 
       for (int e = 0; e < n_type[i]->attributes_count; e++) rArray {
         rCheckString(n_type[i]->attributes[i].name);
-        rCheckNumber(n_type[i]->attributes[i].type->id);
+        rCheckNumber(n_type[i]->attributes[i].type);
       } rArrayEnd;
 
     } rArrayEnd;
@@ -48,7 +48,7 @@ static bool read_file_header(Reader *R, Database *D, uint64_t *magic) {
   return true;
 }
 
-static bool read_file_footer(Reader *R, Database *D, uint64_t *magic) {
+static bool read_file_footer(Reader *R, uint64_t *magic) {
   // rBegin; no rBegin cause look-forward function does it
   rCheckString("END OF FILE");
   rFinish(false);
@@ -81,7 +81,7 @@ static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
   Ensure(node_type_nr < D->node_types_count);
   NodeType *node_type = &D->node_types[node_type_nr];
   
-  Node *node = node_alloc(type->allocator_info);
+  Node *node = node_alloc(node_type->allocator_info);
   list_add_end(&D->node_list, &node->__list);
 
   *(uint64_t*)&node->id = rNumber;
@@ -89,7 +89,7 @@ static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
 
   if (node->id > D->node_id_counter) D->node_id_counter = node->id;
 
-  dict_insert(nodes, node->id, node);
+  ndict_insert(nodes, node->id, node);
 
   *type = node_type;
   *node_ = node;
@@ -100,27 +100,30 @@ static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
 static bool read_node_load(Reader *R, Database *D, IdToNode *nodes) {
   NodeType *type;
   Node *node;
-  return read_node_prepare(R, D, nodes, &type, &node) && type->load(R, node);
+  return read_node_prepare(R, D, nodes, &type, &node) && 
+         type->load(R, D->tm_allocator, node);
 }
 
 static bool read_node_create(Reader *R, Database *D, IdToNode *nodes) {
   NodeType *type;
   Node *node;
-  return read_node_prepare(R, D, nodes, &type, &node) && type->init(D, node);
+  return read_node_prepare(R, D, nodes, &type, &node) && 
+         (type->init(node), true);
 }
 
-static bool read_node_delete(Reader *R, Database *D, IdToNodes *nodes) {
+static bool read_node_delete(Reader *R, Database *D, IdToNode *nodes) {
   uint64_t id = rNumber;
+  typeof(ndict_get_node(nodes, id)) dict_node = ndict_get_node(nodes, id);
 
-  if (!dict_contains(nodes, id)) return true;
+  if (!dict_node) return true;
 
-  Node *node = dict_at(nodes, id);
+  Node *node = dict_node->value;
 
-  node->type->destroy(D, node);
+  node->type->destroy(D->tm_allocator, node, 0);
   list_remove(&node->__list);
-  node_free(node->type->allocator_info, node);
+  node_free(node->type->allocator_info, node, 0);
 
-  dict_remove(nodes, id);
+  ndict_remove(nodes, id);
 
   return true;
 }
@@ -128,17 +131,18 @@ static bool read_node_delete(Reader *R, Database *D, IdToNodes *nodes) {
 static bool read_node_modify(Reader *R, Database *D, IdToNode *nodes) {
   uint64_t id = rNumber;
   int attr_id = rNumber;
+  typeof(ndict_get_node(nodes, id)) dict_node = ndict_get_node(nodes, id);
 
-  if (!dict_contains(nodes, id)) {
+  if (!dict_node) {
     rSkip;
     return true;
   }
 
-  Node *node = dict_at(nodes, id);
+  Node *node = dict_node->value;
 
   Ensure(attr_id < node->type->attributes_count);
   const struct NodeAttribute *attr = &node->type->attributes[attr_id];
-  return attr->type->load(R, D, util_offset(node, attr->offset));
+  return attribute_load(attr->type, R, D->tm_allocator, utilOffset(node, attr->offset));
 }
 
 #undef Ensure

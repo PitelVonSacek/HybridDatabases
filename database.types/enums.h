@@ -27,7 +27,7 @@ enum CallbackEvent {
 
 // type of LogItem
 enum {
-  LI_TYPE_RAW = 1,
+  LI_TYPE_RAW,
   LI_TYPE_NODE_MODIFY,
 
   LI_TYPE_ATOMIC_RAW,
@@ -41,7 +41,7 @@ enum {
 
 enum DbError {
   DB_SUCCESS = 0,
-  DB_ERROR__DUMP_RUNNIG,
+  DB_ERROR__DUMP_RUNNING,
   DB_ERROR__CANNOT_CREATE_NEW_FILE
 };
 

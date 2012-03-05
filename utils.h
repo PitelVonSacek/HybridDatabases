@@ -25,7 +25,7 @@ static inline int ulog2(uint64_t n) {
 
 #define utilLock(H, ptr) \
   do { \
-    switch (l_lock(hash_ptr(node), H, H->start_time)) { \
+    switch (l_lock(H->database->locks + hash_ptr(node), H, H->start_time)) { \
       case 0: return false; \
       case 1: istack_push(H->acquired_locks, hash_ptr(node)); \
     } \
@@ -82,7 +82,7 @@ enum {
   DB_DBG_LEVEL_E = 0,
   DB_DBG_LEVEL_O = 1,
   DB_DBG_LEVEL_W = 2,
-  DB_DBD_LEVEL_I = 3
+  DB_DBG_LEVEL_I = 3
 };
 
 #define dbDebug(level, ...) \

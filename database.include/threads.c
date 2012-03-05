@@ -24,7 +24,7 @@ static void process_transaction_log(TransactionLog *log, Database *D,
             *dump_ptr = listGetContainer(Node, __list, node->__list.next);
 
           list_remove(&node->__list);
-          node->type->destroy(node);
+          node->type->destroy(D->tm_allocator, node, end_time);
           node_free(node->type->allocator_info, node, end_time);
           break;
 

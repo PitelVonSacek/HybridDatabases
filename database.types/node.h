@@ -55,7 +55,7 @@ typedef struct {
 #undef Handler
 
 typedef struct Node_ {
-  const NodeType * const type; // have to be first
+  NodeType * const type; // have to be first
 
   // linked list of nodes
   struct List __list;

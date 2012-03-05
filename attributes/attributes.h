@@ -1,10 +1,11 @@
 #ifndef __ATTRIBUTES_H__
 #define __ATTRIBUTES_H__
 
-#include "attributes_defs.h"
+#include "../storage/storage.h"
 
-#include "../handler.h"
-#include "../database_types.h"
+#include "../database.types/attributes.h"
+#include "../database.types/handler.h"
+#include "../database.types/node.h"
 
 static inline size_t attribute_size(int type);
 static inline bool attribute_is_primitive(int type);
@@ -19,7 +20,7 @@ static inline void attribute_destroy(int type, struct GenericAllocatorInfo *allo
 static inline bool attribute_write(int type, Handler *H, 
                                    uint64_t end_time, void *dest, const void *src);
 
-static inline void attribute_store(int type, Writer *W, void *attr);
+static inline void attribute_store(int type, Writer *W, const void *attr);
 static inline bool attribute_load(int type, Reader *R, 
                                   struct GenericAllocatorInfo *allocator, 
                                   void *attr);

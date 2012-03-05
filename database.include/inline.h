@@ -1,5 +1,6 @@
 void _tr_abort_main(Handler*);
 bool _tr_commit_main(Handler*, enum CommitType);
+void _tr_handler_rollback(Handler *H, struct Transaction *tr);
 
 static inline void tr_hard_abort(Handler *H) {
   _tr_abort_main(H);
@@ -25,15 +26,15 @@ static inline void tr_begin(Handler *H) {
 }
 
 static inline void tr_abort(Handler *H) {
-  if (stack_empty(H->transactions)) _tr_abort_main(H);
-  else handler_rollback(H, &stack_pop(H->transactions));
+  if (fstack_empty(H->transactions)) _tr_abort_main(H);
+  else _tr_handler_rollback(H, &stack_pop(H->transactions));
 }
 
 static inline bool tr_commit(Handler *H, enum CommitType commit_type) {
-  if (stack_empty(H->transactions)) return _tr_commit_main(H, commit_type);
+  if (fstack_empty(H->transactions)) return _tr_commit_main(H, commit_type);
   
   // commit nested transaction
-  stack_pop(H->transactions);
+  fstack_pop(H->transactions);
   
   switch (commit_type) {
     case CT_SYNC:
@@ -59,10 +60,10 @@ static inline bool tr_validate(Handler *H) {
 }
 
 static inline bool tr_node_update_indexies(Handler *H, Node *node) {
-  return node->type->update_indexies(H, CBE_NODE_MODIFIED, node);
+  return node->type->update_indexes(H, CBE_NODE_MODIFIED, node);
 }
 
-static inline bool tr_node_check(Handler *H, Node *n) {
+static inline bool tr_node_check(Handler *H, Node *node) {
   return l_check(H->database->locks + hash_ptr(node), H, H->start_time);
 }
 

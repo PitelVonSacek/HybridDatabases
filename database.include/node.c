@@ -9,7 +9,7 @@ Node *tr_node_create (Handler *H, NodeType *type) {
     for (size_t i = 0; i < types_count; i++)
       if (types[i].name == type->name) {
         type = types + i;
-        goto success;
+        goto found;
       }
   
     return 0;
@@ -17,8 +17,8 @@ Node *tr_node_create (Handler *H, NodeType *type) {
   }
 
   Node *node = node_alloc(type->allocator_info);
-  *(NodeType**)&(node->type) = type
-  node->id = atomic_add_and_fetch(&H->database->node_id_counter, 1);
+  *(NodeType**)&(node->type) = type;
+  *(uint64_t*)&node->id = atomic_add_and_fetch(&H->database->node_id_counter, 1);
 
   // lock created node; really do i need to lock it???
 
@@ -32,7 +32,7 @@ Node *tr_node_create (Handler *H, NodeType *type) {
 
   fstack_push(H->log, log_item);
 
-  if (!node->type->update_indexies(H, CBE_NODE_CREATED, node)) 
+  if (!node->type->update_indexes(H, CBE_NODE_CREATED, node)) 
     return 0;
 
   return node;
@@ -44,14 +44,14 @@ bool tr_node_delete (Handler *H, Node *node) {
 
   if (node->ref_count) return false;
 
-  if (!node->type->update_indexies(H, CBE_NODE_DELETED, node))
+  if (!node->type->update_indexes(H, CBE_NODE_DELETED, node))
     return false;
 
   node->type->destroy_pointers(H, node);
 
   struct LogItem log_item = {
     .ptr = node,
-    .type = LI_TYPE_NODE_DELETED;
+    .type = LI_TYPE_NODE_DELETE
   };
 
   fstack_push(H->log, log_item);
@@ -79,20 +79,20 @@ bool tr_node_write (Handler *H, Node *node, int attr, const void *value) {
   struct LogItem log_item = {
     .ptr = node,
     .type = LI_TYPE_NODE_MODIFY,
-    .size = a.size,
+    .size = attribute_size(a.type),
     .index = attr,
     .offset = a.offset,
     .attr_type = a.type
   };
 
-  memcpy(log_item->data_old, utilOffset(node, a.offset), a.size);
+  memcpy(log_item.data_old, utilOffset(node, a.offset), attribute_size(a.type));
 
   utilLock(H, node);
   if (!attribute_write(a.type, H, atomic_read(&H->database->time), 
                        utilOffset(node, a.offset), value))
     return false;
 
-  memcpy(log_item->data_new, utilOffset(node, a.offset), a.size);
+  memcpy(log_item.data_new, utilOffset(node, a.offset), attribute_size(a.type));
 
   fstack_push(H->log, log_item);
 
@@ -110,7 +110,7 @@ const char *tr_attr_get_name(NodeType *type, int index) {
 }
 
 int tr_attr_get_index(NodeType *type, const char *attr) {
-  for (int i = 0; i < type->attributtes_count; i++) 
+  for (int i = 0; i < type->attributes_count; i++) 
     if (!strcmp(attr, type->attributes[i].name)) return i;
 
   return -1;
@@ -121,7 +121,7 @@ const NodeType *tr_node_get_type (Node *node) {
   return node->type;
 }
 
-const AttributeType *tr_attr_get_type(NodeType *type, int index) {
+const int tr_attr_get_type(NodeType *type, int index) {
   if (index >= type->attributes_count || index < 0) return 0;
   return type->attributes[index].type;  
 }

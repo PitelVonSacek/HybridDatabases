@@ -1,5 +1,5 @@
-Handler *db_handler_create (Database *D) {
-  Handler *H = db_alloc(sizeof(Handler));
+Handler *db_handler_create(Database *D) {
+  Handler *H = malloc(sizeof(Handler));
   db_handler_init(D, H);
   H->allocated = true;
   return H;
@@ -7,10 +7,10 @@ Handler *db_handler_create (Database *D) {
 
 void db_handler_free (Handler *H) {
   db_handler_destroy(H);
-  db_free(H);
+  free(H);
 }
 
-void db_handler_init (Database *D, Handler *H) {
+Handler *db_handler_init(Database *D, Handler *H) {
   *H = (Handler){  
     .database = D,
     .start_time = 0,
@@ -22,19 +22,19 @@ void db_handler_init (Database *D, Handler *H) {
 
   sem_init(H->write_finished, 0, 0);
 
-  fstack_init(H->transactions);
-  fstack_init(H->log);
+  fstack_init(H->transactions, &transaction_allocator);
+  fstack_init(H->log, &log_allocator);
 
-  memset(H->read_set, 0, sizeof(H->read_set));
+  memset(&H->read_set, 0, sizeof(H->read_set));
 
   pthread_mutex_lock(D->handlers_mutex);
-  stack_insert(D->hanndlers, H);
+  stack_push(D->handlers, H);
   pthread_mutex_unlock(D->handlers_mutex);
 
   return H;
 }
 
-void db_handler_destroy (Handler *H) {
+void db_handler_destroy(Handler *H) {
   if (H->start_time) _tr_abort_main(H);
 
   typeof(&*H->database->handlers) handlers = H->database->handlers;

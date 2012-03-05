@@ -25,7 +25,7 @@ Database *database_create (const DatabaseType *type, const char *file, unsigned 
 
   if (!load_data(D, &nodes)) goto error;
 
-  fix_pointers(D);
+  fix_pointers(D, &nodes);
   ndict_destroy(&nodes);
   fill_indexies(D);
 
@@ -43,7 +43,7 @@ Database *database_create (const DatabaseType *type, const char *file, unsigned 
 static int get_db_files(struct dirent*** files, const char* dir, const char* db_name) {
   const size_t db_name_len = strlen(db_name);
 
-  /*int db_files_sort(const struct dirent **a, const struct dirent **b) {
+  int db_files_sort(const struct dirent **a, const struct dirent **b) {
     for (int i = 0; db_name[i]; i++) if (db_name[i] != a[0]->d_name[i]) return 0;
     for (int i = 0; db_name[i]; i++) if (db_name[i] != b[0]->d_name[i]) return 0;
 
@@ -53,7 +53,7 @@ static int get_db_files(struct dirent*** files, const char* dir, const char* db_
     if (a_ == b_) return 0;
     if (a_ > b_) return 1;
     return -1;
-  }*/
+  }
 
   int db_files_select(const struct dirent *file) {
     int i;
@@ -67,7 +67,7 @@ static int get_db_files(struct dirent*** files, const char* dir, const char* db_
     }
   }
 
-  return scandir (dir, files, db_files_select, versionsort);
+  return scandir (dir, files, db_files_select, db_files_sort /*versionsort*/);
 }
 
 
@@ -87,7 +87,7 @@ static void fill_indexies(Database *D) {
   tr_begin(H);
 
   list_for_each_item(node, &D->node_list, Node, __list) {
-    if (!node->update_indexies(H, CBE_NODE_LOADED, node)) {
+    if (!node->type->update_indexes(H, CBE_NODE_LOADED, node)) {
       dbDebug(E, "Filling indexies failed");
       exit(1);
     }
@@ -96,7 +96,7 @@ static void fill_indexies(Database *D) {
       struct LogItem item = fstack_top(H->log);
       fstack_pop(H->log);
 
-      if (item.type == LI_TYPE_MEMORY_DELETED)
+      if (item.type == LI_TYPE_MEMORY_DELETE)
         generic_free(D->tm_allocator, item.ptr, 0);
     }
   }
@@ -127,7 +127,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
   char *buffer = malloc(strlen(D->filename) + 30);
 
   if (!strcmp(file, "/") || !strcmp(file, ".") || !strcmp(file, "..")) {
-    trDebug(E, "Bad database name '%s' (complete path was '%s')", file, D->filename);
+    dbDebug(E, "Bad database name '%s' (complete path was '%s')", file, D->filename);
     goto error;
   }
 
@@ -137,9 +137,9 @@ static bool load_data(Database *D, IdToNode *nodes) {
   
   }
 
-  sptrinf(buffer, "%s.", file);
+  sprintf(buffer, "%s.", file);
 
-  dirent **files = 0;
+  struct dirent **files = 0;
   dbDebug(I, "Getting file list...");
   int files_count = get_db_files(&files, dir, buffer);
   dbDebug(I, "Files found (%i):", files_count);
@@ -148,7 +148,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
   if (files_count) {
     size_t l = strlen(buffer);
     long first = atol(files[0]->d_name + l);
-    long last = atol(files[files_count - 1] + l);
+    long last = atol(files[files_count - 1]->d_name + l);
 
     D->current_file_index = last;
 
@@ -171,7 +171,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
 
     switch (load_file(D, R, &magic_nr, nodes, i == 0)) {
       case LOAD_CORRUPTED_FILE: 
-        dbDebug(E, "File '%s' is corrupted, switching to read-only mode");
+        dbDebug(E, "File '%s' is corrupted, switching to read-only mode", buffer);
         D->flags |= DB_READ_ONLY;
         reader_destroy(R);
         goto end;
@@ -179,7 +179,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
       case LOAD_UNFINISHED_FILE:
         if (i != files_count - 1) {
           dbDebug(E, "File '%s' is not finished but is not the last file, "
-                     "switching to read-only mode");
+                     "switching to read-only mode", buffer);
           D->flags |= DB_READ_ONLY;
           reader_destroy(R);
           goto end;
@@ -201,12 +201,12 @@ static bool load_data(Database *D, IdToNode *nodes) {
 
   if (!(D->flags & DB_READ_ONLY)) {
     if (create_new_file) {
-      if (!_database_new_file(D, 0, &magic_nr)) {
+      if (!_database_new_file(D, 0, magic_nr)) {
         dbDebug(E, "Failed to create new file");
         goto error;
       }
     } else if (!(D->output.file = fopen(buffer, "ab"))) {
-      dbError(E, "Failed to open '%s' for append", buffer);
+      dbDebug(E, "Failed to open '%s' for append", buffer);
       goto error;
     } 
   } else {
@@ -230,7 +230,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
 #define Ensure(cond, ...) \
   do { \
     if (!(cond)) { \
-      dbDebug(E, __VA_ARG__); \
+      dbDebug(E, __VA_ARGS__); \
       goto read_failed; \
     } \
   } while (0)
@@ -244,7 +244,7 @@ static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
   Ensure(!*magic_nr || *magic_nr == new_magic_nr, "File header corrupted");
 
   if (first_file) {
-    Ensure(read_begin(R) == ST_READ_SUCCESS && read_dump_begin(R),
+    Ensure(reader_begin(R) == ST_READ_SUCCESS && read_dump_begin(R),
            "First file must begin with dump");
     dump_on = true;
   }
@@ -297,7 +297,7 @@ static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
         break;
       }
       reader_set_pos(R, pos);
-      if (read_file_footer(R)) {
+      if (read_file_footer(R, magic_nr)) {
         dbDebug(I, "EOF");
         return LOAD_SUCCESS;
       }

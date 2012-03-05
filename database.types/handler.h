@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-#include "database_enums.h"
+#include "enums.h"
 #include "attributes.h"
 
 #include "../utils/fast_stack.h"

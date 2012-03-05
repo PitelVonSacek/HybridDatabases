@@ -7,7 +7,7 @@
     struct GenericAllocatorInfo *allocator = H->database->tm_allocator; \
     copy; return true; \
   } \
-  static inline void attribute_store_##name (Writer *W, void *attr) { store; } \
+  static inline void attribute_store_##name (Writer *W, const void *attr) { store; } \
   static inline bool attribute_load_##name (Reader *R, \
       struct GenericAllocatorInfo *allocator, void *attr) \
     { load; return true; }
@@ -48,7 +48,7 @@ bool attribute_write (int type, Handler *H, uint64_t end_time, void *dest, const
 #undef DefineAttrType
 
 #define DefineAttrType(name, ...) case name: attribute_store_##name(W, attr); break;
-void attribute_store (int type, Writer *W, void *attr) {
+void attribute_store (int type, Writer *W, const void *attr) {
   switch (type) {
 #include "definitions.h"
     default: assert(0);

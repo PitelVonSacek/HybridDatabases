@@ -1,9 +1,13 @@
 #ifndef __DATABASE_INTERFACE_H__
 #define __DATABASE_INTERFACE_H__
 
-#include "database_types.h"
-
-
+#include "database.types/attributes.h"
+#include "database.types/database.h"
+#include "database.types/enums.h"
+#include "database.types/handler.h"
+#include "database.types/index.h"
+#include "database.types/node.h"
+          
 /*************************
  *  Database functions   *
  *************************/
@@ -87,11 +91,11 @@ static inline bool tr_node_update_indexies(Handler *H, Node *node);
 static inline bool tr_node_check(Handler *H, Node *node);
 
 int tr_attr_count(NodeType*);
-const char *tr_attr_get_name(NodeType*, int;
+const char *tr_attr_get_name(NodeType*, int);
 int tr_attr_get_index(NodeType*, const char*);
 
 const NodeType *tr_node_get_type(Node *node);
-const AttributeType *tr_attr_get_type(NodeType *type, int index);
+const int tr_attr_get_type(NodeType *type, int index);
 
 /* Macros:
 
@@ -116,8 +120,10 @@ const AttributeType *tr_attr_get_type(NodeType *type, int index);
 
 */
 
-#include "database.include/type_magic.h"
 #include "database.include/inline.h"
+#include "database.include/macros.h"
+// must be AFTER inline.h
+#include "database.include/type_magic.h"
 
 #endif
 

@@ -9,7 +9,7 @@
 #define db_handler_create(D) db_handler_create(typeUncast(D))
 #define db_handler_free(H) db_handler_free(typeUncast(H))
 #define db_handler_init(D, H) db_handler_init(typeUncast(D), typeUncast(H))
-#define db_handler_destroy(H) db_handler_init(typeUncast(H))
+#define db_handler_destroy(H) db_handler_destroy(typeUncast(H))
 
 #define tr_begin(H) tr_begin(typeUncast(H))
 #define tr_abort(H) tr_abort(typeUncast(H))

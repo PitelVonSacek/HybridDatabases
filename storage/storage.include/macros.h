@@ -43,8 +43,8 @@
   do { \
     const char *_str = (str); \
     size_t _length = 0; \
-    char *_string = 0; \
-    if (!read_string(R, &(void*)_string, &_length) || \
+    const void *_string = 0; \
+    if (!read_string(R, &_string, &_length) || \
         strlen(str) != _length || \
         strncmp(_string, _str, _length)) \
       readFailed; \

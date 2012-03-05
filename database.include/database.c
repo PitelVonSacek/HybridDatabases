@@ -1,7 +1,7 @@
-static Database *database_alloc(DatabaseType *type) {
+static Database *database_alloc(const DatabaseType *type) {
   Database *D = malloc(type->size);
 
-  *(DatabaseType**)D = type;
+  *(const DatabaseType**)D = type;
   D->filename = 0;
   D->current_file_index = 0;
   D->flags = 0;
@@ -17,7 +17,7 @@ static Database *database_alloc(DatabaseType *type) {
   pthread_mutex_init(D->handlers_mutex, 0);
 
 #ifndef LOCKLESS_COMMIT
-  pthread_mutex_init(D->mutex, 0);
+  pthread_mutex_init(&D->mutex, 0);
 #endif
 
   // FIXME init tm_allocator
@@ -29,8 +29,8 @@ static Database *database_alloc(DatabaseType *type) {
   };
 
   D->output.file = 0;
-  sem_init(D->output.counter, 0);
-  pthread_mutex_init(D->output.dump_running);
+  sem_init(D->output.counter, 0, 0);
+  pthread_mutex_init(D->output.dump_running, 0);
   D->output.head = 0;
   D->output.tail = &D->output.head;
 
@@ -40,7 +40,7 @@ static Database *database_alloc(DatabaseType *type) {
 }
 
 
-void database_close (Database *database) {
+void database_close(Database *D) {
 #ifdef SINGLE_SERVICE_THREAD
   sem_post(D->output.counter);
 
@@ -61,11 +61,11 @@ void database_close (Database *database) {
 #endif
   dbDebug(DB_INFO, "Waiting done");
 
-  struct List item;
+  struct List *item;
   while ((item = D->node_list.prev) != &D->node_list) {
     list_remove(item);
     Node *node = listGetContainer(Node, __list, item);
-    node->type->destroy(node);
+    node->type->destroy(D->tm_allocator, node, 0);
     node_free(node->type->allocator_info, node, 0);
   }
 
@@ -76,7 +76,7 @@ void database_close (Database *database) {
 
   if (D->output.file) fclose(D->output.file);
 
-  free(D->filename);
+  free((void*)D->filename);
 
   // FIXME free tm_allocator
 
@@ -84,7 +84,7 @@ void database_close (Database *database) {
   sem_destroy(D->output.counter);
   pthread_mutex_destroy(D->output.dump_running);
   
-  pthread_mutex_destroy(D->mutex);
+  pthread_mutex_destroy(&D->mutex);
   
   pthread_mutex_destroy(D->handlers_mutex);
   if (!stack_empty(D->handlers)) {
@@ -150,7 +150,7 @@ static uint64_t _generate_magic_nr() {
 
   do {
     magic_nr = 0;
-    for (int i = 0, i < sizeof(magic_nr); i++) 
+    for (int i = 0; i < sizeof(magic_nr); i++) 
       magic_nr = (magic_nr << 8) | (rand() & 0xFF);
   } while (!magic_nr);
 
@@ -215,13 +215,13 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
   write_file_header(W, D, magic_nr);
   if (dump_begin) write_dump_begin(W);
   fwrite(writer_ptr(W), 1, writer_length(W), new_file);
-  writer_destoy(W);
+  writer_destroy(W);
 
   fflush(new_file);
 
   D->output.file = new_file;
 
-#if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)
+#if !defined(SINGLE_SERVICE_THREAD) || defined(LOCKLESS_COMMIT)
   atomic_add(&D->dump.flags, DB_DUMP__RESUME_IO_THREAD);
   util_signal_signal(D->dump.signal);
 #endif
