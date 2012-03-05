@@ -184,7 +184,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
 
   for (int i = 0; i < files_count; i++) {
     sprintf(buffer, "%s/%s.%i", dir, file, i);
-    Ensure(F = fopen(buffer, "rb"),, "Opening file '%s' failed", buffer)
+    Ensure(F = fopen(buffer, "rb"),, "Opening file '%s' failed", buffer);
     file_reader_init(R, F, true);
 
     switch (load_file(D, R, &magic_nr, nodes, i == 0)) {
