@@ -124,6 +124,7 @@ const int tr_attr_get_type(NodeType *type, int index);
 #include "database.include/macros.h"
 // must be AFTER inline.h
 #include "database.include/type_magic.h"
+#include "attributes/attributes.inline.h"
 
 #endif
 

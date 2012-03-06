@@ -88,8 +88,7 @@ bool tr_node_write (Handler *H, Node *node, int attr, const void *value) {
   memcpy(log_item.data_old, utilOffset(node, a.offset), attribute_size(a.type));
 
   utilLock(H, node);
-  if (!attribute_write(a.type, H, atomic_read(&H->database->time), 
-                       utilOffset(node, a.offset), value))
+  if (!attribute_write(a.type, H, utilOffset(node, a.offset), value))
     return false;
 
   memcpy(log_item.data_new, utilOffset(node, a.offset), attribute_size(a.type));

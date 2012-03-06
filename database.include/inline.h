@@ -2,6 +2,26 @@ void _tr_abort_main(Handler*);
 bool _tr_commit_main(Handler*, enum CommitType);
 void _tr_handler_rollback(Handler *H, struct Transaction *tr);
 
+static inline void *_tr_memory_alloc(Handler *H, size_t size) {
+  struct LogItem item = {
+    .type = LI_TYPE_MEMORY_ALLOC,
+    .ptr = generic_alloc(H->database->tm_allocator, size)
+  };
+
+  fstack_push(H->log, item);
+
+  return item.ptr;
+}
+
+static inline void _tr_memory_free(Handler *H, void *ptr) {
+  struct LogItem item = {
+    .type = LI_TYPE_MEMORY_DELETE,
+    .ptr = ptr
+  };
+
+  fstack_push(H->log, item);
+}
+
 static inline void tr_hard_abort(Handler *H) {
   _tr_abort_main(H);
 }

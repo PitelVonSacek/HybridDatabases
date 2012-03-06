@@ -2,6 +2,7 @@
 #define __HANDLER_H__
 
 #include <string.h>
+#include <semaphore.h>
 
 #include "enums.h"
 #include "attributes.h"
