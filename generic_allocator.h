@@ -28,6 +28,8 @@ static inline void *generic_alloc(struct GenericAllocatorInfo *info, size_t size
 
 static inline void generic_free(struct GenericAllocatorInfo *info, void *ptr_, 
                                 uint64_t end_time) {
+  if (!ptr_) return;
+
   struct GenericAllocatorFreeItem *ptr = ptr_;
 
   atomic_inc(&info->counter);

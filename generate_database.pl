@@ -27,7 +27,7 @@ sub database_interface {
 extern const DatabaseType ${t}_desc;
 
 typedef struct {
-  DatabaseType __ancestor;
+  Database __ancestor;
 
   struct {
 $node_types
@@ -37,6 +37,12 @@ $node_types
 $indexes
   } indexes;
 } $t;
+
+typedef union {
+  Database *database;
+  $t *my_database;
+  Handler __ancestor;
+} ${t}_handler_t;
 
 EOF
 

@@ -16,13 +16,13 @@ static bool read_schema(Reader *R, Database *D) {
     rCheckString(type->name);
     rCheckString(type->version);
 
-    NodeType *const* n_type = type->node_types;
+    const NodeType *const* n_type = type->node_types;
     for (int i = 0; i < type->node_types_count; i++) rArray {
       rCheckString(n_type[i]->name);
 
       for (int e = 0; e < n_type[i]->attributes_count; e++) rArray {
-        rCheckString(n_type[i]->attributes[i].name);
-        rCheckNumber(n_type[i]->attributes[i].type);
+        rCheckString(n_type[i]->attributes[e].name);
+        rCheckNumber(n_type[i]->attributes[e].type);
       } rArrayEnd;
 
     } rArrayEnd;

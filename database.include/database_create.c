@@ -163,6 +163,8 @@ static bool load_data(Database *D, IdToNode *nodes) {
       write_schema(W, D);
       Ensure(fwrite(writer_ptr(W), 1, writer_length(W), F) == writer_length(W),
              ({ fclose(F); writer_destroy(W); }), "Failed to write schema");
+
+      Ensure(F = fopen(buffer, "rb"),,);
     } else
       Ensure(0,, "Failed to open schema, but data files exists");
   }

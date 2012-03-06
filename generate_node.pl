@@ -11,11 +11,18 @@ sub node_interface {
       sprintf "  %s_t %s;", ${$_}[1], ${$_}[0]
     } @{ $node_types{$node_type} };
 
+    my $i = 0;
+    my $attr_indexes = join "\n", map {
+      sprintf "  StaticInt(%i) _internal_%s_index;", $i++, ${$_}[0]
+    } @{ $node_types{$node_type} };
+
     print <<EOF;
 typedef struct {
   Node __ancestor;
   
 $attrs
+
+$attr_indexes
 } $node_type;
 
 extern const NodeType ${node_type}_desc;

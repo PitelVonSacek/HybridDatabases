@@ -66,11 +66,12 @@ my @input = <STDIN>;
 my $input = join(" ", @input);
 $parser->root($input);
 
-# print Dumper(\%node_types);
-# print Dumper(\%database_types);
-# print Dumper(\%index_types);
+print STDERR Dumper(\%node_types);
+print STDERR Dumper(\%database_types);
+print STDERR Dumper(\%index_types);
 
-# print Dumper(\@include);
+print STDERR $int;
+print STDERR $impl;
 
 
 

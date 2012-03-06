@@ -6,13 +6,13 @@ static void write_schema(Writer *W, Database *D) {
     wString(type->name);
     wString(type->version);
 
-    NodeType *const* n_type = type->node_types;
+    const NodeType *const* n_type = type->node_types;
     for (int i = 0; i < type->node_types_count; i++) wArray {
       wString(n_type[i]->name);
 
       for (int e = 0; e < n_type[i]->attributes_count; e++) wArray {
-        wString(n_type[i]->attributes[i].name);
-        wNumber(n_type[i]->attributes[i].type);
+        wString(n_type[i]->attributes[e].name);
+        wNumber(n_type[i]->attributes[e].type);
       } wArrayEnd;
 
     } wArrayEnd;

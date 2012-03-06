@@ -50,7 +50,7 @@ sub index_implementation {
     if (${$i{init}}[0] eq 'b') {
       $init = <<EOF;
 void ${t}_ctx_init(${t}_context_t *context) {
-$init_ptr
+$init_ptr;
 }
 EOF
       $init_ptr = "(void(*)(void*))&${t}_ctx_init";
@@ -62,7 +62,7 @@ EOF
     if (${$i{destroy}}[0] eq 'b') {
       $destroy = <<EOF;
 void ${t}_ctx_destroy(${t}_context_t *context) {
-$destroy_ptr
+$destroy_ptr;
 }
 EOF
       $destroy_ptr = "(void(*)(void*))&${t}_ctx_destroy";
@@ -75,8 +75,10 @@ EOF
       $update = <<EOF;
 bool ${t}_ctx_update(${t}_context_t *context, Handler *H, 
         enum CallbackEvent event, Node *node) {
-$update_ptr
+$update_ptr;
   return true;
+  tr_failed:
+  return false;
 }
 EOF
       $update_ptr = "(bool(*)(void*,Handler*,enum CallbackEvent,Node*))&${t}_ctx_update";

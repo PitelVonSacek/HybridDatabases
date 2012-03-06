@@ -40,6 +40,7 @@ static inline unsigned hash_ptr(void *ptr) {
 
 #define util_offset(ptr, offset) ((void*)(((char*)(ptr)) + (offset)))
 #define utilOffset(ptr, offset) ((void*)(((char*)(ptr)) + (offset)))
+#define utilGetOffset(a, b) (((char*)(b)) - ((char*)(a)))
 #define TR_OFFSET(ptr, offset) ((void*)(((char*)ptr) + offset))
 
 typedef struct {

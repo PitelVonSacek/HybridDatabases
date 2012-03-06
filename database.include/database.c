@@ -66,7 +66,7 @@ void database_close(Database *D) {
     node_free(node->type->allocator_info, node, 0);
   }
 
-  D->type->indexes_destroy(D);
+  D->type->destroy(D);
 
   for (int i = 0; i < D->node_types_count; i++) 
     node_free_nodes(D->node_types[i].allocator_info, 0, ~(uint64_t)0);
