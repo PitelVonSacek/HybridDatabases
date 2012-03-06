@@ -21,22 +21,24 @@ typedef struct {
   Real index:
 
 typedef struct {
-  IndexType desc;
-
   ReturnType1 function_one(void *context, Handler *, Args...);
   ReturnType2 function_two(void *context, Handler *, Args...);
   ...
 
+} MyIndex_functions;
+
+typedef struct {
+  IndexType desc;
+  MyIndex_functions functions;
 } MyIndex_desc_t;
 
 typedef struct {
-  Context1 context;
+  MyIndex_context_t context;
 
   int (*callback)(void *context, Handler *H, enum CallbackEvent event, Node *node);
 
-  ReturnType1 function_one(void *context, Handler *, Args...);
-  ReturnType2 function_two(void *context, Handler *, Args...);
-} MyIndex_context_t;
+  MyIndex_functions functions;
+} MyIndex_handler_t;
 
 #define trIndex(Index, Function, ...) \
   H->my_database->indexies.Index.Function(&H->my_database->indexies.Index.context, \

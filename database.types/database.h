@@ -16,6 +16,10 @@
 #include "attributes.h"
 #include "node.h"
 #include "handler.h"
+#include "index.h"
+
+struct Handler_;
+typedef bool(*UpdateIndexes)(Handler*, enum CallbackEvent, Node*);
 
 struct Database_;
 #define Database struct Database_
@@ -26,10 +30,16 @@ typedef struct {
   size_t size;
 
   void (*init)(Database*);
-  void (*indexes_destroy)(Database*);
+  void (*destroy)(Database*);
+
+  DummyAncestor __ancestor;
 
   size_t node_types_count;
-  NodeType **node_types;
+  const NodeType *const *node_types;
+  const UpdateIndexes *update_indexes;
+
+  size_t indexes_count;
+  const IndexType *const *indexes;
 } DatabaseType;
 
 /*
@@ -39,8 +49,7 @@ struct {
   DatabseType desc;
     
   struct {
-    NodeType *NodeType1_desc;
-    bool (*NodeType1_update_indexies)(...);
+    bool (*NodeType1_update_indexes)(...);
     ...
   } node_types;
 
@@ -191,16 +200,16 @@ typedef struct {
   };
 
   struct {
-    NodeType node_type_1;
-    NodeType node_type_2;
+    NodeType1 NodeType1_desc;
+    NodeType2 NodeType2_desc;
     ...
   } node_types;
 
   struct {
-    Context1 index1;
-    Context2 index2;
+    Index1_handler_t index1;
+    Index1_handler_t index2;
     ...
-  } indexies;
+  } indexes;
 
 } MyDatabase;
 
