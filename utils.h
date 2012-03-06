@@ -24,12 +24,14 @@ static inline int ulog2(uint64_t n) {
 
 
 #define utilLock(H, ptr) \
-  do { \
+  ({ \
+    bool __ret = true; \
     switch (l_lock(H->database->locks + hash_ptr(node), H, H->start_time)) { \
-      case 0: return false; \
+      case 0: __ret = false; break; \
       case 1: istack_push(H->acquired_locks, hash_ptr(node)); \
     } \
-  } while (0)
+    __ret; \
+  })
 
 static inline unsigned hash_ptr(void *ptr) {
   return (((size_t)ptr) * 997) % DB_LOCKS; // find betterr prime :-)

@@ -78,8 +78,8 @@ extern void __xadd_wrong_size(void);
 
 /*
  * Atomic compare and exchange.  Compare OLD with MEM, if identical,
- * store NEW in MEM.  Return the initial value in MEM.  Success is
- * indicated by comparing RETURN with OLD.
+ * store NEW in MEM.  
+ * Modified to return bool
  */
 #define _atomic_cmpxchg(ptr, old, new, size, lock)			\
 ({									\
@@ -126,7 +126,7 @@ extern void __xadd_wrong_size(void);
 	default:							\
 		__cmpxchg_wrong_size();					\
 	}								\
-	__ret;								\
+	__ret == __old;								\
 })
 
 #define _atomic_xadd(ptr, inc, lock)						\

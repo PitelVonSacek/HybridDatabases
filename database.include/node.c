@@ -40,7 +40,7 @@ Node *tr_node_create (Handler *H, NodeType *type) {
 
 // fails if node is referenced by other nodes
 bool tr_node_delete (Handler *H, Node *node) {
-  utilLock(H, node);
+  if (!utilLock(H, node)) return false;
 
   if (node->ref_count) return false;
 
@@ -87,7 +87,7 @@ bool tr_node_write (Handler *H, Node *node, int attr, const void *value) {
 
   memcpy(log_item.data_old, utilOffset(node, a.offset), attribute_size(a.type));
 
-  utilLock(H, node);
+  if (!utilLock(H, node)) return false;
   if (!attribute_write(a.type, H, utilOffset(node, a.offset), value))
     return false;
 

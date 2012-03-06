@@ -130,13 +130,17 @@ bool reader_finish(Reader *R, bool checksum) {
 
     storageDebug("Crc: %x  orig_crc: %x\n", crc, orig_crc);
 
-    return (R->ptr + 6 == R->end) && 
-           (R->ptr[0] == ST_CRC) &&
-           (R->ptr[5] == ST_DOT) &&
+    R->ptr += 6;
+
+    return (R->ptr     == R->end) && 
+           (R->ptr[-6] == ST_CRC) &&
+           (R->ptr[-1] == ST_DOT) &&
            crc == orig_crc;
   }
 
-  return (R->ptr + 1 == R->end) && (*R->ptr == ST_DOT) && !checksum;
+  R->ptr++;
+
+  return (R->ptr == R->end) && (R->ptr[-1] == ST_DOT) && !checksum;
 }
 
 

@@ -13,7 +13,9 @@
 
 void *node_alloc_nodes(struct NodeAllocatorInfo *info) {
   // TODO: do something smarter, allocate bunch of nodes at once
-  return malloc(info->size);
+  void *p = malloc(info->size);
+  dbg("alloc %lx %i", (long)p, (int)info->counter);
+  return p;
 }
 
 #define min_delay 1000      // 1 μs
@@ -22,7 +24,7 @@ void *node_alloc_nodes(struct NodeAllocatorInfo *info) {
 bool node_free_nodes(struct NodeAllocatorInfo *info, size_t limit, uint64_t older_than) {
   struct FreeNode *node;
   struct timespec delay = { .tv_sec = 0, .tv_nsec = min_delay };
-
+ 
   while (atomic_read(&(info->counter)) > limit) {
     loop:  
     do {
@@ -35,9 +37,12 @@ bool node_free_nodes(struct NodeAllocatorInfo *info, size_t limit, uint64_t olde
       if (node->timestamp > older_than) goto too_new_nodes; // node too new
        
       atomic_dec(&(info->counter));
+      dbg("free %lx %i", (long)node, (int)info->counter);
       free(node);
     } else {
+      atomic_swp(&(info->free_nodes), 0);
       nanosleep(&delay, 0);
+      dbg();
       delay.tv_nsec *= 2;
       if (delay.tv_nsec > max_delay) delay.tv_nsec = max_delay;
     }

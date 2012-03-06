@@ -16,7 +16,7 @@ database_test: database_test.c ../database.o ../node_allocator.o ../generic_allo
 
 database_test_2: database_test_2.c ../database.o ../node_allocator.o ../generic_allocator.o ../storage/storage.o
 #	../generate.pl "db_test_2" 1 1 <database_test_2.c >database_test_2_.c
-	${CC} ${CFLAGS} database_test_2_.c ../database.o ../node_allocator.o \
+	${CC} ${CFLAGS} -DLOCK_DEBUG database_test_2_.c ../database.o ../node_allocator.o \
 	  ../generic_allocator.o ../storage/storage.o -lpthread -o database_test
 
 

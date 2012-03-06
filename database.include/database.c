@@ -1,3 +1,8 @@
+static void init_locks(Database *D) {
+  for (int i = 0; i < DB_LOCKS; i++)
+    D->locks[i].value = 1;
+}
+
 static Database *database_alloc(const DatabaseType *type) {
   Database *D = malloc(type->size);
 
@@ -9,7 +14,7 @@ static Database *database_alloc(const DatabaseType *type) {
   D->time = 1;
   D->node_id_counter = 1;
 
-  memset(D->locks, 0, sizeof(D->locks));
+  init_locks(D);
 
   list_init_head(&D->node_list);
 

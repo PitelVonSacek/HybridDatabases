@@ -16,7 +16,7 @@ static inline struct List *list_init_head(struct List* head) {
 }
 
 static inline bool list_empty(struct List *head) {
-  return head->next = head;
+  return head->next == head;
 }
 
 static inline void list_swap(struct List *a, struct List *b) {

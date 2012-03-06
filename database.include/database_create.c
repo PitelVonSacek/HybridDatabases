@@ -265,7 +265,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
 static int load_file(Database *D, Reader *R, uint64_t *magic_nr, 
                      IdToNode *nodes, bool first_file) {
   uint64_t new_magic_nr = 0;
-  read_file_header(R, D, &new_magic_nr);
+  Ensure(read_file_header(R, D, &new_magic_nr));
   bool dump_on = false;
   
   Ensure(!*magic_nr || *magic_nr == new_magic_nr, "File header corrupted");
@@ -309,6 +309,7 @@ static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
         }
       } rArrayEnd;
       rFinish(1);
+      break;
 
     case ST_STRING: {
       size_t pos = reader_get_pos(R);

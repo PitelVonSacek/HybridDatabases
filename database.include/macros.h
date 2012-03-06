@@ -66,8 +66,7 @@
 #define trMemoryWrite_(H, obj, attr, value) \
   do { \
     typeof(&*(obj)) __obj = (obj); \
-    if (!l_lock(H->database->locks + hash_ptr(__obj), H, typeUncast(H)->start_time)) \
-      trFail; \
+    if (!utilLock(typeUncast(H), __obj)) trFail; \
     trMemoryInternalWrite_(H, &(__obj attr), value); \
   } while (0)
 
@@ -78,7 +77,7 @@
 
 #define trInternalWrite_(H, __node, AttrName, value_) \
   ({ \
-    typeof(value_) __value = (value_); \
+    typeof((__node)->AttrName.value) __value = (value_); \
     bool __ret = true; \
     struct LogItem __log_item = { \
       .ptr = __node, \
@@ -125,8 +124,7 @@
 #define trWrite_(H, node, AttrName, value) \
   do { \
     typeof(node) __node = (node); \
-    if (!l_lock(H->database->locks + hash_ptr(__node), \
-         H, typeUncast(H)->start_time) || \
+    if (!utilLock(typeUncast(H), __node) || \
         !trInternalWrite_(H, __node, AttrName, value))  trFail; \
   } while (0)
 

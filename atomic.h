@@ -45,6 +45,7 @@
 #define atomic_swp(ptr, val) __sync_val_compare_and_swap(ptr, *ptr, val)
 
 #define atomic_add_and_fetch(ptr, x) __sync_add_and_fetch(ptr, x)
+#define atomic_fetch_and_add(ptr, x) __sync_fetch_and_add(ptr, x)
 
 #define atomic_add(ptr, x) atomic_add_and_fetch(ptr, x)
 

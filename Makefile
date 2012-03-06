@@ -1,6 +1,6 @@
 
 CC=gcc -std=gnu99
-CFLAGS=-ggdb
+CFLAGS+= -ggdb
 
 
 database_headers= \

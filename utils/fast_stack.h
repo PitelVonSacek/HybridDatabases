@@ -27,9 +27,9 @@
       .block_count = 0, \
       .blocks = ListInit(__stack->blocks), \
       \
-      .begin = (void*)(((char*)(&stack->blocks)) + _fstack_offset_begin), \
-      .ptr = (void*)(((char*)(&stack->blocks)) + _fstack_offset_end), \
-      .end = (void*)(((char*)(&stack->blocks)) + _fstack_offset_end) \
+      .begin = (void*)(((char*)(&__stack->blocks)) + _fstack_offset_begin), \
+      .ptr = (void*)(((char*)(&__stack->blocks)) + _fstack_offset_end), \
+      .end = (void*)(((char*)(&__stack->blocks)) + _fstack_offset_end) \
     }; \
     __stack; \
   })
@@ -77,7 +77,7 @@
   })
 
 
-
+// must fix block pointers :-(
 #define fstack_swap(s1, s2) \
   ({ \
     typeof(&*(s1)) __stack1 = (s1); \
@@ -85,6 +85,20 @@
     typeof(*(s1)) __stack = *__stack1; \
     *__stack1 = *__stack2; \
     *__stack2 = __stack; \
+    if (__stack1->blocks.next != &__stack2->blocks) { \
+      __stack1->blocks.next->prev = &__stack1->blocks; \
+      __stack1->blocks.prev->next = &__stack1->blocks; \
+    } else { \
+      __stack1->blocks.next = &__stack1->blocks; \
+      __stack1->blocks.prev = &__stack1->blocks; \
+    } \
+    if (__stack2->blocks.next != &__stack1->blocks) { \
+      __stack2->blocks.next->prev = &__stack2->blocks; \
+      __stack2->blocks.prev->next = &__stack2->blocks; \
+    } else { \
+      __stack2->blocks.next = &__stack2->blocks; \
+      __stack2->blocks.prev = &__stack2->blocks; \
+    } \
     (void)0; \
   })
 
@@ -93,9 +107,10 @@
 // so break DOES NOT work as expected, instead use goto
 #define fstack_for_each(var, stack) \
   list_for_each_item(__block, &stack->blocks, typeof(stack->__block[0]), head) \
-    for (typeof(__block->data[0])* var = __block->data; \
-         var - __block->data < (sizeof(__block->data) / sizeof(__block->data[0])); \
-         var++)
+    for (typeof(__block->data[0])* var = __block->data, \
+         *__last = ((__block->head.next == &stack->blocks) ? \
+           stack->ptr : var + fstack_block_size(stack) ); \
+         var < __last; var++)
 
 
 #define _fstack_offsets _fstack_offset_begin, _fstack_offset_end 

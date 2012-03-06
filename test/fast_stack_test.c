@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "../utils/fast_stack.h"
 
-#define MAX 100
+#define MAX 34
 
 typedef FastStack(int, 10) TSt;
 
@@ -15,10 +15,16 @@ void main() {
   fstack_init(S, &allocator);
 
   for (int i = 0; i < MAX; i++) fstack_push(S, i);
+ 
+  fstack_erase(S);
 
+  for (int i = 0; i < MAX/2; i++) fstack_push(S, i);
   int sum = 0;
 
-  fstack_for_each(i, S) sum += *i;
+  fstack_for_each(i, S) {
+    printf(".");
+    sum += *i;
+  }
 
   printf("sum: %i\n", sum);
 

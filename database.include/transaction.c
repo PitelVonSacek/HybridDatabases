@@ -24,7 +24,7 @@ static void handler_cleanup(Handler *H) {
   memset(&H->read_set, 0, sizeof(H->read_set));
 
   fstack_erase(H->transactions);
-  
+ 
   fstack_erase(H->log);
   istack_erase(H->acquired_locks);
 
@@ -75,7 +75,6 @@ void _tr_handler_rollback(Handler *H, struct Transaction *tr) {
   }
 
   H->commit_type = tr->commit_type;
-  istack_shrink(H->acquired_locks, tr->acquired_locks);
 }
 
 void _tr_abort_main(Handler *H) {
