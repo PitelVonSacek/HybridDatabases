@@ -8,7 +8,7 @@
 
 typedef struct {
   const char* name;
-  int (*callback)(void *context, Handler *H, enum CallbackEvent event, Node *node);
+  bool (*callback)(void *context, Handler *H, enum CallbackEvent event, Node *node);
 
   size_t context_size;
   size_t node_context_size;

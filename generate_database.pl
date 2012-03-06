@@ -10,7 +10,7 @@ sub database_interface {
     my %i = %{ $types{$t} };
 
     my $node_types = join "\n", map {
-      sprintf "    %s %s_desc;", $_, $_
+      sprintf "    NodeType %s_desc;", $_, $_
     } @{ $i{node_types} };
 
     my $indexes = join "\n", map {
@@ -60,7 +60,7 @@ sub database_implementation {
     } @{ $i{node_types} };
 
     my $index_table = join ",\n", map {
-      sprintf "  (const IndexType)&%s_desc", ${$_}[1]
+      sprintf "  &%s_desc.desc", ${$_}[1]
     } @{ $i{index_types} };
 
     my $i = 0;
@@ -75,20 +75,20 @@ sub database_implementation {
     } @{ $i{node_types} };
 
     my $destroy_node_types = join "\n", map {
-      sprintf "  node_allocator_destroy(&D->node_types.%1\$s_desc.allocator_info);\n",
+      sprintf "  node_allocator_destroy(D->node_types.%1\$s_desc.allocator_info);\n",
               $_
     } @{ $i{node_types} };
 
     # indexes
     my $init_indexes = join "\n", map {
-      sprintf "  %2\$s_desc.desc.context_init(&D->indexes.%1\$s.contex);\n".
+      sprintf "  %2\$s_desc.desc.context_init(&D->indexes.%1\$s.context);\n".
               "  D->indexes.%1\$s.callback = %2\$s_desc.desc.callback;\n".
               "  D->indexes.%1\$s.functions = %2\$s_desc.functions;\n",
               @{ $_ }
     } @{ $i{index_types} };
 
     my $destroy_indexes = join "\n", map {
-      sprintf "  %2\$s_desc.desc.context_destroy(&D->indexes.%1\$s.contex);\n",
+      sprintf "  %2\$s_desc.desc.context_destroy(&D->indexes.%1\$s.context);\n",
               @{ $_ }
     } @{ $i{index_types} };
 
@@ -109,9 +109,10 @@ sub database_implementation {
                 ${$_}[0], ${$_}[0]
       } grep { ${$_}[2] eq $nt } @{ $i{index_types} };
 
-      sprintf <<EOF, $t, $nt;
+      sprintf <<EOF, $t, $nt, $t;
 static bool %s_update_indexes_%s(Handler *H, 
         enum CallbackEvent event, Node *node) {
+  %s *D = (void*)H->database;
   if (
 $total_indexes
 $indexes
@@ -128,6 +129,8 @@ EOF
 /*
  *  Database type $t
  */
+
+$update_indexes
 
 static const NodeType *const ${t}_node_types[] = {
 $node_types
@@ -157,7 +160,7 @@ const DatabaseType ${t}_desc = {
   .update_indexes = ${t}_update_indexes_table,
 
   .indexes_count = $#{ $i{index_types} } + 1,
-  .indexes = ${t}_indexes_table
+  .indexes = ${t}_index_table
 };
 
 
@@ -172,8 +175,6 @@ $destroy_node_types
 
 $destroy_indexes
 }
-
-$update_indexes
 
 EOF
   }

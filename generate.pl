@@ -24,7 +24,7 @@ our $impl = "";
 $Parse::RecDescent::skip = '(\s|;)*';
 
 my $grammar = q{
-  { my @c = (); my %c = () }
+  { my @c = (); my %c = (); my $fnc; my $fnc_t; my $signature  }
 
   root: (node_type | index_type | database_type | int | impl | comment)(s?) 
  
@@ -45,11 +45,16 @@ my $grammar = q{
   index: 'Index' name 'for' identifier ':' type 
     { push @{$c{index_types}}, [ $item{name}, $item{type}, $item{identifier} ] }
 
-  index_type: 'IndexType' name ':' c_type '{' index_i index_d index_u index_e(S?) '}'
+  index_type: 'IndexType' name ':' c_type '{' index_i index_d index_u index_e(s?) '}'
     { $c{type} = $item{c_type}; $::index_types{$item{name}} = { %c }; %c = () }
-  index_i: 'Init' 
+  index_i: 'Init' fnc_or_block { $c{init} = [ $fnc_t, $fnc ] }
+  index_d: 'Destroy' fnc_or_block { $c{destroy} = [ $fnc_t, $fnc ] }
+  index_u: 'Update' fnc_or_block { $c{update} = [ $fnc_t, $fnc ] }
+  index_e: 'Method'
 
-  block: /@\\s*([^@]*)@/ { $1 }
+  fnc_or_block: function | block
+  function: 'function' /\\w+/ { $fnc_t = 'f'; $fnc = $item[2] }
+  block: /@\\s*([^@]*)@/ { $fnc_t = 'b'; $fnc = $1; $1 }
   name: identifier   { $item[1] }
   type: identifier   { $item[1] }
   c_type: /(union|struct)\\s*{[^\}]*}|(\\w+\\s*\\**)+/ { $item[1] }

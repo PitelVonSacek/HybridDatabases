@@ -44,3 +44,6 @@ utils/stack.h
 utils/static_if.h
 utils/type_magic.h
 generic_allocator.c
+generate_database.pl
+generate_index.pl
+generate_node.pl

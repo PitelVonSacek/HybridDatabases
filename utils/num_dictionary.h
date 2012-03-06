@@ -69,6 +69,14 @@ typedef struct {
 
 #define ndict_contains(dict, key) (!!ndict_get_node(dict, key))
 
+#define ndict_at(dict, key)\
+  ({ \
+    const typeof((dict)->buckets[0]) __node = \
+      ndict_get_node(dict, key); \
+    if (!__node) assert(0); \
+    __node->value; \
+  })
+
 #define ndict_get_node(dict, key) \
   ((typeof((dict)->buckets[0]))ndict_generic_get_node(_ndict_uncast(dict), \
     _ndict_key_uncast(dict, key)))

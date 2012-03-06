@@ -33,7 +33,7 @@ sub node_implementation {
       sprintf "%s", "  attribute_${fce}_${$_}[1]($args &node->${$_}[0]);"
     } @{$attrs_};
 
-    sprintf "%s", <<EOF
+    printf "%s", <<EOF
 static void ${node_type}_$fce($args_long) {
 $attrs
 }
@@ -75,13 +75,19 @@ EOF
      
     print "    false\n  ) return false;\n" .
           "  return true;\n}\n\n";
- 
+
+    # store
+    print "static void ${node_type}_store(Writer *W, $node_type *node) {\n";
+    for my $attr (@attrs) {
+      print "  attribute_store_${$attr}[1](W, &node->${$attr}[0].value);\n";
+    }
+    print "}\n\n";
     # init_pointers
     print "static bool ${node_type}_init_pointers(IdToNode *nodes, $node_type *node) {\n";
  
     for my $attr (@attrs) {
-      print "  node->${$attr}[0].value.value = node->${$attr}[0].value.id ? \n" .
-            "    ndict_at(nodes, node->${$attr}[0].value.id) : 0;\n"
+      print "  node->${$attr}[0].value = node->${$attr}[0].id ? \n" .
+            "    ndict_at(nodes, node->${$attr}[0].id) : 0;\n"
         if ${$attr}[1] eq "Pointer";
     }
      
@@ -89,19 +95,17 @@ EOF
  
     # destroy_pointers
     print "static bool ${node_type}_destroy_pointers(Handler *H, $node_type *node) {\n" .
-          "  const void *zero = 0;\n" .
+          "  Node *zero = 0;\n" .
           "  if (\n";
  
     for my $attr (@attrs) {
-      print "    !attribute_write_$node_type(H, &node->${$attr}[0], &zero) ||\n" 
+      print "    !attribute_write_Pointer(H, &node->${$attr}[0], &zero) ||\n" 
         if ${$attr}[1] eq "Pointer";
     }
    
     print "    false\n  ) return false;\n  return true;\n}\n\n";
 
-    node_type_mk_fce("store", "Writer *W, $node_type *node,", "W,", 
-                     $node_type, \@attrs);
-  
+
     node_type_mk_fce("init", "$node_type *node", "", 
                      $node_type, \@attrs);
   
@@ -112,7 +116,7 @@ EOF
 const NodeType ${node_type}_desc = {
   .name = "$node_type",
 
-  .load = (bool(*)(Reader*, struct GenericAllocatorInfo*, Node*)&${node_type}_load,
+  .load = (bool(*)(Reader*, struct GenericAllocatorInfo*, Node*))&${node_type}_load,
   .store = (void(*)(Writer*, Node*))&${node_type}_store,
 
   .init_pointers = (void(*)(IdToNode*, Node*))&${node_type}_init_pointers,
@@ -130,7 +134,7 @@ const NodeType ${node_type}_desc = {
   .id = 0,
 
   .attributes_count = $#attrs + 1,
-  .attributes = ${node_type}_desc_attributes;
+  .attributes = ${node_type}_desc_attributes
 };
 
 EOF

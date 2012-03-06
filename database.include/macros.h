@@ -10,25 +10,32 @@
 #define trNodeCreate(...) trNodeCreate_(H, __VA_ARGS__)
 #define trNodeDelete(...) trNodeDelete_(H, __VA_ARGS__)
 
-#define trNodeCast(Type, node) \
+#define nodeCast(Type, node) \
   static_if(types_equal(Type*, typeof(node)), \
     (node), \
     static_if(types_equal(Type, Node), \
       static_if(types_equal(typeof((node)->__ancestor), Node), \
         (Node*)(node), \
-        (void)0, \
+        (void)0 \
       ), \
       ({ \
         Node *__node = (node); \
-        (__node->type->name == Type##_desc->name) ? \
+        (__node->type->name == Type##_desc.name) ? \
           ((Type*)__node) : (Type*)0; \
       }) \
     ) \
   )
 
 
+// FIXME wrong !!!
+#define trMemoryRead(ptr) (*(ptr))
+#define trMemoryWrite(ptr, val) \
+  do { \
+    *(ptr) = (val); \
+  } while (0)
+
 #define trInternalRead_(H, node, AttrName) \
-  ((const (typeof((node)->AttrName.value)))((node)->AttrName.value)) 
+  ((const typeof((node)->AttrName.value))((node)->AttrName.value)) 
 
 
 #define trInternalWrite_(H, __node, AttrName, value_) \
