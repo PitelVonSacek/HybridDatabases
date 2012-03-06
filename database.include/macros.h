@@ -10,6 +10,9 @@
 #define trNodeCreate(...) trNodeCreate_(H, __VA_ARGS__)
 #define trNodeDelete(...) trNodeDelete_(H, __VA_ARGS__)
 
+#define trMemoryRead(...) trMemoryRead_(H, __VA_ARGS__)
+#define trMemoryWrite(...) trMemoryWrite_(H, __VA_ARGS__)
+
 #define nodeCast(Type, node) \
   static_if(types_equal(Type*, typeof(node)), \
     (node), \
@@ -27,12 +30,45 @@
   )
 
 
-// FIXME wrong !!!
-#define trMemoryRead(ptr) (*(ptr))
-#define trMemoryWrite(ptr, val) \
+#define trMemoryInternalRead_(H, ptr) (*(ptr))
+#define trMemoryInternalWrite_(H, ptr, val) \
   do { \
-    *(ptr) = (val); \
+    struct LogItem __log_item = { \
+      .ptr = (ptr),
+      .type = LI_TYPE_MEMORY_MODIFY,
+      .size = sizeof(*(ptr))
+    }; \
+    *(typeof(&*(ptr)))__log_item.data_old = *(typeof(ptr))__log_item.ptr; \
+    *(typeof(ptr))__log_item.ptr = (val); \
+    fstack_push(H->log, __log_item); \
   } while (0)
+
+#define trMemoryUncheckedRead_(H, obj, attr) \
+  ({ \
+    typeof(&*(obj)) __obj = (obj); \
+    bit_array_set(H->read_set.read_set, hash_ptr(__obj)); \
+    trMemoryInternalRead_(H, __obj->attr); \    
+  })
+
+#define trMemoryRead_(H, obj, attr) \
+  ({ \
+    typeof(&*(obj)) __obj = (obj); \
+    const uint64_t __hash = hash_ptr(__obj); \
+    bit_array_set(H->read_set.read_set, __hash); \
+    typeof(trMemoryInternalRead_(H, __obj->attr)) __ret = \
+      trMemoryInternalRead_(H, __obj->attr); \
+    if (!l_check(H->database->locks + __hash, H, H->start_time)) trFail; \
+    __ret; \
+  })
+
+#define trMemoryWrite_(H, obj, attr, value) \
+  do { \
+    typeof(&*(obj)) __obj = (obj); \
+    if (!l_lock(H->database->locks + hash_ptr(__obj), H, H->start_time)) \
+      trFail; \
+    trInternalWrite_(H, __obj->attr, value); \
+  } while (0)
+
 
 #define trInternalRead_(H, node, AttrName) \
   ((const typeof((node)->AttrName.value))((node)->AttrName.value)) 
