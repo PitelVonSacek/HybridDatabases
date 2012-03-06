@@ -28,7 +28,7 @@
 
 
 #define trInternalRead_(H, node, AttrName) \
-  ((const (typeof((node)->AttrName.value.value)))((node)->AttrName.value.value)) 
+  ((const (typeof((node)->AttrName.value)))((node)->AttrName.value)) 
 
 
 #define trInternalWrite_(H, __node, AttrName, value_) \
@@ -38,21 +38,21 @@
     struct LogItem __log_item = { \
       .ptr = __node, \
       .type = LI_TYPE_NODE_MODIFY, \
-      .size = sizeof(__node->AttrName.value.value), \
+      .size = attributeSize(__node->AttrName), \
       .index = StaticGetInt(__node->_internal_##AttrName##__index), \
-      .offset = utilGetOffset(__node, &__node->AttrName.value.value), \
-      .attr_type = StaticGetInt(__node->AttrName.type_index) \
+      .offset = utilGetOffset(__node, &__node->AttrName), \
+      .attr_type = attributeTypeId(__node->AttrName) \
     }; \
-    *(typeof(&__node->AttrName.value.value))&__log_item.data_old = \
-        __node->AttrName.value.value; \
-    if (StaticIsTrue((node)->AttrName.is_primitive)) { \
-      *(typeof(&__node->AttrName.value.value))&__log_item.data_new = __value; \
-      __node->AttrName.value.value = __value; \
+    *(typeof(&__node->AttrName.value))&__log_item.data_old = \
+        __node->AttrName.value; \
+    if (attributeIsPrimitive((node)->AttrName)) { \
+      *(typeof(&__node->AttrName.value))&__log_item.data_new = __value; \
+      __node->AttrName.value = __value; \
     } else { \
-      __ret = attribute_write(StaticGetInt(__node->AttrName.type_index), \
-        H, atomic_read(&H->database->time), &__node->AttrName.value, &__value); \
-      *(typeof(&__node->AttrName.value.value))&__log_item.data_new = \
-          __node->AttrName.value.value; \
+      __ret = attribute_write(attributeTypeId(__node->AttrName), \
+        H, &__node->AttrName, &__value); \
+      *(typeof(&__node->AttrName.value))&__log_item.data_new = \
+          __node->AttrName.value; \
     } \
     fstack_push(H->log, __log_item); \
     __ret; \

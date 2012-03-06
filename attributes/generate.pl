@@ -223,7 +223,7 @@ EOF
   for_each "sizeof(%s_t)";
   print "    default: assert(0);\n  }\n}\n\n";
 
-  print "#endif\n";
+  print "#endif\n\n";
 
 }
 
