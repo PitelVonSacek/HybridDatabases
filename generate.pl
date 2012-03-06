@@ -44,22 +44,20 @@ my $grammar = q{
 
   name: identifier   { $item[1] }
   type: identifier   { $item[1] }
-  c_type: /((struct|enum|union)[ ]+)?\\w+/   { $item[1] }
+  c_type: /((struct|enum|union)\\s+)?\\w+/   { $item[1] }
   identifier: /\\w+/ { $item[1] }
 };
 
 my $parser = new Parse::RecDescent($grammar) or die "Error\n";
-
 my @input = <>;
 my $input = join(" ", @input);
-
 $parser->root($input);
 
-print Dumper(\%node_types);
-print Dumper(\%database_types);
-print Dumper(\%index_types);
+# print Dumper(\%node_types);
+# print Dumper(\%database_types);
+# print Dumper(\%index_types);
 
-print Dumper(\@include);
+# print Dumper(\@include);
 
 print <<'EOF';
 /*

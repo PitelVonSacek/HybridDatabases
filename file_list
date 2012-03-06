@@ -7,10 +7,9 @@ lock.h
 node_allocator.c
 node_allocator.h
 utils.h
-attributes/attributes.h
-attributes/definitions.h
-attributes/preprocess.h
-attributes/preprocess_defs.h
+generate.pl
+attributes/defs.h
+attributes/generate.pl
 database.include/database.c
 database.include/database_create.c
 database.include/handler.c
@@ -22,7 +21,6 @@ database.include/threads.c
 database.include/transaction.c
 database.include/type_magic.h
 database.include/write.c
-database.types/attributes.h
 database.types/database.h
 database.types/enums.h
 database.types/handler.h
