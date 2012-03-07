@@ -52,6 +52,14 @@ static void write_dump_end(Writer *W) {
   wFinish(0);
 }
 
+static void write_node_store(Writer *W, Node *node) {
+  wArray {
+    wNumber(node->type->id);
+    wNumber(node->id);
+    node->type->store(W, node);
+  } wArrayEnd;
+}
+
 static void write_node_alloc(Writer *W, NodeType *type, uint64_t id) {
   wArray {
     wNumber(CBE_NODE_CREATED);

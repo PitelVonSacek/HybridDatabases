@@ -93,11 +93,15 @@ static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) 
 #ifdef LOCKLESS_COMMIT
   while (!atomic_cmpswp(atomic_read(&db->output.tail), 0, O)) ;
   atomic_write(&db->output.tail, &O->next);
+
+  pthread_cond_broadcast(db->output.io_signal);
 #else
   if (!has_lock) pthread_mutex_lock(&D->mutex);
   *(D->output.tail) = O;
   D->output.tail = &O->next;
-  if (!has_lock) pthread_mutex_lock(&D->mutex);
+  if (!has_lock) pthread_mutex_unlock(&D->mutex);
+
+  sem_post(D->output.counter);
 #endif
 }
 
@@ -162,12 +166,6 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 
     output_queue_push(db, O, 1);
   } pthread_mutex_unlock(&db->mutex);
-#endif
-
-#if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)
-  sem_post(db->output.counter);
-#else
-  pthread_cond_broadcast(db->output.io_signal);
 #endif
 
   _tr_unlock(H, end_time);

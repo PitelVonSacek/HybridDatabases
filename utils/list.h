@@ -23,6 +23,21 @@ static inline void list_swap(struct List *a, struct List *b) {
   struct List tmp = *a;
   *a = *b;
   *b = tmp;
+
+  // fix ptrs
+  if (a->next != b) {
+    a->next->prev = a;
+    a->prev->next = a;
+  } else {
+    a->next = a->prev = a;
+  }
+
+  if (b->next != a) {
+    b->next->prev = b;
+    b->prev->next = b;
+  } else {
+    b->next = b->prev = b;
+  }
 }
 
 static inline void list_join_items(struct List *a, struct List *b) {
@@ -56,6 +71,10 @@ static inline struct List *list_remove(struct List *item) {
 
 #define list_for_each(var, list) \
   for (struct List *var = list->next; var != list; var = var->next)
+
+#define list_for_each_reverse(var, list) \
+  for (struct List *var = list->prev; var != list; var = var->prev)
+
 
 #define list_for_each_item(var, list, Type, Member) \
   for (Type *var = listGetContainer(Type, Member, (list)->next); \

@@ -40,8 +40,17 @@ Database *database_create (const DatabaseType *type, const char *file, unsigned 
 }
 
 
-static int get_db_files(struct dirent*** files, const char* dir, const char* db_name) {
-  const size_t db_name_len = strlen(db_name);
+static int get_db_files(struct dirent*** files, const char* dir, const char* db_name_) {
+  static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+  static const char * db_name = 0;
+  static size_t db_name_len = 0;
+  
+  // ugly but without static db_name{,_len} 
+  // we need to create trampolines
+  pthread_mutex_lock(&mutex);
+
+  db_name = db_name_;
+  db_name_len = strlen(db_name);
 
   int db_files_sort(const struct dirent **a, const struct dirent **b) {
     for (int i = 0; db_name[i]; i++) if (db_name[i] != a[0]->d_name[i]) return 0;
@@ -67,7 +76,9 @@ static int get_db_files(struct dirent*** files, const char* dir, const char* db_
     }
   }
 
-  return scandir (dir, files, db_files_select, db_files_sort /*versionsort*/);
+  int ret = scandir (dir, files, db_files_select, db_files_sort /*versionsort*/);
+  pthread_mutex_unlock(&mutex);
+  return ret;
 }
 
 
@@ -76,7 +87,7 @@ static void fix_pointers(Database *D, IdToNode *nodes) {
     Node *node = var->value;
 
     node->type->init_pointers(nodes, node);
-    list_add_end(&D->node_list, &node->__list);
+  //  list_add_end(&D->node_list, &node->__list); no already done in read.c
   } ndictForEnd;
 }
 
@@ -301,7 +312,8 @@ static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
           case ST_STRING: // dump transaction
             rCheckNumber(0);
             Ensure(dump_on, "Dump transaction outside of dump");
-            if (first_file) Ensure(read_node_load(R, D, nodes));
+            if (first_file) while (rNext != ST_ARRAY_END) 
+              rArray { Ensure(read_node_load(R, D, nodes)); } rArrayEnd;
             else rSkip;
             break;
 

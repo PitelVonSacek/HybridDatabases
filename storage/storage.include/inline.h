@@ -65,7 +65,7 @@ static inline bool read_string(Reader *R, const void **ptr, size_t *length) {
 static inline bool read_number(Reader *R, uint64_t *value) {
   _reader_ensure_space(1);
   int l = *R->ptr++;
-  if (l < ST_STRING || l >= ST_STRING + 8) return false;
+  if (l < ST_STRING || l > ST_STRING + 8) return false;
   l -= ST_STRING;
   
   _reader_ensure_space(l);

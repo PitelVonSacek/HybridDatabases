@@ -80,13 +80,15 @@ static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
   size_t node_type_nr = rNumber;
   Ensure(node_type_nr < D->node_types_count);
   NodeType *node_type = &D->node_types[node_type_nr];
-  
+ 
   Node *node = node_alloc(node_type->allocator_info);
   list_add_end(&D->node_list, &node->__list);
 
   *(uint64_t*)&node->id = rNumber;
   *(NodeType**)&node->type = node_type;
 
+  assert(!ndict_get_node(nodes, node->id));
+  
   if (node->id > D->node_id_counter) D->node_id_counter = node->id;
 
   ndict_insert(nodes, node->id, node);

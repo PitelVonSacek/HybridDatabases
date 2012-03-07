@@ -60,6 +60,7 @@ static void write_file_footer(Writer *W, uint64_t magic);
 static void write_dump_begin(Writer *W);
 static void write_dump_end(Writer *W);
 
+static void write_node_store(Writer *W, Node* node);
 static void write_node_alloc(Writer *W, NodeType *type, uint64_t id);
 static void write_node_delete(Writer *W, uint64_t id);
 static void write_node_modify(Writer *W, uint64_t node_id, unsigned attr, 

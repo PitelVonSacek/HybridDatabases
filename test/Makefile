@@ -1,5 +1,5 @@
 CC=gcc -std=gnu99
-CFLAGS=-ggdb -O0
+CFLAGS+=-ggdb
 
 dictionary_test: dictionary_test.c ../utils/num_dictionary.h
 	${CC} ${CFLAGS} dictionary_test.c -o dictionary_test

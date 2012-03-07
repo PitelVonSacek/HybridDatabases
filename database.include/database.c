@@ -67,6 +67,7 @@ void database_close(Database *D) {
   while ((item = D->node_list.prev) != &D->node_list) {
     list_remove(item);
     Node *node = listGetContainer(Node, __list, item);
+
     node->type->destroy(D->tm_allocator, node, 0);
     node_free(node->type->allocator_info, node, 0);
   }

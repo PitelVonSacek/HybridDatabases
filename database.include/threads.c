@@ -51,7 +51,7 @@ static void dump_node(Database *D, Writer *W, Node *node) {
 
   wArray {
     wNumber(0);
-    node->type->store(W, node);
+    write_node_store(W, node);
   } wArrayEnd;
 
   wFinish(1);
