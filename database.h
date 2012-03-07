@@ -120,8 +120,8 @@ const int tr_attr_get_type(NodeType *type, int index);
 
 */
 
-#include "database.include/inline.h"
 #include "database.include/macros.h"
+#include "database.include/inline.h"
 // must be AFTER inline.h
 #include "database.include/type_magic.h"
 #include "attributes/attributes.inline.h"

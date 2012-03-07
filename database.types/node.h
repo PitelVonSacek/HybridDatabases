@@ -69,14 +69,5 @@ typedef struct Node_ {
   DummyAncestor __ancestor;
 } Node;
 
-static inline bool _node_ref_count_increase(Node *node) {
-  atomic_inc(&node->ref_count);
-}
-
-static inline bool _node_ref_count_decrease(Node *node) {
-  uint64_t old = atomic_fetch_and_add(&node->ref_count, -1);
-  assert(old > 0);
-}
-
 #endif
 

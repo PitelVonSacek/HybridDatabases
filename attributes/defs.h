@@ -217,7 +217,13 @@ AttributeType Pointer : union { Node *value; uint64_t id; } {
   Destroy @ attr->value = 0 @
 
   Write @
-    // FIXME
+    if (attr->value) {
+      if (!_node_ref_count_decrease(H, attr->value)) return false;
+    }
+    if (value) {
+      if (!_node_ref_count_increase(H, *value)) return false;
+    }
+    attr->value = *value;
   @
 
   Load @ attr->id = rNumber @  

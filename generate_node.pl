@@ -94,7 +94,8 @@ EOF
  
     for my $attr (@attrs) {
       print "  node->${$attr}[0].value = node->${$attr}[0].id ? \n" .
-            "    ndict_at(nodes, node->${$attr}[0].id) : 0;\n"
+            "    ndict_at(nodes, node->${$attr}[0].id) : 0;\n" .
+            "  if (node->${$attr}[0].value) node->${$attr}[0].value->ref_count++;\n"
         if ${$attr}[1] eq "Pointer";
     }
      

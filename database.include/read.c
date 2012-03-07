@@ -86,6 +86,7 @@ static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
 
   *(uint64_t*)&node->id = rNumber;
   *(NodeType**)&node->type = node_type;
+  node->ref_count = 0;
 
   assert(!ndict_get_node(nodes, node->id));
   

@@ -19,6 +19,8 @@ Node *tr_node_create (Handler *H, NodeType *type) {
   Node *node = node_alloc(type->allocator_info);
   *(NodeType**)&(node->type) = type;
   *(uint64_t*)&node->id = atomic_add_and_fetch(&H->database->node_id_counter, 1);
+  node->ref_count = 0;
+  list_init_head(&node->__list);
 
   // lock created node; really do i need to lock it???
 
