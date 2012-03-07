@@ -26,16 +26,17 @@ $Parse::RecDescent::skip = '(\s|;)*';
 my $grammar = q{
   { my @c = (); my %c = (); my $fnc; my $fnc_t; my $signature  }
 
-  root: (node_type | index_type | database_type | int | impl | comment)(s?) 
+  root: ( node_type | index_type | database_type | int | impl | 
+          comment | <error> )(s?) /^\\Z/ { 1 }
  
   comment: /#[^\\n]*/
   int: 'Interface' block { $::int = $::int . $item[2] }
   impl: 'Implementation' block { $::impl = $::impl . $item[2] }
 
   node_type: 'NodeType' name '{' node_attribute(s?) '}'
-    { $::node_types{$item{name}} = [ @c ]; @c = () }
+    { $::node_types{$item{name}} = $item[4] }
   node_attribute: 'Attribute' name ':' type
-    { push @c, [ $item{name}, $item{type} ] }
+    { [ $item{name}, $item{type} ] }
 
   database_type: 'DatabaseType' name '(' identifier ')' '{' (node|index)(s?) '}'
     { $c{version} = $item{identifier};
@@ -64,7 +65,7 @@ my $grammar = q{
 my $parser = new Parse::RecDescent($grammar) or die "Error\n";
 my @input = <STDIN>;
 my $input = join(" ", @input);
-$parser->root($input);
+$parser->root($input) or die "Parse error!";
 
 print STDERR Dumper(\%node_types);
 print STDERR Dumper(\%database_types);

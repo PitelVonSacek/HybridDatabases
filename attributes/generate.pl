@@ -15,7 +15,7 @@ our $impl = "";
 my $grammar = q{
   { my %c; }
 
-  root: ( int | impl | attr_type | comment )(s?)
+  root: ( int | impl | attr_type | comment | <error> )(s?) /^\\Z/ { 1 }
 
   comment: /#[^\\n]*/
   int: 'Interface' block { $::int = $::int . $item[2] }
@@ -45,7 +45,7 @@ my $grammar = q{
 my $parser = new Parse::RecDescent($grammar) or die "Error\n";
 my @input = <STDIN>;
 my $input = join(" ", @input);
-$parser->root($input);
+$parser->root($input) or die 'Parse error!';
 
 if ($interface) {
   print <<EOF;
