@@ -64,7 +64,7 @@ storage/storage.o:
 storage:
 	${MAKE} -C storage all
 
-all: database.o storage
+all: database.o storage node_allocator.o generic_allocator.o
 
 clean:
 	rm -f *.o

@@ -1,0 +1,13 @@
+TODO:
+-----
+
+- dodělat indexy -- přidat podporu do perlových skriptů
+
+- opravit generic_allocator
+
+- vylepšit node_allocator
+
+- překontrolovat atomic makra
+
+- zmenšit Node - potřebuje podporu alokátoru
+
