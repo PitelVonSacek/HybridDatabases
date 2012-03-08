@@ -20,7 +20,7 @@ bool process_element(Reader *R, Writer *W) {
  
       case ST_STRING: {
         size_t length = 0;
-        void *str = 0;
+        const void *str = 0;
         if (!read_string(R, &str, &length)) goto error;
         memcpy(write_string(W, length), str, length);
         break;
