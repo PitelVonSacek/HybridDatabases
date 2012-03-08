@@ -1,74 +1,73 @@
-
 CC=gcc -std=gnu99
 CFLAGS+= -ggdb
 
+headers= \
+  attributes/attributes.h \
+  attributes/attributes.inline.h \
+	\
+  database.include/macros.h \
+  database.include/inline.h \
+  database.include/type_magic.h \
+	\
+	database.types/database.h \
+	database.types/enums.h \
+	database.types/handler.h \
+	database.types/index.h \
+	database.types/node.h \
+  \
+	storage/storage.h \
+	storage/storage.include/inline.h \
+	\
+	utils/bitarray.h \
+	utils/fast_stack.h \
+	utils/inline_stack.h \
+	utils/list.h \
+	utils/num_dictionary.h \
+	utils/stack.h \
+	utils/static_if.h \
+	utils/type_magic.h \
+	\
+	atomic.h \
+	atomic_amd64.h \
+	generic_allocator.h \
+	node_allocator.h \
+	utils.h \
+	database.h
 
-database_headers= \
-	attributes.h \
-	attributes_inline.h \
-	attributes_macro_hell_output.h \
-	database.h \
-	database_inline.h \
-  database_interface.h \
-	database_macros.h \
-	database_node_macros.h \
-	database_types.h \
-	databasetype_generate.h \
-	nodetype_generate.h \
-	utils.h
+database_sources= \
+  database.include/database.c \
+  database.include/database_create.c \
+  database.include/handler.c \
+  database.include/node.c \
+  database.include/read.c \
+  database.include/threads.c \
+  database.include/transaction.c \
+  database.include/write.c \
+	database.c
 
-support_headers= \
-  exception.h \
-	dictionary.h \
-	dictionary_hash_functions.h \
-	stack.h \
-	storage.h \
-	storage_macros.h \
-	bitarray.h
+database.o: ${headers} ${database_sources}
+node_allocator.o: node_allocator.h node_allocator.c
+generic_allocator.o: generic_allocator.h generic_allocator.c
 
-storage=writer.o reader.o crc.o
+.PHONY: attributes/attributes.h attributes/attributes.inline.h \
+        storage/storage.o storage
 
-storage_test: storage_test.c ${storage}
-	${CC} ${CFLAGS} storage_test.c ${storage} -o storage_test
+attributes/attributes.h:
+	${MAKE} -C attributes attributes.h
 
-stack_test: stack_test.c stack.h
-	${CC} ${CFLAGS} stack_test.c -o stack_test
+attributes/attributes.inline.h: 
+	${MAKE} -C attributes attributes.inline.h
 
-dictionary_test: dictionary_test.c dictionary.c dictionary.h
-	${CC} ${CFLAGS} dictionary_test.c dictionary.c -o dictionary_test
+storage/storage.o:
+	${MAKE} -C storage storage.o
 
-exception_test: exception_test.c exception.h exception.c
-	${CC} ${CFLAGS} exception_test.c exception.c -o exception_test
+storage:
+	${MAKE} -C storage all
 
-exception.o: exception.c exception.h
-	${CC} ${CFLAGS} -c exception.c -o exception.o
-
-
-attributes_macro_hell_output.h:  attributes_macro_hell_code.h attributes_macro_hell_data.h
-	${CC} -E attributes_macro_hell_code.h -o attributes_macro_hell_output_proto.h
-	sed -re 's/ARGS/__VA_ARGS__/g;s/@/#/g' <attributes_macro_hell_output_proto.h >attributes_macro_hell_output.h
-
-atributy.o: atributy.c ${database_headers} ${support_headers}
-	${CC} ${CFLAFS} -c attributes.c -o attributes.o
-
-database.o: database.c database_create.include.c threads.include.c \
-            ${database_headers} ${support_headers}
-	${CC} ${CFLAGS} -c database.c -o database.o
-
-database_test: database_test.c database.o ${storage} exception.o \
-               ${database_headers} ${support_headers} attributes.o dictionary.o
-	${CC} ${CFLAGS} database_test.c database.o ${storage} exception.o \
-	                attributes.o dictionary.o -lpthread -o database_test
-
-show_file: show_file.c storage.h storage_macros.h ${storage} exception.h exception.o
-	${CC} ${CFLAGS} show_file.c ${storage} exception.o -o show_file
-
-rescuer: rescuer.c storage.h storage_macros.h ${storage} exception.h exception.o
-	${CC} ${CFLAGS} rescuer.c ${storage} exception.o -o rescuer
-
-
-${storage}: storage.h storage_macros.h writer.c reader.c crc.c utils.h
+all: database.o storage
 
 clean:
-	rm *.o storage_test
+	rm -f *.o
+	make -C attributes clean
+	make -C storage clean
 
