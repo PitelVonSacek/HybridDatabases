@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "atomic.h"
+#include "../utils/atomic.h"
 
 // extremely stupid but correct implementation
 

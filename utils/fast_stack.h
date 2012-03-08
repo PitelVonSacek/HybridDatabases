@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#include "../node_allocator.h"
+#include "../allocators/node_allocator.h"
 #include "list.h"
 
 #define FastStack(Type, BlockSize) \

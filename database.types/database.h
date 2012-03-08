@@ -4,13 +4,13 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-#include "../utils.h"
+#include "../utils/utils.h"
 #include "../utils/stack.h"
 
 #include "../utils/type_magic.h"
 
-#include "../node_allocator.h"
-#include "../generic_allocator.h"
+#include "../allocators/node_allocator.h"
+#include "../allocators/generic_allocator.h"
 
 #include "enums.h"
 #include "attributes.h"

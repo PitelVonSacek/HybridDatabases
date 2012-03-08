@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "atomic.h"
+#include "../utils/atomic.h"
 
 struct FreeNode {
   struct FreeNode *next;

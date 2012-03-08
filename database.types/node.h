@@ -3,8 +3,8 @@
 
 #include "../storage/storage.h"
 
-#include "../node_allocator.h"
-#include "../generic_allocator.h"
+#include "../allocators/node_allocator.h"
+#include "../allocators/generic_allocator.h"
 
 #include "../utils/list.h"
 #include "../utils/num_dictionary.h"

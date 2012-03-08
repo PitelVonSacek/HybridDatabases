@@ -2,9 +2,6 @@ CC=gcc -std=gnu99
 CFLAGS+= -ggdb
 
 headers= \
-  attributes/attributes.h \
-  attributes/attributes.inline.h \
-	\
   database.include/macros.h \
   database.include/inline.h \
   database.include/type_magic.h \
@@ -14,10 +11,9 @@ headers= \
 	database.types/handler.h \
 	database.types/index.h \
 	database.types/node.h \
-  \
-	storage/storage.h \
-	storage/storage.include/inline.h \
 	\
+	utils/atomic.h \
+	utils/atomic_amd64.h \
 	utils/bitarray.h \
 	utils/fast_stack.h \
 	utils/inline_stack.h \
@@ -26,12 +22,11 @@ headers= \
 	utils/stack.h \
 	utils/static_if.h \
 	utils/type_magic.h \
+	utils/utils.h \
 	\
-	atomic.h \
-	atomic_amd64.h \
-	generic_allocator.h \
-	node_allocator.h \
-	utils.h \
+	allocators/generic_allocator.h \
+	allocators/node_allocator.h \
+	\
 	database.h
 
 database_sources= \
@@ -45,29 +40,24 @@ database_sources= \
   database.include/write.c \
 	database.c
 
-database.o: ${headers} ${database_sources}
-node_allocator.o: node_allocator.h node_allocator.c
-generic_allocator.o: generic_allocator.h generic_allocator.c
+database.o: ${headers} ${database_sources} allocators attributes storage
 
-.PHONY: attributes/attributes.h attributes/attributes.inline.h \
-        storage/storage.o storage
+.PHONY: attributes storage allocators
 
-attributes/attributes.h:
-	${MAKE} -C attributes attributes.h
+allocators:
+	${MAKE} -C allocators all
 
-attributes/attributes.inline.h: 
-	${MAKE} -C attributes attributes.inline.h
-
-storage/storage.o:
-	${MAKE} -C storage storage.o
+attributes:
+	${MAKE} -C attributes all
 
 storage:
 	${MAKE} -C storage all
 
-all: database.o storage node_allocator.o generic_allocator.o
+all: database.o storage allocators
 
 clean:
 	rm -f *.o
 	make -C attributes clean
+	make -C allocators clean
 	make -C storage clean
 

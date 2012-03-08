@@ -1,5 +1,3 @@
-# comment here
-
 Interface @
 
 #include <stdint.h>
@@ -35,7 +33,7 @@ struct RawString {
 #define MAX_ATTR_SIZE sizeof(union UniversalAttribute)
 
 #include "../database.types/node.h"
-#include "../generic_allocator.h"
+#include "../allocators/generic_allocator.h"
 #include "../storage/storage.h"
 
 struct Handler_;
