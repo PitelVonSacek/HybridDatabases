@@ -25,7 +25,7 @@ Handler *db_handler_init(Database *D, Handler *H) {
   fstack_init(H->transactions, &transaction_allocator);
   fstack_init(H->log, &log_allocator);
 
-  memset(&H->read_set, 0, sizeof(H->read_set));
+  bit_array_init(&H->read_set);
 
   pthread_mutex_lock(D->handlers_mutex);
   stack_push(D->handlers, H);
@@ -46,6 +46,8 @@ void db_handler_destroy(Handler *H) {
     }
   } pthread_mutex_unlock(H->database->handlers_mutex);
 
+  bit_array_destroy(&H->read_set);
+  
   sem_destroy(H->write_finished);
 
   fstack_destroy(H->transactions);

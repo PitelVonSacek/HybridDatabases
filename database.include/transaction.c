@@ -21,7 +21,7 @@ void _tr_retry_wait(int loop) {
 static void handler_cleanup(Handler *H) {
   atomic_write(&H->start_time, 0);
 
-  memset(&H->read_set, 0, sizeof(H->read_set));
+  bit_array_erase(&H->read_set);
 
   fstack_erase(H->transactions);
  
