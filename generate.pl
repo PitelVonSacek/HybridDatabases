@@ -5,15 +5,18 @@ use warnings;
 
 use Parse::RecDescent;
 use Data::Dumper;
+use File::Basename;
 
-require 'generate_node.pl';
-require 'generate_index.pl';
-require 'generate_database.pl';
+my ($_, $basedir) = fileparse($0);
+require $basedir . 'generate_node.pl';
+require $basedir . 'generate_index.pl';
+require $basedir . 'generate_database.pl';
 
 
 my $name = $ARGV[0];
 my $interface = $ARGV[1];
 my $implementation = $ARGV[2];
+my $silent = $ARGV[3];
 
 our %node_types = ();
 our %database_types = ();
@@ -67,13 +70,14 @@ my @input = <STDIN>;
 my $input = join(" ", @input);
 $parser->root($input) or die "Parse error!";
 
-print STDERR Dumper(\%node_types);
-print STDERR Dumper(\%database_types);
-print STDERR Dumper(\%index_types);
+if (not $silent) {
+  print STDERR Dumper(\%node_types);
+  print STDERR Dumper(\%database_types);
+  print STDERR Dumper(\%index_types);
 
-print STDERR $int;
-print STDERR $impl;
-
+  print STDERR $int;
+  print STDERR $impl;
+}
 
 
 if ($interface) {

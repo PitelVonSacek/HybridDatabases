@@ -15,5 +15,5 @@ all: storage.o rescuer show_file
 
 .PHONY: clean
 clean:
-	rm -f *.o
+	rm -f *.o rescuer show_file
 
