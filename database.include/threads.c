@@ -83,6 +83,11 @@ static void *service_thread(Database *D) {
         if (job->lock) sem_post(job->lock);
         break;
 
+      case DB_SERVICE__SYNC_ME:
+        fflush(D->output.file);
+        if (job->lock) sem_post(job->lock);
+        break;
+
       case DB_SERVICE__CREATE_NEW_FILE: {
         if (dump_running) {
           dbDebug(O, "Cannot create new file because dump is running");

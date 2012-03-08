@@ -119,6 +119,7 @@ typedef struct Database_ {
       enum {
         DB_SERVICE__COMMIT = 1,
         DB_SERVICE__SYNC_COMMIT,
+        DB_SERVICE__SYNC_ME,
         DB_SERVICE__START_DUMP,
         DB_SERVICE__CREATE_NEW_FILE
       } type;

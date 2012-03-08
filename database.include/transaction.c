@@ -109,14 +109,21 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   Database * const db = H->database;
   uint64_t end_time;
 
+  if (commit_type == CT_ASYNC) commit_type = H->commit_type;
+  
   if (fstack_empty(H->log)) {
     // read-only transaction
     handler_cleanup(H);
 
+    if (commit_type == CT_SYNC) {
+      sendServiceMsg(H->database, { 
+        .type = DB_SERVICE__SYNC_ME,
+        .lock = H->write_finished
+      });
+    }
+
     return true;
   }
-  
-  if (commit_type == CT_ASYNC) commit_type = H->commit_type;
 
   struct OutputList *O = node_alloc(db->output.allocator);
   *O = (struct OutputList){
