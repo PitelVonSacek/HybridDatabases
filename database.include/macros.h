@@ -48,7 +48,7 @@
 #define trMemoryUncheckedRead_(H, obj, attr) \
   ({ \
     typeof(&*(obj)) __obj = (obj); \
-    bit_array_set(typeUncast(H)->read_set.read_set, hash_ptr(__obj)); \
+    bit_array_set(&typeUncast(H)->read_set, hash_ptr(__obj)); \
     trMemoryInternalRead_(H, &(__obj attr)); \
   })
 
@@ -56,7 +56,7 @@
   ({ \
     typeof(&*(obj)) __obj = (obj); \
     const uint64_t __hash = hash_ptr(__obj); \
-    bit_array_set(H->read_set.read_set, __hash); \
+    bit_array_set(&typeUncast(H)->read_set, __hash); \
     typeof(trMemoryInternalRead_(H, &(__obj attr))) __ret = \
       trMemoryInternalRead_(H, &(__obj attr)); \
     if (!l_check(H->database->locks + __hash, H, typeUncast(H)->start_time)) trFail; \
@@ -106,7 +106,7 @@
 #define trUncheckedRead_(H, node, AttrName) \
   ({ \
     typeof(node) __node = (node); \
-    bit_array_set(typeUncast(H)->read_set.read_set, hash_ptr(__node)); \
+    bit_array_set(&typeUncast(H)->read_set, hash_ptr(__node)); \
     trInternalRead_(H, __node, AttrName); \
   })
 
@@ -114,7 +114,7 @@
   ({ \
     typeof(node) __node = (node); \
     const uint64_t __hash = hash_ptr(__node); \
-    bit_array_set(typeUncast(H)->read_set.read_set, __hash); \
+    bit_array_set(&typeUncast(H)->read_set, __hash); \
     typeof(trInternalRead_(H, __node, AttrName)) __ret = \
       trInternalRead_(H, __node, AttrName); \
     if (!l_check(H->database->locks + __hash, H, typeUncast(H)->start_time)) trFail; \

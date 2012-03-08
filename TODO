@@ -1,6 +1,8 @@
 TODO:
 -----
 
+- implementovat DB_SERVICE__COLLECT_GARBAGE
+
 - dodělat indexy -- přidat podporu do perlových skriptů
 
 - opravit generic_allocator

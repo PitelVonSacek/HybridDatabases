@@ -66,7 +66,7 @@ bool tr_node_read (Handler *H, Node *node, int attr, void *buffer) {
 
   struct NodeAttribute a = node->type->attributes[attr];
 
-  bit_array_set(H->read_set.read_set, hash_ptr(node));
+  bit_array_set(&H->read_set, hash_ptr(node));
 
   memcpy(buffer, utilOffset(node, a.offset), attribute_size(a.type));
 

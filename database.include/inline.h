@@ -68,15 +68,14 @@ static inline bool tr_commit(Handler *H, enum CommitType commit_type) {
 }
 
 static inline bool tr_validate(Handler *H) {
-  bool valid = true;
   Lock *locks = H->database->locks;
   const uint64_t start_time = H->start_time;
 
-  for (unsigned i = 0; i < DB_LOCKS; i++)
-    if (bit_array_isset(H->read_set.read_set, i) && !l_check(locks + i, H, start_time))
-      valid = false;
+  bitArrayFor(i, &H->read_set) {
+    if (!l_check(locks + i, H, start_time)) return false;
+  } bitArrayForEnd;
 
-  return valid;
+  return true;
 }
 
 static inline bool tr_node_update_indexies(Handler *H, Node *node) {

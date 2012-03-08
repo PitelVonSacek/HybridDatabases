@@ -14,7 +14,7 @@ headers= \
 	\
 	utils/atomic.h \
 	utils/atomic_amd64.h \
-	utils/bitarray.h \
+	utils/bit_array.h \
 	utils/fast_stack.h \
 	utils/inline_stack.h \
 	utils/list.h \

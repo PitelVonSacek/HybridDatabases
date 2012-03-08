@@ -9,7 +9,7 @@
 
 #include "../utils/fast_stack.h"
 #include "../utils/inline_stack.h"
-#include "../utils/bitarray.h"
+#include "../utils/bit_array.h"
 
 #include "../utils/type_magic.h"
 
@@ -26,13 +26,10 @@ struct LogItem {
   char data_new[MAX_ATTR_SIZE];
 };
 
-struct ReadSet {
-  // wrapped in structure so it can be easily copied and assigned
-  BIT_ARRAY(read_set, DB_LOCKS);
-};
+typedef BitArray(DB_LOCKS) ReadSet;
 
 struct Transaction {
-  struct ReadSet read_set;
+  ReadSet read_set;
   struct LogItem *pos;
   unsigned acquired_locks;
   enum CommitType commit_type;
@@ -46,7 +43,7 @@ typedef struct Handler_ {
   struct Database_ *database;
 
   uint64_t start_time;
-  struct ReadSet read_set;
+  ReadSet read_set;
 
   FastStack(struct Transaction, 10) transactions[1];
 
