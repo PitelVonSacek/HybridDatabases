@@ -163,7 +163,7 @@
 void _tr_retry_wait(int loop);
 
 #define trBegin trBegin_(H)
-#define trCommit(type, restart_command) trCommit_(H, type, restart_command)
+#define trCommit(type, ...) trCommit_(H, type, __VA_ARGS__)
 #define trAbort trAbort_(H)
 #define trRestart trRestart_(H)
 
@@ -177,7 +177,7 @@ void _tr_retry_wait(int loop);
       tr_begin(H); \
       do {
 
-#define trCommit_(H, type, restart_command) \
+#define trCommit_(H, type, ...) \
       } while (0); \
       if (!tr_commit(H, type)) { \
         if (0) { \
@@ -189,7 +189,10 @@ void _tr_retry_wait(int loop);
         goto _tr_retry_label; \
       } \
     } while (0); \
-    if (0) { _tr_restart_label: restart_command; } \
+    if (0) { _tr_restart_label: \
+      do { __VA_ARGS__; } while (0); \
+      assert(0); \
+    } \
     _tr_success_label: ; \
   } while (0)
 
