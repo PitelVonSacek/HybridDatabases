@@ -28,6 +28,11 @@ static inline void *generic_alloc(struct GenericAllocatorInfo *info, size_t size
 
 static inline void generic_free(struct GenericAllocatorInfo *info, void *ptr_, 
                                 uint64_t end_time) {
+#ifdef ALLOCATOR_DEBUG
+  free(ptr_);
+  return;
+#endif
+
   if (!ptr_) return;
 
   struct GenericAllocatorFreeItem *ptr = ptr_;
