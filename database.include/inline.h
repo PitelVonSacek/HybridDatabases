@@ -51,7 +51,10 @@ static inline void tr_begin(Handler *H) {
 
 static inline void tr_abort(Handler *H) {
   if (fstack_empty(H->transactions)) _tr_abort_main(H);
-  else _tr_handler_rollback(H, &stack_pop(H->transactions));
+  else {  
+    _tr_handler_rollback(H, &fstack_top(H->transactions));
+    fstack_pop(H->transactions);
+  }
 }
 
 static inline bool tr_commit(Handler *H, enum CommitType commit_type) {
