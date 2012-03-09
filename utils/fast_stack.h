@@ -6,6 +6,8 @@
 #include "../allocators/node_allocator.h"
 #include "list.h"
 
+typedef struct {} IsFastStack;
+
 #define FastStack(Type, BlockSize) \
   struct { \
     struct NodeAllocatorInfo *allocator; \
@@ -17,11 +19,13 @@
       struct List head; \
       Type data[BlockSize]; \
     } __block[0]; \
+    IsFastStack is_fast_stack; \
   }
 
 #define fstack_init(stack, alloc) \
   ({ \
     typeof(&*(stack)) __stack = (stack); \
+    STATIC_ASSERT(types_equal(typeof(__stack->is_fast_stack), IsFastStack)); \
     *__stack = (typeof(*__stack)){ \
       .allocator = alloc, \
       .block_count = 0, \
@@ -37,6 +41,7 @@
 #define fstack_destroy(stack) \
   ({ \
     typeof(&*(stack)) __stack_ = (stack); \
+    STATIC_ASSERT(types_equal(typeof(__stack_->is_fast_stack), IsFastStack)); \
     while (!list_empty(&__stack_->blocks)) \
       node_free(__stack_->allocator, list_remove(__stack_->blocks.next), 0); \
     fstack_init(__stack_, __stack_->allocator); \
@@ -45,11 +50,16 @@
 #define fstack_block_size(stack) \
   (sizeof((stack)->__block->data)/sizeof((stack)->__block->data[0]))
 
-#define fstack_empty(stack) (!((stack)->block_count))
+#define fstack_empty(stack) \
+  ({ \
+    STATIC_ASSERT(types_equal(typeof((stack)->is_fast_stack), IsFastStack)); \
+    (!((stack)->block_count)); \
+  })
 
 #define fstack_size(stack) \
   ({ \
     typeof(&*(stack)) __stack = (stack); \
+    STATIC_ASSERT(types_equal(typeof(__stack->is_fast_stack), IsFastStack)); \
     (__stack->block_count - 1) * fstack_block_size(__stack) + \
       (__stack->ptr - __stack->begin); \
   })
@@ -60,17 +70,23 @@
 #define fstack_push(stack, item) \
   ({ \
     typeof(&*(stack)) __stack = (stack); \
+    STATIC_ASSERT(types_equal(typeof(__stack->is_fast_stack), IsFastStack)); \
     if (__stack->ptr == __stack->end) \
       _fstack_expand((GenericFastStack*)__stack, _fstack_offsets); \
     *__stack->ptr++ = (item); \
     (void)0; \
   })
 
-#define fstack_top(stack) ((stack)->ptr[-1])
+#define fstack_top(stack) \
+  (*({ \
+    STATIC_ASSERT(types_equal(typeof((stack)->is_fast_stack), IsFastStack)); \
+    (stack)->ptr - 1; \
+  }))
 
 #define fstack_pop(stack) \
   ({ \
     typeof(&*(stack)) __stack = (stack); \
+    STATIC_ASSERT(types_equal(typeof(__stack->is_fast_stack), IsFastStack)); \
     if (--__stack->ptr == __stack->begin) \
       _fstack_shrink((GenericFastStack*)__stack, _fstack_offsets); \
     (void)0; \
@@ -83,6 +99,8 @@
     typeof(&*(s1)) __stack1 = (s1); \
     typeof(&*(s2)) __stack2 = (s2); \
     typeof(*(s1)) __stack = *__stack1; \
+    STATIC_ASSERT(types_equal(typeof(__stack1->is_fast_stack), IsFastStack)); \
+    STATIC_ASSERT(types_equal(typeof(__stack2->is_fast_stack), IsFastStack)); \
     *__stack1 = *__stack2; \
     *__stack2 = __stack; \
     if (__stack1->blocks.next != &__stack2->blocks) { \
