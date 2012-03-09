@@ -24,6 +24,11 @@ void database_wait_for_dump(Database*);
 
 enum DbError database_create_new_file(Database*);
 
+void database_collect_garbage(Database*);
+
+void database_pause_service_thread(Database*);
+void database_resume_service_thread(Database*);
+
 /*
   Macros:
  

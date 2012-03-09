@@ -1,5 +1,3 @@
-#ifdef SINGLE_SERVICE_THREAD
-
 static void process_transaction_log(TransactionLog *log, Database *D, 
                                     Writer *W, size_t end_time, Node **dump_ptr) {
   wArray {
@@ -59,6 +57,41 @@ static void dump_node(Database *D, Writer *W, Node *node) {
   l_unlock(lock, 0, version);
 }
 
+// true means dump finished
+static bool do_dump(Database *D, Writer *W, Node **dump_ptr) {
+  do {
+    for (int i = 0; i < DUMP__NODES_PER_TRANSACTION; i++) {
+      if (&dump_ptr[0]->__list == &D->node_list)  // dump finished
+        goto dump_finish;
+
+      dump_node(D, W, dump_ptr[0]);
+      fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
+      writer_discart(W);
+
+      dump_ptr[0] = listGetContainer(Node, __list, dump_ptr[0]->__list.next);
+    }
+
+    // FIXME dirty, trywait() can fail for other reason than
+    // semaphore having value 0 !!!
+  } while (sem_trywait(D->output.counter));
+
+  return false;
+
+  dump_finish:
+  write_dump_end(W);
+  fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
+  writer_discart(W);
+  fflush(D->output.file);
+  
+  dbDebug(DB_INFO, "Dump finished");
+  pthread_mutex_unlock(D->output.dump_running);
+  return true;
+}
+
+static void collect_garbage(Database *D) {
+  dbDebug(W, "Collecting garbage not implemented yet");
+}
+
 static void *service_thread(Database *D) {
   struct OutputList *job, *job_next;
   Writer W[1];
@@ -88,73 +121,29 @@ static void *service_thread(Database *D) {
         if (job->lock) sem_post(job->lock);
         break;
 
-      case DB_SERVICE__CREATE_NEW_FILE: {
-        if (dump_running) {
-          dbDebug(O, "Cannot create new file because dump is running");
-          *job->answer = DB_ERROR__DUMP_RUNNING;
-        } else if (!_database_new_file(D, false, _generate_magic_nr())) {
-          dbDebug(O, "Cannot create new file");
-          *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
-        } else {
-          *job->answer = DB_SUCCESS;
-          dbDebug(I, "New file created");
-        }
+      case DB_SERVICE__CREATE_NEW_FILE: goto new_file;
+      case DB_SERVICE__START_DUMP: goto dump_begin;  
 
-        sem_post(job->lock);
+      case DB_SERVICE__COLLECT_GARBAGE:
+        collect_garbage(D);
         break;
-      }
 
-      case DB_SERVICE__START_DUMP: {
-        if (dump_running) {
-          dbDebug(DB_OOPS, "Cannot start dump, dump already running");
-          *job->answer = DB_ERROR__DUMP_RUNNING;
-        } else if (!_database_new_file(D, true, _generate_magic_nr())) {
-          dbDebug(DB_OOPS, "Dump failed, cannot create new file");
-          *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
-        } else {
-          *job->answer = DB_SUCCESS;
-          
-          pthread_mutex_lock(D->output.dump_running);
-          dbDebug(DB_INFO, "Dump started");
-          dump_running = true;
-          dump_ptr = listGetContainer(Node, __list, D->node_list.next);
-        }
-
-        sem_post(job->lock);
-      }  
+      case DB_SERVICE__PAUSE:
+        dbDebug(I, "Service thread paused");
+        sem_wait(job->lock);
+        dbDebug(I, "Service thread resumed");
+        break;
     }
 
+    resume:
     if (dump_running) {
-      do {
-        for (int i = 0; i < DUMP__NODES_PER_TRANSACTION; i++) {
-          if (&dump_ptr->__list == &D->node_list) { // dump finished
-            dump_running = false;
-            
-            write_dump_end(W);
-            fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
-            writer_discart(W);
-            fflush(D->output.file);
-            
-            dbDebug(DB_INFO, "Dump finished");
-            pthread_mutex_unlock(D->output.dump_running);
-            goto dump_finished;
-          }
-
-          dump_node(D, W, dump_ptr);
-          fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
-          writer_discart(W);
-
-          dump_ptr = listGetContainer(Node, __list, dump_ptr->__list.next);
-        }
-
-        // FIXME dirty, trywait() can fail for other reason than
-        // semaphore having value 0 !!!
-      } while (sem_trywait(D->output.counter));
-    } else {
-      dump_finished:
-      sem_wait(D->output.counter);
-    }
-      
+      if (do_dump(D, W, &dump_ptr)) dump_running = false;
+      else goto next;
+    } 
+    
+    sem_wait(D->output.counter);
+    
+    next: 
     job_next = job->next;
     node_free(D->output.allocator, job, 0);
   }
@@ -162,26 +151,7 @@ static void *service_thread(Database *D) {
   if (dump_running) {
     dbDebug(DB_WARNING, "Exit requests while doing dump");
 
-    while (1) {
-      if (&dump_ptr->__list == &D->node_list) { // dump finished
-        dump_running = false;
-        
-        write_dump_end(W);
-        fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
-        writer_discart(W);
-        fflush(D->output.file);
-        
-        dbDebug(DB_INFO, "Dump finished");
-        pthread_mutex_unlock(D->output.dump_running);
-        break;
-      }
-
-      dump_node(D, W, dump_ptr);
-      fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
-      writer_discart(W);
-
-      dump_ptr = listGetContainer(Node, __list, dump_ptr->__list.next);
-    }
+    while (!do_dump(D, W, &dump_ptr)) ;
   }
 
   writer_destroy(W);
@@ -189,180 +159,39 @@ static void *service_thread(Database *D) {
   dbDebug(DB_INFO, "Service thread stopping");
 
   return 0;
-}
 
-#else
-
-
-static void *io_thread(Database *D) {
-  struct OutputList *job;
-  Writer W[1];
-
-  dbDebug(DB_INFO, "IO thread on");
-  writer_init(W);
-
-  utilSignalWaitUntil(D->output.io_signal, atomic_read(&D->output.head));
- 
-  for (job = D->output.head; 1; job = job->next) {
-    if (atomic_read(&job->flags) & DB_OUTPUT__SHUTDOWN) break;
-
-#ifdef LOCKLESS_COMMIT
-    while (!(atomic_read(&job->flags) & DB_OUTPUT__READY)) ;
-
-    if (job->flags & DB_OUTPUT__CANCELED) goto end;
-#endif    
-
-    if (job->flags & DB_OUTPUT__DUMP_SIGNAL) {
-      // FIXME sync with new file creation
-      atomic_add(&D->dump.flags, DB_DUMP__IO_THREAD_WAITS);
-      util_signal_signal(D->dump.singal);
-
-      utilSignalWaitUntil(D->dump.signal, 
-          atomic_read(&D->dump.flags) & DB_DUMP__RESUME_IO_THREAD);
-
-      atomic_add(&D->dump.flags, -DB_DUMP__RESUME_IO_THREAD);
-
-      goto end;
-    }
-
-    if (job->flags & DB_OUTPUT__RAW) 
-      fwrite(job->data, 1, job->size, D->output.file);
-    else {
-      write_log(W, job->log);
-      fwrite(write_ptr(W), 1, writer_length(W), D->output.file);
-      writer_discart(W);
-    }
-
-    if (job->flags & DB_OUTPUT__SYNC_COMMIT) fflush(D->output.file);
-    if (job->lock) sem_post(job->lock);
-
-    end:
-    atomic_inc(&D->output.garbage_counter);
-    util_signal_signal(D->output.gc_signal);
-
-    utilSignalWaitUntil(D->output.io_signal, atomic_read(&job->next));
+  new_file:
+  if (dump_running) {
+    dbDebug(O, "Cannot create new file because dump is running");
+    *job->answer = DB_ERROR__DUMP_RUNNING;
+  } else if (!_database_new_file(D, false, _generate_magic_nr())) {
+    dbDebug(O, "Cannot create new file");
+    *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
+  } else {
+    *job->answer = DB_SUCCESS;
+    dbDebug(I, "New file created");
   }
 
-  // pass the message to gc thread
-  atomic_inc(&D->output.garbage_counter);
-  util_signal_signal(D->output.gc_signal);
+  sem_post(job->lock);
+  goto resume;
 
-  write_destroy(W);
-  dbDebug(DB_INFO, "IO thread off");
-  return 0;
-}
-
-static void gc_destroy_tr_log(TransactionLog *log, Database *D, size_t end_time) {
-  fstack_for_each(item, log) switch (item->type) {
-    case LI_TYPE_MEMORY_DELETE:
-      generic_free(D->tm_allocator, item->ptr, end_time);
-      break;
-    case LI_TYPE_NODE_DELETE: {
-      Node *node = item->ptr;
-      list_remove(node->__list);
-      node->type->destroy(node);
-      node_free(node->type->allocator_info, node, end_time);
-      break;
-    }
-
-    case LI_TYPE_NODE_ALLOC: {
-      Node *node = item->ptr;
-      list_add_end(&D->node_list, &node->__list);
-    }  
-  }
-
-  fstack_destroy(log);
-}
-
-static void *gc_thread(Database *D) {
-  pthread_mutex_t mutex;
-  struct OutputList *job;
-
-  TrDebug("GC thread on");
-  
-  pthread_mutex_init(&mutex, 0);
-
-  gc_thread_wait(D, &mutex);
-
-  while (job = D->output.head) {
-    atomic_dec(&D->output.garbage_counter);
-#ifdef LOCKLESS_COMMIT
-    if (job->output.flags & DB_OUTPUT_CANCELED) goto end;
-#endif
-
-    tr_free(job->output.data);
-
-    stack_destroy(job->garbage.memory);
-
-    while (!stack_empty(job->garbage.nodes)) {
-      Node *node = stack_pop(job->garbage.nodes);
-      
-      list_remove(node->__list);
-      
-      node->type->destroy(D, node, job->end_time);
-      node_free(node->type->allocator_info, node);
-    }
-
-    stack_destroy(job->garbage.nodes);
-
-    list_join_lists(&D->node_list, &job->new_nodes);
-
-#ifdef LOCKLESS_COMMIT
-    end:
-#endif
-
-    gc_thread_wait(D, &mutex);
-
-    D->output.head = job->next;
-    node_free(D->output.allocator, job);
-  }
-
-  pthread_mutex_destroy(&mutex);
-
-  TrDebug("GC thread off");
-  return 0;
-}
-
-static void gc_thread_wait(Database *D, pthread_mutex_t *mutex) {
-  do {
-    unsigned flags = atomic_read(&D->dump_flags);
-
-    if (flags & DB_DUMP__DO_GC) {
-      atomic_add(&D->dump.flags, DB_DUMP__GC_RUNNING - DB_DUMP__DO_GC);
-      do_gc(D);
-    }
-
-    if (flags & DB_DUMP__DO_DUMP) {
-      atomic_add(&D->dump.flags, DB_DUMP__DUMP_RUNNING - DB_DUMP__DO_DUMP);
-      do_dump(D);
-    }
-
-    if (atomic_read(&D->output.garbage_counter) > 0) return;
+  dump_begin:
+  if (dump_running) {
+    dbDebug(DB_OOPS, "Cannot start dump, dump already running");
+    *job->answer = DB_ERROR__DUMP_RUNNING;
+  } else if (!_database_new_file(D, true, _generate_magic_nr())) {
+    dbDebug(DB_OOPS, "Dump failed, cannot create new file");
+    *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
+  } else {
+    *job->answer = DB_SUCCESS;
     
-    pthread_mutex_lock(mutex);
-    pthread_cond_wait(D->output.garbage_signal, mutex);
-    pthread_mutex_unlock(mutex);
-  } while (1);
+    pthread_mutex_lock(D->output.dump_running);
+    dbDebug(DB_INFO, "Dump started");
+    dump_running = true;
+    dump_ptr = listGetContainer(Node, __list, D->node_list.next);
+  }
+
+  sem_post(job->lock);
+  goto resume;
 }
-
-
-static uint64_t update_safe_time(Database *D) {
-  uint64_t safe_time = ~(uint64_t)0;
-
-  Handler **ptr, **end;
-
-  pthread_mutex_lock(db->handlers_mutex); {
-    ptr = D->handlers->begin;
-    end = D->handler->ptr;
-
-    for (; ptr < end; ptr++) {
-      uint64_t time = atomic_read(ptr[0]->start_time);
-      if (time && time < safe_time) safe_time = time;
-    }
-  } pthread_mutex_unlock(db->handlers_mutex);
-
-  return safe_time;
-}
-
-#endif
 

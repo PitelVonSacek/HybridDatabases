@@ -98,14 +98,9 @@ typedef struct Database_ {
   pthread_mutex_t mutex;
 #endif
 
-#ifdef SINGLE_SERVICE_THREAD
   pthread_t service_thread;
-#else
-  pthread_t io_thread;
-  pthread_t gc_thread;
-#endif
+  sem_t service_thread_pause;
 
-#if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)
   struct {
     struct NodeAllocatorInfo allocator[1];
     FILE *file;
@@ -121,7 +116,9 @@ typedef struct Database_ {
         DB_SERVICE__SYNC_COMMIT,
         DB_SERVICE__SYNC_ME,
         DB_SERVICE__START_DUMP,
-        DB_SERVICE__CREATE_NEW_FILE
+        DB_SERVICE__CREATE_NEW_FILE,
+        DB_SERVICE__COLLECT_GARBAGE,
+        DB_SERVICE__PAUSE
       } type;
 
       uint64_t end_time;
@@ -130,57 +127,6 @@ typedef struct Database_ {
       uint64_t *answer;
     } *head, **tail;
   } output;
-#else
-  struct {
-    struct NodeAllocatorInfo allocator[1];
-
-    struct OutputList {
-      struct OutputList *next;
-      
-      uint64_t end_time;
-
-      sem_t *lock;
-
-      union {
-        TransactionLog log[1];
-        struct {
-          void *data;
-          size_t size;
-        };
-      };
-
-      enum {
-        DB_OUTPUT__SYNC_COMMIT = 1,
-        DB_OUTPUT__DUMP_SIGNAL = 2,
-        DB_OUTPUT__CANCELED = 4,
-        DB_OUTPUT__READY = 8,
-        DB_OUTPUT__RAW = 16,
-        DB_OUTPUT__SHUTDOWN = 32
-      } flags;
-    } *head, **tail;
-
-    Signal io_signal[1];
-    Signal garbage_signal[1];
-
-    FILE *file;
-  } output;
-
-  struct {
-    enum {
-      DB_DUMP__IO_THREAD_WAITS = 1,
-      DB_DUMP__DO_DUMP = 2,
-      DB_DUMP__DUMP_RUNNING = 4,
-      DB_DUMP__DO_GC = 8,
-      DB_DUMP__GC_RUNNING = 16,
-      DB_DUMP__RESUME_IO_THREAD = 32
-    } flags;
- 
-    Signal signal[1];
-
-//    pthread_mutex_t mutex[1]; // to sync gc & io threads
-//    pthread_cond_t signal[1]; // signals end of dump
-  } dump;
-#endif    
 
   struct GenericAllocatorInfo tm_allocator[1];
 

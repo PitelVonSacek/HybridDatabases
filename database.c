@@ -6,6 +6,10 @@
 #undef database_wait_for_dump
 #undef database_create_new_file
 
+#undef database_collect_garbage
+#undef database_pause_service_thread
+#undef database_resume_service_thread
+
 #undef db_handler_create
 #undef db_handler_free
 #undef db_handler_init

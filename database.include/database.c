@@ -21,6 +21,8 @@ static Database *database_alloc(const DatabaseType *type) {
   stack_init(D->handlers);
   pthread_mutex_init(D->handlers_mutex, 0);
 
+  sem_init(&D->service_thread_pause, 0, 0);
+
 #ifndef LOCKLESS_COMMIT
   pthread_mutex_init(&D->mutex, 0);
 #endif
@@ -88,7 +90,8 @@ void database_close(Database *D) {
   pthread_mutex_destroy(D->output.dump_running);
   
   pthread_mutex_destroy(&D->mutex);
-  
+  sem_destroy(&D->service_thread_pause);
+
   pthread_mutex_destroy(D->handlers_mutex);
   if (!stack_empty(D->handlers)) {
     dbDebug(DB_WARNING, "Destroying database, but some Handlers still exist");
@@ -128,6 +131,22 @@ void database_wait_for_dump (Database *D) {
   pthread_mutex_unlock(D->output.dump_running);
 }
 
+void database_collect_garbage(Database* D) {
+  sendServiceMsg(D, {
+    .type = DB_SERVICE__COLLECT_GARBAGE
+  });
+}
+
+void database_pause_service_thread(Database* D) {
+  sendServiceMsg(D, {
+    .type = DB_SERVICE__PAUSE,
+    .lock = &D->service_thread_pause
+  });
+}
+
+void database_resume_service_thread(Database* D) {
+  sem_post(&D->service_thread_pause);
+}
 
 enum DbError database_create_new_file (Database *D) {
   sem_t signal;

@@ -120,6 +120,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
         .type = DB_SERVICE__SYNC_ME,
         .lock = H->write_finished
       });
+      sem_wait(H->write_finished);
     }
 
     return true;

@@ -6,6 +6,10 @@
 #define database_wait_for_dump(D) database_wait_for_dump(typeUncast(D))
 #define database_create_new_file(D) database_create_new_file(typeUncast(D))
 
+#define database_collect_garbage(D) database_collect_garbage(typeUncast(D))
+#define database_pause_service_thread(D) database_pause_service_thread(typeUncast(D))
+#define database_resume_service_thread(D) database_resume_service_thread(typeUncast(D))
+
 #define db_handler_create(D) db_handler_create(typeUncast(D))
 #define db_handler_free(H) db_handler_free(typeUncast(H))
 #define db_handler_init(D, H) db_handler_init(typeUncast(D), typeUncast(H))
