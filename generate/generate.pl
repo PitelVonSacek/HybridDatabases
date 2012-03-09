@@ -111,11 +111,17 @@ if ($implementation) {
 
 $impl
 
+#pragma push_macro("trFail")
+#undef trFail
+#define trFail return false
+
 EOF
 
   node_implementation(\%node_types);
   index_implementation(\%index_types);
   database_implementation(\%database_types);
+
+  print "#pragma pop_macro(\"trFail\")\n\n";
 }
 
 
