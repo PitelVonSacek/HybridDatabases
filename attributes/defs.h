@@ -149,7 +149,7 @@ AttributeType String : const char* {
       _tr_memory_free(H, (void*)attr->value);
       if (*value) {
         size_t len = strlen(*value) + 1;
-        char *tmp = _tr_memory_alloc_no_release(H, len);
+        char *tmp = _tr_memory_alloc(H, len);
         memcpy(tmp, *value, len);
         attr->value = tmp;
       } else attr->value = 0;
@@ -179,7 +179,7 @@ AttributeType RawString : const struct RawString* {
     if (&attr->value != value) {
       _tr_memory_free(H, (void*)attr->value);
       if (*value) {
-        struct RawString *tmp = _tr_memory_alloc_no_release(H, 
+        struct RawString *tmp = _tr_memory_alloc(H, 
             sizeof(struct RawString) + value[0]->length);
         memcpy(tmp, value, sizeof(struct RawString) + value[0]->length);
         attr->value = tmp;

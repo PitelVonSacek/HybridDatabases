@@ -37,8 +37,9 @@ static inline unsigned hash_ptr(void *ptr) {
   return (((size_t)ptr) * 997) % DB_LOCKS; // find betterr prime :-)
 }
 
-#define util_read(ptr, dest, size, atomic)
-#define util_write(ptr, src, size, atomic)
+#define util_read(ptr, dest, size, atomic) __UTIL_READ_UNIMPLEMENTED__
+
+#define util_write(ptr, src, size, atomic) memcpy(ptr, src, size)
 
 #define util_offset(ptr, offset) ((void*)(((char*)(ptr)) + (offset)))
 #define utilOffset(ptr, offset) ((void*)(((char*)(ptr)) + (offset)))
