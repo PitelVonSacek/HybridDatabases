@@ -156,6 +156,16 @@
   } while (0)
 
 
+#define trIndex(...) trIndex_(H, __VA_ARGS__)
+#define trIndex_(H, index, method, ...) \
+  ({ \
+    typeof(H->my_database->indexes.index.functions.method##_return_t[0]) __return; \
+    if (!H->my_database->indexes.index.functions.method( \
+           &H->my_database->indexes.index.context, \
+           typeUncast(H), &__return, ## __VA_ARGS__)) trFail; \
+    __return; \
+  })
+
 /**********************
  * Transaction macros *
  **********************/

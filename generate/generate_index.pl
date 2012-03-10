@@ -9,7 +9,12 @@ sub index_interface {
   for my $t (keys %types) {
     my %i = %{ $types{$t} };
 
-    my $methods = "";
+    my $methods = join "\n", map {
+      my ($name, $args, $ret, $body) = @{$_};
+      $args &&= ", $args";
+      "  bool (*$name)(const ${t}_context_t *context, Handler *H, $ret *value $args);\n".
+      "  $ret ${name}_return_t[0];"
+    } @{$i{methods}};
 
     print <<EOF;
 
@@ -84,10 +89,24 @@ EOF
       $update_ptr = "(bool(*)(void*,Handler*,enum CallbackEvent,Node*))&${t}_ctx_update";
     }
 
+    my $methods = join "", map {
+      my ($name, $args, $ret, $body) = @{$_};
+      $args &&= ", $args";
+      <<EOF;
+static bool ${t}_method_$name(const ${t}_context_t *context, Handler *H, 
+        $ret *value $args) {
+  $body;
 
+  return true;
+}
 
-    my $methods = "";
-    my $method_ptrs = "";
+EOF
+    } @{$i{methods}};
+
+    my $method_ptrs = join ",\n", map {
+      my ($name, $args, $ret, $body) = @{$_};
+      "    &${t}_method_$name, {}"
+    } @{$i{methods}};
 
     print <<EOF;
 

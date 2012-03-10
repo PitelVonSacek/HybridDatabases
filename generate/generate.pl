@@ -54,8 +54,11 @@ my $grammar = q{
   index_i: 'Init' fnc_or_block { $c{init} = [ $fnc_t, $fnc ] }
   index_d: 'Destroy' fnc_or_block { $c{destroy} = [ $fnc_t, $fnc ] }
   index_u: 'Update' fnc_or_block { $c{update} = [ $fnc_t, $fnc ] }
-  index_e: 'Method'
+  index_e: 'Method' name args(?) ':' c_type block
+    { push @{$c{methods}}, 
+      [ $item{name}, ${$item[3]}[0] || "", $item{c_type}, $item{block} ] }
 
+  args: '(' /[^)]*/ ')' { $item[2] }
   fnc_or_block: function | block
   function: 'function' /\\w+/ { $fnc_t = 'f'; $fnc = $item[2] }
   block: /@\\s*([^@]*)@/ { $fnc_t = 'b'; $fnc = $1; $1 }

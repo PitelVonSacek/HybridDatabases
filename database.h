@@ -28,7 +28,7 @@
  * on failure returns 0
  *
  * when database is corrupted 'only a little', returns database instance,
- * but set DB_READ_ONLY flag
+ * but with DB_READ_ONLY flag set
  */
 Database *database_create(const DatabaseType *type, const char *file, unsigned flags);
 
@@ -149,6 +149,8 @@ const int tr_attr_get_type(NodeType *type, int index);
 
 #define trNodeCreate(NodeType)
 #define trNodeDelete(node)
+
+#define trIndex(index_name, method, arguments...)
 
   for using in indexes:
 #define trMemoryRead(object, atttribute) -- reads value (object attribute)
