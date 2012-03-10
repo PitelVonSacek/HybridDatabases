@@ -1,6 +1,8 @@
 #ifndef __DATABASE_INCLUDE__TYPE_MAGIC_H__
 #define __DATABASE_INCLUDE__TYPE_MAGIC_H__
 
+#define database_get_flags(D) database_get_flags(typeUncast(D))
+
 #define database_close(D) database_close(typeUncast(D))
 #define database_dump(D) database_dump(typeUncast(D))
 #define database_wait_for_dump(D) database_wait_for_dump(typeUncast(D))

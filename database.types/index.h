@@ -40,6 +40,8 @@ typedef struct {
   MyIndex_functions functions;
 } MyIndex_handler_t;
 
+extern const MyIndex_desc_t MyIndex_desc;
+
 #define trIndex(Index, Function, ...) \
   H->my_database->indexies.Index.Function(&H->my_database->indexies.Index.context, \
                                           H, __VA_ARGS__)

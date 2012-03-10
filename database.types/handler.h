@@ -64,13 +64,11 @@ typedef struct Handler_ {
 /*
   Database type specific handler:
 
-typedef struct {
-  union {
-    Database *database;
-    MyDatabase *my_database;
-    Handler __ancestor;
-  };
-} MyHandler;
+typedef union {
+  Database *database;
+  MyDatabase *my_database;
+  Handler __ancestor;
+} MyDatabase_handler_t;
 
 */
 

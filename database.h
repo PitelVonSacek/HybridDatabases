@@ -8,16 +8,33 @@
 #include "database.types/index.h"
 #include "database.types/node.h"
           
+
+/*
+ * All following functions are wrapped (in database.include/type_magic.h)
+ * into macros of the same name, so the can be used not only
+ * on abstract types (like Database, Handler, ...), but on their
+ * subclasses to (like MyDatabase, ...)
+ */
+
 /*************************
  *  Database functions   *
  *************************/
 
-Database *database_create(const DatabaseType *type, 
-//                          const char *dir,  not needed
-                          const char *file,
-                          unsigned flags);
+/*
+ * flags:
+ *   DB_CREATE - create database if it doesn't exist
+ *   DB_READ_ONLY - do not modify database (changes are writen to /dev/null)
+ *
+ * on failure returns 0
+ *
+ * when database is corrupted 'only a little', returns database instance,
+ * but set DB_READ_ONLY flag
+ */
+Database *database_create(const DatabaseType *type, const char *file, unsigned flags);
 
 void database_close(Database*);
+
+static inline unsigned database_get_flags(Database*);
 
 enum DbError database_dump(Database*);
 void database_wait_for_dump(Database*);
@@ -32,7 +49,7 @@ void database_resume_service_thread(Database*);
 /*
   Macros:
  
-#define databaseCreate(Type, file, flags)
+#define dbCreate(Type, file, flags)
 
 */
 
@@ -64,17 +81,24 @@ static inline void tr_abort(Handler *H);
 static inline bool tr_commit(Handler *H, enum CommitType commit_type);
 static inline void tr_hard_abort(Handler *H);
 
+// alomost internal function
 static inline bool tr_is_main(Handler *H);
 
+// checks that none of read set was modified by other transaction
 static inline bool tr_validate(Handler *H);
 
 /* Macros:
 
+  macros for easier work with transactions, they restart transaction
+  when it fails (cause of collision, not cause of trAbort)
+
   -- trBegin and trCommit() work as parethensis
 #define trBegin
-#define trCommit(commit_type)
+#define trCommit(commit_type, restart_outer) -- restart_outer is executed
+  when transaction needs to be restarted, but isn't main transaction,
+  so it needs to propagate failure, optional parameter, defaults to assert(0)
 
-#define trAbort
+#define trAbort -- aborts transaction, execution continues after trCommit
 
 */
 
@@ -89,11 +113,13 @@ Node *tr_node_create(Handler *H, NodeType *type);
 bool tr_node_delete(Handler *H, Node *node);
 
 // Those functions are slow, use macros instead whenever possible
+// returns true on success, false when transactions collide
 bool tr_node_read(Handler *H, Node *node, int attr, void *buffer);
 bool tr_node_write(Handler *H, Node *node, int attr, const void *value);
 static inline bool tr_node_update_indexies(Handler *H, Node *node);
 
 static inline bool tr_node_check(Handler *H, Node *node);
+
 
 int tr_attr_count(NodeType*);
 const char *tr_attr_get_name(NodeType*, int);
@@ -104,24 +130,29 @@ const int tr_attr_get_type(NodeType *type, int index);
 
 /* Macros:
 
-#define trNodeCast(NodeType, node)
+#define trNodeCast(NodeType, node) -- cast node to NodeType, return 0 on fail
   
+#define trFail goto tr_failed -- action taken when some operation on TM fails
+
   (for all following macros there is version suffixed with _, 
    that takes Handler* as first argument)
   (when operation fails, macro executes trFail)
 
-
-#define trFail goto tr_failed
-
-#define trRead(node, AttrName)
+#define trRead(node, AttrName) -- validates read value before returning
+#defien trUncheckedRead(node, AttrName) -- skips validation
 #define trWrite(node, AttrName, value)
 
-#define trUpdateIndexies(node)
+
+#define trUpdateIndexies(node) -- must be called on each modified node before commiting
 
 #define trCheck(node) -- validates lock for node
 
 #define trNodeCreate(NodeType)
 #define trNodeDelete(node)
+
+  for using in indexes:
+#define trMemoryRead(object, atttribute) -- reads value (object attribute)
+#define trMemoryWrite(object, attribute, value)
 
 */
 

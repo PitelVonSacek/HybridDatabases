@@ -140,11 +140,7 @@ typedef struct Database_ {
  Real Database:
 
 typedef struct {
-  union {
-    DatabaseType *type;
-    MyDatabase_desc_t *my_type;
-    Database __ancestor;
-  };
+  Database __ancestor;
 
   struct {
     NodeType1 NodeType1_desc;
@@ -159,6 +155,8 @@ typedef struct {
   } indexes;
 
 } MyDatabase;
+
+extern const DatabaseType MyDatabase_desc;
 
 */
 

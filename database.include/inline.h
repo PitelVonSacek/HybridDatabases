@@ -1,3 +1,7 @@
+static inline unsigned database_get_flags(Database *D) {
+  return D->flags;
+}
+
 void _tr_abort_main(Handler*);
 bool _tr_commit_main(Handler*, enum CommitType);
 void _tr_handler_rollback(Handler *H, struct Transaction *tr);

@@ -69,5 +69,19 @@ typedef struct Node_ {
   DummyAncestor __ancestor;
 } Node;
 
+/*
+  Real node:
+
+typedef struct {
+  Node __ancestor;
+
+  attributes
+
+  attribute_indexes;
+} MyNode;
+
+extern const NodeType MyNode_desc;
+*/
+
 #endif
 
