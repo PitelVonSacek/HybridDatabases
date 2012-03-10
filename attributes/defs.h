@@ -22,14 +22,6 @@ struct RawString {
   char data[0]; 
 };
 
-#define Int Int32
-#define Int_t Int32_t
-#define Int_value_t Int32_value_t
-
-#define UInt UInt32
-#define UInt_t UInt32_t
-#define UInt_value_t UInt32_value_t
-
 #define MAX_ATTR_SIZE sizeof(union UniversalAttribute)
 
 #include "../database.types/node.h"
