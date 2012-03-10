@@ -17,9 +17,9 @@ takže může obsahovat '\0'. Posledním typem je Pointer, což je ukazatel na j
 uzel (v paměti realizován jako Node*, na disku jako id uzlu, na který odkazuje).
 
 
-------------------
-  Základní typy:
-------------------
+-------------------
+-  Základní typy  -
+-------------------
 
 Node - předek libovolného uzlu, obsahuje id, počítadlo referencí (uzel nelze
        smazat, ukazuje-li na něj jiný uzel) a ukazatel na deskriptor popisující typ
@@ -62,108 +62,6 @@ Database - třída představující databázi jako celek
   } MyDatabse_handler_t;
 
 
---------------
-  Interface:
---------------
-
-// Vytvoří objekt třídy Database a načte přísloušnou databázi z disku
-// (či vytvoří prázdnou, neexistuje-li)
-Database *database_create(DatabaseType* type, const char* dir, const char* file, unsigned int flags);
-
-int database_close(Database* D);
-
-// znovu vypsání databáz na disk
-int database_dump(Database* D, int sync);
-
-// počká na dokončení výpisu databáze na disk
-void database_wait_for_dump(Database *D);
-
-// začne zapisovat do dalšího souboru
-int database_new_file(Database* D);
-
-
-// započne hlavní transakci (tedy takovou, která při commitu skutečně data zapíše)
-Transaction* tr_main_start(Database*);
-void tr_main_abort(Transaction*);
-int tr_main_commit(Transaction*, int sync);
-
-// započne vnořenou transakci podřízenou dané hlavní transakci
-void tr_start(Transaction*);
-void tr_abort(Transaction*);
-void tr_commit(Transaction*);
-
-
-Node *node_create_(Transaction*, NodeType*);
-int node_remove(Transaction*, Node*);
-
-#define NodeCreate(Typ)
-#define DatabaseCreate(Typ)
-#define NodeCast(Typ, uzel)
-
-#define TrUncast(transakce)
-#define TrDBUncast(databáze)
-#define TrNodeUncast(uzel)
-
-#define NodeCast(Typ, uzel)
-
-Vyjma database_create a node_create_ jsou všechny tyto funkce vlastně makra,
-která je mapují na funkce stejného jména s _ na konci. Přidanou hodnotou maker
-je, že provádí bezpečné přetypování z podtříd daných objektů na vyžadované
-nadtřídy (pomocí maker TrUncast, TrDBUncast a TrNodeUncast).
-
-Pro database_create a node_create_ exsistují makra DatabaseCreate a NodeCreate,
-která jako parametr berou jméno typu vytvářeného objektu.
-
-Pro uzly existuje ještě funkce NodeCast(Typ, uzel), která daný uzel přetypuje
-na Typ (při neúspěchu vrací NULL).
-
-
-#define TrRead(uzel, Atribut)
-#define TrWrite(uzel, Atribut, hodnota)
-#define TrVerify(uzel)
-
-#define TrRead_(transakce, uzel, Atribut, VýstupníProměnná)
-#define TrWrite_(transakce, uzel, Atribut, hodnota)
-#define TrVerify_(transakce, uzel)
-
-K atributům uzlu se přistupuje pomocí maker TrRead(uzel, Atribut)
-a TrWrite(uzel, Atribut, hodnota). Nebo je možné číst atributy přímo
-pomocí uzel->Atribut a až na závěr ověřit korektrnost dat pomocí
-TrVerify(uzel). K těmto makrů existují i verze zakončené _, které berou navíc
-jako první parametr transakci (místo defaultní _transaction)
-a místo vyvolání vyjímky při chybě vrací 0.
-(TrRead_ tedy nemůže načtenou hodnotu přímo vracet a má tedy jako poslední
-parametr jméno proměnné, do níž hodnotu uloží.)
-
-
-Pro indexy existují makra pro přístup k paměti zamykané po blocích (8 bytech).
-Tyto je nutné používat pro všechnu transakční paměť nenáležející uzlům.
-
-#define TrBlockRead(ptr)
-#define TrBlockWrite(ptr, hodnota)
-#define TrBlockVerify(ptr)
-
-K nim existují příslušné varianty s _ na konci. Velikost dat se vypočítává
-pomocí typu daného ukazatele.
-
-Pro pohodlnou práci s transakcemi existují nasledující makra (která navíc
-oproti funkcím, na nichž staví, uživají výjimky):
-
-#define TrMainStart(databáze)
-#define TrMainAbort
-#define TrMainCommit(synchronní)
-
-#define TrStart
-#define TrAbort
-#define TrCommit
-
-Tato makra (vždy Start a Commit) se chovají jako závorky. Abort zruší probíhající
-transakci. TrMainAbort se od TrAbort liší tím, že neruší pouze nejhoubeji vnořenou
-transakci, ale celou hlavní transakci. Vnitřně užívají vyjímky TR_FAIL,
-TR_MAIN_ABORT a TR_ABORT. Pokud tranakce selže s výjimku TR_FAIL, je automaticky
-restartována. Pokud selhává opakovaně je restartována po uplynutí časové prodlevy.
-
-
 ---------------------------------
 -  Výroba typů uzlů a databáze  -
 ---------------------------------
@@ -183,12 +81,13 @@ index_type := 'IndexType' název ':' typ_kontextu '{' init? destroy? update meth
 init := 'Init' (block | function)
 destroy := 'Destroy' (block | function)
 update := 'Update' (block | function)
-method := 'Method' jméno_metody '=' function
+method := 'Method' jméno_metody args? ':' return_type block
 
 database_type := 'DatabaseType' jméno '{' (node | index)* '}'
 node := 'NodeType' typu_uzlu
 index := 'Index' jméno 'for' (typ_uzlu | 'all') ':' typ_indexu
 
+args := '(' /[^)]*/ ')'
 block := '@' /[^@]*/ '@'
 function := 'function' jméno_funkce
 
@@ -203,6 +102,7 @@ Skript vždy čte standardní vstup a zapisuje na standardní výstup.
 Všechny interface sekce se zkonkatenují a vloží na začátek vygenerovaného rozhraní.
 Sekce implementation se vloží na začátek implementace.
 
+
 ----------------------
 -  Implementace STM  -
 ----------------------
@@ -213,29 +113,31 @@ viděla změny, které sama provedla. To by ovšem znamenalo velké obtíže
 při implementaci indexů (ty jsou taky v STM).
 
 
+----------------------
+-  Průběh transakce  -
+----------------------
 
-
-
-------------------------
--  Stack & Dictionary  -
-------------------------
-
-Implementace datových struktur zásobník a "slovník" -- tedy hash tabulka
-ukládající dvojice klíč - hodnota. Obě jsou implementovány jako sada maker.
-Díky tomu stejná makra pracují nad příslušnými strukturami bez ohledu na v nich
-uložený typ.
+1) zahajení transakce - tr_begin(H) (nebo makro trBegin)
+2) v průběhu transakce se čtené hodnoty poznamenávají
+   do read-setu (H->read_set) a modifikace do H->log (je typu FastStack)
+3) při commitu se:
+  a) získá globalní zámek H->database->mutex
+  b) zkontroluje read-set, zda nebyla čtená data modifikována jinou transakcí
+  c) transakce přidá do fronty k zapsání na disk (H->database->output.tail)
+     (froonta je jednosměrný spoják)
+  d) odemkne H->database->mutex
+  e) zvýší semafor H->database->output.counter
+  f) je-li transakce synchronní, počká se na zprávu od servisního
+     vlákna o dokončení zápisu
 
 
 ---------------------
--  Reader & Writer  -
----------------------
+-  Servisní vlákno  -
+--------------------
 
-V souboru storge.h je jednoduché rozhraní pro zápis, čtení strukturovaných
-souborů (datové typy -- pole a string). Nepracují přímo se soubory. Writer
-zapisuje do bufferu v paměti a funkcemi w_ptr a w_length se dá získat jeho
-adresa a délka. Reader pak při vytvoření požaduje funkci a pointer, který
-jí bude předávat jako kontext. Ji pak volá, potřebuje-li načíst další data.
-
-
-
+Definováno v database.include/treads.c, čte položky z fronty (database->output.head) a
+zapisuje obsah na disk, případně uvolňuje paměť, která ma být uvolněna.
+Kromě zápisu standardních transakcí, ještě obsluhuje vytvářření nových souborů,
+vypsání databáze a také udržuje spoják všech Nodů (aby je byo možné všechny vypsat
+či uvolnit).
 

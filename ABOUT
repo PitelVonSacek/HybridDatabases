@@ -1,0 +1,70 @@
+Hybridní databáze
+-----------------
+
+Popis fungovaní se nacházi v souboru HybridDatabase.about
+
+Organizace souborů:
+
+- database.h -- uživatelské rozhraní, metody / makra, která tu nejsou zmíněna
+                jsou vnitřní záležitostí implementace a uživatel by na ně
+                neměl spoléhat
+
+- database.c -- zdrojový soubor
+
+- database.types/* -- deklarace všech typů, v enums.h konstanty
+
+- database.include/
+  -- všechny *.h soubory vloženy do database.h a *.c do database.c
+  
+  - inline.h -- definice inline funkcí
+  - macros.h -- definice maker tr*, především trRead a trWrite
+  - type_magic.h -- wrappery okolo funkcí aby krom základních typů (Database, ...)
+                    akceptovaly i jejich podtřídy (MyDatabase, ...)
+
+  - transaction.c -- definice rollbacku a commitu transakcí
+  - read.c, write.c -- funkce pro načítání dat z disku / ukladání na disk
+  - database_create.c -- vytvoření datanáze, načtení dat
+
+
+- allocators/* - implementace allokátorů
+  - node_allocator.* -- alokátor pro alokaci objektů pevě dané velikosti,
+                        uvolněné objekty ukládá do seznamu a při alokaci
+                        je znovu používá
+  - generic_allocator.* -- obecný alokátor, implementace je formálně korektní,
+                           ale extrémně hloupá, potřebuje vylepšit
+
+- attributes/*
+  - def.h -- deklarace typů atributů
+  - generate.pl -- skript generující soubory attributes{,.inline}.h z defs.h
+
+- utils/*
+  - atomic.h -- implementace atomic_* maker
+  - atomic_amd64.h -- implementace exchange, compare-exchange a xadd pro architekturu
+                      amd64, vydolováno z linuxového jádra
+
+  - stack.h
+  - fast_stack.h
+  - inline_stack.h -- různé implementace zásobníku, Stack je implementován jako
+                      dynamicky alokované pole, InlineStack jako statické pole 
+                      a FastStack jako spoják bloků prvků
+
+  - num_dictionary.h -- slovník, klíčem může být cokoli do velikosti uint64_t,
+                      užívá separované řetězce
+
+  - lock.h -- implementace verzovaných zámků
+  - static_if.h -- static_if(), types_equal() a další typová makra
+  - type_magic.h -- makro typeUncast() pro přetypování objektu na nadtřídu
+
+- generate/*
+  -- perlové skripty generující z deklarací typů uzlů, indexů a databází
+     odpovídající C-kový kód
+  -- potřebují moduly Data::Dumper a hlavně Parse::RecDescent
+
+- storage/*
+  -- implementace nízkoúrovňového souborového formátu
+
+  - show_file.c -- utilitka pro vypsání souboru v lidsky čitelném tvaru
+  - rescuer.c -- utilitka pro záchranu dat z poškozeného souboru
+                 (vypíše nepoškozený počátek souboru)
+      -- obě utilitky neberou parametry a vždy čtou stdin a zapisují na stdout
+
