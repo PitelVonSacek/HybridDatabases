@@ -68,3 +68,6 @@ Organizace souborů:
                  (vypíše nepoškozený počátek souboru)
       -- obě utilitky neberou parametry a vždy čtou stdin a zapisují na stdout
 
+- test/database_tesc.c -- velmi triviální testovací kód, ale pro představu
+  jak se s databází pracuje by mohl pomoci
+

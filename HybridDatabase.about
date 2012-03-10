@@ -118,9 +118,10 @@ při implementaci indexů (ty jsou taky v STM).
 ----------------------
 
 1) zahajení transakce - tr_begin(H) (nebo makro trBegin)
-2) v průběhu transakce se čtené hodnoty poznamenávají
-   do read-setu (H->read_set) a modifikace do H->log (je typu FastStack)
-3) při commitu se:
+2) v průběhu transakce se čtené (trRead, trIndex) hodnoty poznamenávají
+   do read-setu (H->read_set) a modifikace (trWrite, trUpdateIndexes) do H->log 
+   (je typu FastStack)
+3) při commitu (tr_commit nebo trCommit) se:
   a) získá globalní zámek H->database->mutex
   b) zkontroluje read-set, zda nebyla čtená data modifikována jinou transakcí
   c) transakce přidá do fronty k zapsání na disk (H->database->output.tail)
@@ -130,6 +131,14 @@ při implementaci indexů (ty jsou taky v STM).
   f) je-li transakce synchronní, počká se na zprávu od servisního
      vlákna o dokončení zápisu
 
+Pozn.: Indexy se neupdatují samy, ale na upravené uzly je nutné zavolat
+       trUpdateIndexes (nebo tr_update_indexes). Tento postup byl zvolen,
+       jelikož má nižší overhead (pokud se dělá více úprav jenoho uzlu),
+       dovoluje uživateli lépe kontrolovat, kdy jsou/nejsou indexy konzistentí
+       se stavem databáze a hlavně umožňuje uživateli definovat, že při
+       updatu indexů budou uzly v nějakém konzistentním stavu.
+       (Výše uvedené platí jen pro monofikace uzlů, při jejich tvorbě / mazání,
+       jsou indexy updatovány automaticky a ihned)
 
 ---------------------
 -  Servisní vlákno  -
@@ -137,7 +146,35 @@ při implementaci indexů (ty jsou taky v STM).
 
 Definováno v database.include/treads.c, čte položky z fronty (database->output.head) a
 zapisuje obsah na disk, případně uvolňuje paměť, která ma být uvolněna.
-Kromě zápisu standardních transakcí, ještě obsluhuje vytvářření nových souborů,
+Kromě zápisu standardních transakcí, ještě obsluhuje vytváření nových souborů,
 vypsání databáze a také udržuje spoják všech Nodů (aby je byo možné všechny vypsat
 či uvolnit).
+
+
+---------------
+-  Alokátory  -
+---------------
+
+Node allocator - alokátor pro stejně velké objekty, je využíván pro alokaci
+uzlů (jak jméno napovídá), ale i bloků FastStacku. Vnitřně udržuje spoják
+uvolněných uzlů, z kterého uspokojuje nové požadavky. Pracuje bez zámků pomocí
+atomických instrukcí. Pravděpodobně je velmi žádoucí vylepšit ho, aby nealokoval
+mallocem jednotlivé položky, ale větší bloky, z nich by jednotlivé položky
+vyráběl sám. (Což by, krom úspory paměti z hlaviček mallocu u každého bloku,
+mohlo pomoi odstranit položku __list z definice Node.)
+
+Generic allocator - alokátor pro paměť libovolné velikosti. Je nutný především
+pro alokaci řetězců uložených v databázi. V současné době je to pouze slupka,
+alloc se překládá na malloc a uvolněná paměť se strká do spojáku. 
+?? Jak se dělá obecný alokátor ??
+
+Oba alokátory při uvolňování paměti, krom bloku samotného přebírájí i čas
+uvolnění, který slouží k tomu, aby paměť neuvolnili ve chvíli, kdy na ni
+ještě nějaká transakce může mít pointer.
+
+V současné době jsou užívány tak, že paměť neuvolňuje, je v plánu implementovat 
+zprávu DB_SERVICE__COLLECT_GARBAGE servisnímu vláknu, která zajistí uvolnění
+přebytečné paměti a pravděpodobně by byl vhodný i nějaký automatický mechanismus.
+(třebe limit na počet volných bloků?)
+
 
