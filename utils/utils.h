@@ -33,7 +33,7 @@ static inline int ulog2(uint64_t n) {
     __ret; \
   })
 
-static inline unsigned hash_ptr(void *ptr) {
+static inline unsigned hash_ptr(const void *ptr) {
   return (((size_t)ptr) * 997) % DB_LOCKS; // find betterr prime :-)
 }
 
