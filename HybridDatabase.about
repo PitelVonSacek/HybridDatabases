@@ -133,7 +133,7 @@ při implementaci indexů (ty jsou taky v STM).
 
 ---------------------
 -  Servisní vlákno  -
---------------------
+---------------------
 
 Definováno v database.include/treads.c, čte položky z fronty (database->output.head) a
 zapisuje obsah na disk, případně uvolňuje paměť, která ma být uvolněna.
