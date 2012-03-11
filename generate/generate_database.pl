@@ -72,17 +72,11 @@ sub database_implementation {
     my $i = 0;
 
     # node types
-    my $init_node_types = join "\n", map {
-      sprintf "  D->node_types.%1\$s_desc = %1\$s_desc;\n".
-              "  D->node_types.%1\$s_desc.update_indexes = ".
-              "(UpdateIndexes)&%2\$s_update_indexes_%1\$s;\n".
-              "  D->node_types.%1\$s_desc.id = %3\$i;\n",
-              $_, $t, $i++
-    } @{ $i{node_types} };
-
-    my $destroy_node_types = join "\n", map {
-      sprintf "  node_allocator_destroy(D->node_types.%1\$s_desc.allocator_info);\n",
-              $_
+    $i = 0;
+    my $layout_check = join "\n", map {
+      sprintf "  STATIC_ASSERT(offsetof(%s, __ancestor.node_types[%i]) ==\n" .
+              "                offsetof(%s, node_types.%s_desc));",
+              $t, $i++, $t, $_
     } @{ $i{node_types} };
 
     # indexes
@@ -150,16 +144,16 @@ static const IndexType *const ${t}_index_table[] = {
 $index_table
 };
 
-static void ${t}_init($t *D);
-static void ${t}_destroy($t *D);
+static void ${t}_init_indexes($t *D);
+static void ${t}_destroy_indexes($t *D);
 
 const DatabaseType ${t}_desc = {
   .name = "$t",
   .version = "$i{version}",
   .size = sizeof($t),
 
-  .init = (void(*)(Database*))&${t}_init,
-  .destroy = (void(*)(Database*))&${t}_destroy,
+  .init_indexes = (void(*)(Database*))&${t}_init_indexes,
+  .destroy_indexes = (void(*)(Database*))&${t}_destroy_indexes,
 
   .node_types_count = $#{ $i{node_types} } + 1,
   .node_types = ${t}_node_types,
@@ -170,16 +164,16 @@ const DatabaseType ${t}_desc = {
 };
 
 
-static void ${t}_init($t *D) {
-$init_node_types
-
+static void ${t}_init_indexes($t *D) {
 $init_indexes
 }
 
-static void ${t}_destroy($t *D) {
-$destroy_node_types
-
+static void ${t}_destroy_indexes($t *D) {
 $destroy_indexes
+}
+
+static void ${t}_struct_layout_check() {
+$layout_check
 }
 
 EOF

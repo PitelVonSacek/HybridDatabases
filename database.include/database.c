@@ -3,6 +3,23 @@ static void init_locks(Database *D) {
     D->locks[i].value = 1;
 }
 
+static void init_node_types(Database *D) {
+  const DatabaseType *type = D->type;
+  
+  D->node_types_count = type->node_types_count;
+
+  for (int i = 0; i < D->node_types_count; i++) {
+    D->node_types[i] = *type->node_types[i];
+    D->node_types[i].update_indexes = type->update_indexes[i];
+    D->node_types[i].id = i;
+  }
+}
+
+static void destroy_node_types(Database *D) {
+  for (int i = 0; i < D->node_types_count; i++) 
+    node_allocator_destroy(D->node_types[i].allocator_info);
+}
+
 static Database *database_alloc(const DatabaseType *type) {
   Database *D = malloc(type->size);
 
@@ -27,8 +44,6 @@ static Database *database_alloc(const DatabaseType *type) {
   pthread_mutex_init(&D->mutex, 0);
 #endif
 
-  D->node_types_count = type->node_types_count;
-
   node_allocator_init(D->output.allocator, sizeof(struct OutputList));
   generic_allocator_init(D->tm_allocator);
 
@@ -38,7 +53,8 @@ static Database *database_alloc(const DatabaseType *type) {
   D->output.head = 0;
   D->output.tail = &D->output.head;
 
-  type->init(D);
+  init_node_types(D);
+  type->init_indexes(D);
 
   return D;
 }
@@ -74,10 +90,8 @@ void database_close(Database *D) {
     node_free(node->type->allocator_info, node, 0);
   }
 
-  D->type->destroy(D);
-
-  for (int i = 0; i < D->node_types_count; i++) 
-    node_free_nodes(D->node_types[i].allocator_info, 0, ~(uint64_t)0);
+  D->type->destroy_indexes(D);
+  destroy_node_types(D);
 
   if (D->output.file) fclose(D->output.file);
 

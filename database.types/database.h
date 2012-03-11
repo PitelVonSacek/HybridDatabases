@@ -29,8 +29,8 @@ typedef struct {
   const char *version;
   size_t size;
 
-  void (*init)(Database*);
-  void (*destroy)(Database*);
+  void (*init_indexes)(Database*);
+  void (*destroy_indexes)(Database*);
 
   DummyAncestor __ancestor;
 
