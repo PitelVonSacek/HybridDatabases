@@ -88,8 +88,35 @@ static bool do_dump(Database *D, Writer *W, Node **dump_ptr) {
   return true;
 }
 
+static uint64_t get_time(Database *D) {
+  uint64_t current_time = ~(uint64_t)0;
+
+  pthread_mutex_lock(D->handlers_mutex);
+  stack_for_each(H, D->handlers) {
+    uint64_t t = atomic_read(&H[0]->start_time);
+    if (t && t < current_time) current_time = t; 
+  }
+  pthread_mutex_unlock(D->handlers_mutex);
+
+  return current_time;
+}
+
 static void collect_garbage(Database *D) {
-  dbDebug(W, "Collecting garbage not implemented yet");
+  dbDebug(I, "Collecting garbage...");
+
+  // global allocators
+  node_allocator_collect_garbage(&log_allocator, 0);
+  node_allocator_collect_garbage(&transaction_allocator, 0);
+
+  uint64_t time = get_time(D);
+
+  node_allocator_collect_garbage(D->output.allocator);
+  generic_allocator_collect_garbage(D->tm_allocator);
+
+  for (int i = 0; i < D->node_types_count; i++) 
+    node_allocator_collect_garbage(D->node_types[i].allocator);
+
+  dbDebug(I, "Collecting garbage done");
 }
 
 static void *service_thread(Database *D) {

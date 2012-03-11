@@ -3,6 +3,8 @@
 
 #include "node_allocator.h"
 
+#define GC_THRESHOLD 20
+
 #ifdef NODE_ALLOCATOR_DEBUG
 #include <stdio.h>
 #define dbg(...) \
@@ -71,6 +73,10 @@ bool node_free_nodes(struct NodeAllocatorInfo *info, size_t limit, uint64_t olde
   bool ret = atomic_read(&info->counter) <= limit;
   dbg("ret %i", (int)ret);
   return ret;
+}
+
+void node_allocator_collect_garbage(struct NodeAllocatorInfo *i, uint64_t older_than) {
+  node_free_nodes(i, GC_THRESHOLD, older_than);
 }
 
 void node_allocator_init(struct NodeAllocatorInfo *info, size_t item_size) {

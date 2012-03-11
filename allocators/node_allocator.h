@@ -25,6 +25,8 @@ void *node_alloc_nodes(struct NodeAllocatorInfo*);
 // false when unable to resease enough nodes because they're too new
 bool node_free_nodes(struct NodeAllocatorInfo*, size_t remaining, uint64_t older_than);
 
+void node_allocator_collect_garbage(struct NodeAllocatorInfo*, uint64_t older_than);
+
 void node_allocator_init(struct NodeAllocatorInfo *info, size_t item_size);
 void node_allocator_destroy(struct NodeAllocatorInfo *info);
 
