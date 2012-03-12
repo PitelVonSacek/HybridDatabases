@@ -1,5 +1,6 @@
 #include "database.h"
 #include <stdlib.h>
+#include <time.h>
 
 #undef database_close
 #undef database_dump
@@ -48,6 +49,10 @@ static struct NodeAllocatorInfo transaction_allocator = {
 __attribute__((destructor)) static void static_allocators_destroy() {
   node_allocator_destroy(&log_allocator);
   node_allocator_destroy(&transaction_allocator);
+}
+
+__attribute__((constructor)) static void init_rand() {
+  srand(time(0));
 }
 
 #define sendServiceMsg(D, ...) \
