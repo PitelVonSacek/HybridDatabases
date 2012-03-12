@@ -4,7 +4,7 @@ bool generic_free_cache(struct GenericAllocatorInfo *info, size_t rest, uint64_t
   return false;
 }
 
-void node_allocator_collect_garbage(struct NodeAllocatorInfo *i, uint64_t older_than) {}
+void generic_allocator_collect_garbage(struct GenericAllocatorInfo *i, uint64_t older_than) {}
 
 void generic_allocator_init(struct GenericAllocatorInfo* info) {
   info->free_list = 0;

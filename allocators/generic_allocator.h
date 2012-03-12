@@ -45,7 +45,7 @@ static inline void generic_free(struct GenericAllocatorInfo *info, void *ptr_,
   } while (!atomic_cmpswp(&info->free_list, ptr->next, ptr));
 }
 
-void node_allocator_collect_garbage(struct NodeAllocatorInfo*, uint64_t older_than);
+void generic_allocator_collect_garbage(struct GenericAllocatorInfo*, uint64_t older_than);
 
 void generic_allocator_init(struct GenericAllocatorInfo* info);
 void generic_allocator_destroy(struct GenericAllocatorInfo* info);
