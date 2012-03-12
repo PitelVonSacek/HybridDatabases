@@ -23,6 +23,10 @@ Node *tr_node_create (Handler *H, NodeType *type) {
   list_init_head(&node->__list);
 
   // lock created node; really do i need to lock it???
+  if (!utilLock(H, node)) {
+    node_free(type->allocator_info, node, atomic_read(&H->database->time));
+    return 0;
+  }
 
   type->init(node);
 
