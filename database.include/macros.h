@@ -32,16 +32,17 @@
   )
 
 
-#define trMemoryInternalRead_(H, ptr) (*(ptr))
+#define trMemoryInternalRead_(H, ptr) (*(volatile typeof(ptr))(ptr))
 #define trMemoryInternalWrite_(H, ptr_, val) \
   do { \
     struct LogItem __log_item = { \
       .ptr = (ptr_), \
       .type = LI_TYPE_RAW, \
+      .offset = 0, \
       .size = sizeof(*(ptr_)) \
     }; \
-    *(typeof(&*(ptr_)))__log_item.data_old = *(typeof(ptr_))__log_item.ptr; \
-    *(typeof(ptr_))__log_item.ptr = (val); \
+    *(typeof(&*(ptr_)))__log_item.data_old = *(volatile typeof(&*(ptr_)))__log_item.ptr; \
+    *(volatile typeof(&*(ptr_)))__log_item.ptr = (val); \
     fstack_push(typeUncast(H)->log, __log_item); \
   } while (0)
 
@@ -192,7 +193,10 @@ void _tr_retry_wait(int loop);
       if (!tr_commit(H, type)) { \
         if (0) { \
           tr_failed: \
-          if (!tr_is_main(H)) goto _tr_restart_label; \
+          if (!tr_is_main(H)) { \
+            tr_abort(H); \
+            goto _tr_restart_label; \
+          } \
           tr_hard_abort(H); \
         } \
         _tr_retry_wait(++_tr_retry); \

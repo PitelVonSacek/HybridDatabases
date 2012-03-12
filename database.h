@@ -7,7 +7,7 @@
 #include "database.types/handler.h"
 #include "database.types/index.h"
 #include "database.types/node.h"
-          
+#include "utils/utils.h"          
 
 /*
  * All following functions are wrapped (in database.include/type_magic.h)

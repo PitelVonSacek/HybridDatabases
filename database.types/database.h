@@ -3,8 +3,10 @@
 
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-#include "../utils/utils.h"
+#include "../utils/lock.h"
 #include "../utils/stack.h"
 
 #include "../utils/type_magic.h"

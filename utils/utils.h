@@ -9,6 +9,7 @@
 #include <pthread.h>
 
 #include "lock.h"
+#include "type_magic.h"
 
 static inline int ulog2(uint64_t n) {
   // FIXME there are much better ways to compute this
@@ -20,21 +21,20 @@ static inline int ulog2(uint64_t n) {
 // From GNU libc documentation:
 // The address of a block returned by malloc or realloc in the GNU system is
 // always a multiple of eight (or sixteen on 64-bit systems).
-//
-
-
-#define utilLock(H, ptr) \
-  ({ \
-    bool __ret = true; \
-    switch (l_lock(H->database->locks + hash_ptr(node), H, H->start_time)) { \
-      case 0: __ret = false; break; \
-      case 1: istack_push(H->acquired_locks, hash_ptr(node)); \
-    } \
-    __ret; \
-  })
 
 static inline unsigned hash_ptr(const void *ptr) {
   return (((size_t)ptr) * 997) % DB_LOCKS; // find betterr prime :-)
+}
+
+#include "../database.types/handler.h"
+#include "../database.types/database.h"
+static inline bool utilLock(Handler *H, const void *ptr) {
+  size_t hash = hash_ptr(ptr);
+  switch (l_lock(H->database->locks + hash, H, H->start_time)) {
+    case 0: return false; 
+    case 1: istack_push(H->acquired_locks, hash);
+  }
+  return true;
 }
 
 #define util_read(ptr, dest, size, atomic) __UTIL_READ_UNIMPLEMENTED__
@@ -46,6 +46,8 @@ static inline unsigned hash_ptr(const void *ptr) {
 #define utilGetOffset(a, b) (((char*)(b)) - ((char*)(a)))
 #define TR_OFFSET(ptr, offset) ((void*)(((char*)ptr) + offset))
 
+#include "../database.types/enums.h"
+#ifdef LOCKLESS_COMMIT
 typedef struct {
   pthread_mutex_t mutex;
   pthread_cond_t cond;
@@ -76,6 +78,7 @@ static inline void util_signal_destroy(Signal *s) {
   pthread_cond_destroy(&s->cond);
   pthread_mutex_destroy(&s->mutex);
 }
+#endif
 
 enum {
   DB_DBG_LEVEL_DB_ERROR = 0,

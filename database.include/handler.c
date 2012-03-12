@@ -41,7 +41,9 @@ void db_handler_destroy(Handler *H) {
 
   pthread_mutex_lock(H->database->handlers_mutex); {
     stack_for_each(i, handlers) if (*i == H) {
-      *i = stack_pop(handlers);
+      *i = stack_top(handlers);
+      stack_pop(handlers);
+      /* *i = stack_pop(handlers) is WRONG cause pop can shrink stack */
       break;
     }
   } pthread_mutex_unlock(H->database->handlers_mutex);
