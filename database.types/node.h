@@ -55,8 +55,6 @@ typedef struct NodeType_ {
 #undef Handler
 
 typedef struct Node_ {
-  NodeType * const type; // have to be first
-
   // linked list of nodes
   struct List __list;
 
@@ -68,6 +66,10 @@ typedef struct Node_ {
 
   DummyAncestor __ancestor;
 } Node;
+
+static inline NodeType *node_get_type(Node *node) {
+  return ((struct NodeAllocatorBlock*)page_allocator_get_page(node))->type;
+}
 
 /*
   Real node:

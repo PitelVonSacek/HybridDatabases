@@ -11,7 +11,7 @@ static void process_transaction_log(TransactionLog *log, Database *D,
           break;
 
         case LI_TYPE_NODE_ALLOC: 
-          write_node_alloc(W, node->type, node->id);
+          write_node_alloc(W, node_get_type(node), node->id);
           list_add_end(&D->node_list, &node->__list);
           break;
 
@@ -22,8 +22,8 @@ static void process_transaction_log(TransactionLog *log, Database *D,
             *dump_ptr = listGetContainer(Node, __list, node->__list.next);
 
           list_remove(&node->__list);
-          node->type->destroy(D->tm_allocator, node, end_time);
-          node_allocator_free(node->type->allocator, node, end_time);
+          node_get_type(node)->destroy(D->tm_allocator, node, end_time);
+          node_allocator_free(node_get_type(node)->allocator, node, end_time);
           break;
 
         case LI_TYPE_MEMORY_DELETE:

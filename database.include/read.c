@@ -85,7 +85,6 @@ static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
   list_add_end(&D->node_list, &node->__list);
 
   *(uint64_t*)&node->id = rNumber;
-  *(NodeType**)&node->type = node_type;
   node->ref_count = 0;
 
   assert(!ndict_get_node(nodes, node->id));
@@ -123,9 +122,9 @@ static bool read_node_delete(Reader *R, Database *D, IdToNode *nodes) {
 
   Node *node = dict_node->value;
 
-  node->type->destroy(D->tm_allocator, node, 0);
+  node_get_type(node)->destroy(D->tm_allocator, node, 0);
   list_remove(&node->__list);
-  node_allocator_free(node->type->allocator, node, 0);
+  node_allocator_free(node_get_type(node)->allocator, node, 0);
 
   ndict_remove(nodes, id);
 
@@ -144,8 +143,8 @@ static bool read_node_modify(Reader *R, Database *D, IdToNode *nodes) {
 
   Node *node = dict_node->value;
 
-  Ensure(attr_id < node->type->attributes_count);
-  const struct NodeAttribute *attr = &node->type->attributes[attr_id];
+  Ensure(attr_id < node_get_type(node)->attributes_count);
+  const struct NodeAttribute *attr = &node_get_type(node)->attributes[attr_id];
   return attribute_load(attr->type, R, D->tm_allocator, util_apply_offset(node, attr->offset));
 }
 

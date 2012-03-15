@@ -86,7 +86,7 @@ static void fix_pointers(Database *D, IdToNode *nodes) {
   ndictFor(var, nodes) {
     Node *node = var->value;
 
-    node->type->init_pointers(nodes, node);
+    node_get_type(node)->init_pointers(nodes, node);
   //  list_add_end(&D->node_list, &node->__list); no already done in read.c
   } ndictForEnd;
 }
@@ -105,7 +105,7 @@ static void fill_indexies(Database *D) {
   tr_begin(H);
 
   list_for_each_item(node, &D->node_list, Node, __list) {
-    if (!node->type->update_indexes(H, CBE_NODE_LOADED, node)) {
+    if (!node_get_type(node)->update_indexes(H, CBE_NODE_LOADED, node)) {
       dbDebug(E, "Filling indexies failed");
       exit(1);
     }

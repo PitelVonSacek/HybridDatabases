@@ -88,8 +88,8 @@ void database_close(Database *D) {
     list_remove(item);
     Node *node = listGetContainer(Node, __list, item);
 
-    node->type->destroy(D->tm_allocator, node, 0);
-    node_allocator_free(node->type->allocator, node, 0);
+    node_get_type(node)->destroy(D->tm_allocator, node, 0);
+    node_allocator_free(node_get_type(node)->allocator, node, 0);
   }
 
   D->type->destroy_indexes(D);

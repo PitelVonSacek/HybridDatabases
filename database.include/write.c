@@ -54,9 +54,9 @@ static void write_dump_end(Writer *W) {
 
 static void write_node_store(Writer *W, Node *node) {
   wArray {
-    wNumber(node->type->id);
+    wNumber(node_get_type(node)->id);
     wNumber(node->id);
-    node->type->store(W, node);
+    node_get_type(node)->store(W, node);
   } wArrayEnd;
 }
 
@@ -98,7 +98,7 @@ static void write_log(Writer *W, TransactionLog *log) {
                             item->attr_type, item->data_new);
           break;
         case LI_TYPE_NODE_ALLOC: 
-          write_node_alloc(W, node->type, node->id);
+          write_node_alloc(W, node_get_type(node), node->id);
           break;
         case LI_TYPE_NODE_DELETE:
           write_node_delete(W, node->id);

@@ -90,7 +90,7 @@ static inline bool tr_validate(Handler *H) {
 }
 
 static inline bool tr_node_update_indexies(Handler *H, Node *node) {
-  return node->type->update_indexes(H, CBE_NODE_MODIFIED, node);
+  return node_get_type(node)->update_indexes(H, CBE_NODE_MODIFIED, node);
 }
 
 static inline bool tr_node_check(Handler *H, Node *node) {

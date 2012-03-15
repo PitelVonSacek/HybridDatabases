@@ -17,7 +17,6 @@ Node *tr_node_create (Handler *H, NodeType *type) {
   }
 
   Node *node = node_allocator_alloc(type->allocator);
-  *(NodeType**)&(node->type) = type;
   *(uint64_t*)&node->id = atomic_add_and_fetch(&H->database->node_id_counter, 1);
   node->ref_count = 0;
   list_init_head(&node->__list);
@@ -38,7 +37,7 @@ Node *tr_node_create (Handler *H, NodeType *type) {
 
   fstack_push(H->log, log_item);
 
-  if (!node->type->update_indexes(H, CBE_NODE_CREATED, node)) 
+  if (!node_get_type(node)->update_indexes(H, CBE_NODE_CREATED, node)) 
     return 0;
 
   return node;
@@ -50,10 +49,10 @@ bool tr_node_delete (Handler *H, Node *node) {
 
   if (node->ref_count) return false;
 
-  if (!node->type->update_indexes(H, CBE_NODE_DELETED, node))
+  if (!node_get_type(node)->update_indexes(H, CBE_NODE_DELETED, node))
     return false;
 
-  node->type->destroy_pointers(H, node);
+  node_get_type(node)->destroy_pointers(H, node);
 
   struct LogItem log_item = {
     .ptr = node,
@@ -66,9 +65,9 @@ bool tr_node_delete (Handler *H, Node *node) {
 }
 
 bool tr_node_read (Handler *H, Node *node, int attr, void *buffer) {
-  assert(attr >= node->type->attributes_count || attr < 0);
+  assert(attr >= node_get_type(node)->attributes_count || attr < 0);
 
-  struct NodeAttribute a = node->type->attributes[attr];
+  struct NodeAttribute a = node_get_type(node)->attributes[attr];
 
   bit_array_set(&H->read_set, hash_ptr(node));
 
@@ -78,9 +77,9 @@ bool tr_node_read (Handler *H, Node *node, int attr, void *buffer) {
 }
 
 bool tr_node_write (Handler *H, Node *node, int attr, const void *value) {
-  assert(attr >= node->type->attributes_count || attr < 0);
+  assert(attr >= node_get_type(node)->attributes_count || attr < 0);
   
-  struct NodeAttribute a = node->type->attributes[attr];
+  struct NodeAttribute a = node_get_type(node)->attributes[attr];
       
   struct LogItem log_item = {
     .ptr = node,
@@ -123,7 +122,7 @@ int tr_attr_get_index(NodeType *type, const char *attr) {
 
 
 const NodeType *tr_node_get_type (Node *node) {
-  return node->type;
+  return node_get_type(node);
 }
 
 const int tr_attr_get_type(NodeType *type, int index) {

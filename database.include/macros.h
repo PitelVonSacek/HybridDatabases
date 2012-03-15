@@ -25,7 +25,7 @@
       ), \
       ({ \
         Node *__node = (node); \
-        (__node->type->name == Type##_desc.name) ? \
+        (node_get_type(__node)->name == Type##_desc.name) ? \
           ((Type*)__node) : (Type*)0; \
       }) \
     ) \
