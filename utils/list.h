@@ -1,12 +1,14 @@
 #ifndef __LIST_H__
 #define __LIST_H__
 
+#include "basic_utils.h"
+
 struct List {
   struct List *next, *prev;
 };
 
 #define listGetContainer(ContainerType, ListMember, list) \
-  ((ContainerType*)(((char*)(list)) - offsetof(ContainerType, ListMember)))
+  utilContainerOf(list, ContainerType, ListMember)
 
 #define ListInit(name) { &name, &name }
 

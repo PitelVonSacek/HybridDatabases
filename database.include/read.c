@@ -146,7 +146,7 @@ static bool read_node_modify(Reader *R, Database *D, IdToNode *nodes) {
 
   Ensure(attr_id < node->type->attributes_count);
   const struct NodeAttribute *attr = &node->type->attributes[attr_id];
-  return attribute_load(attr->type, R, D->tm_allocator, utilOffset(node, attr->offset));
+  return attribute_load(attr->type, R, D->tm_allocator, util_apply_offset(node, attr->offset));
 }
 
 #undef Ensure

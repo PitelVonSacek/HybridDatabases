@@ -10,18 +10,10 @@
 
 #include "lock.h"
 #include "type_magic.h"
+#include "basic_utils.h"
 
-static inline int ulog2(uint64_t n) {
-  // FIXME there are much better ways to compute this
-  int ret = -1;
-  for (; n; n /= 2) ret++;
-  return ret;
-}
 
-// From GNU libc documentation:
-// The address of a block returned by malloc or realloc in the GNU system is
-// always a multiple of eight (or sixteen on 64-bit systems).
-
+#include "../database.types/enums.h"
 static inline unsigned hash_ptr(const void *ptr) {
   return (((size_t)ptr) * 997) % DB_LOCKS; // find betterr prime :-)
 }
@@ -37,16 +29,7 @@ static inline bool utilLock(Handler *H, const void *ptr) {
   return true;
 }
 
-#define util_read(ptr, dest, size, atomic) __UTIL_READ_UNIMPLEMENTED__
 
-#define util_write(ptr, src, size, atomic) memcpy(ptr, src, size)
-
-#define util_offset(ptr, offset) ((void*)(((char*)(ptr)) + (offset)))
-#define utilOffset(ptr, offset) ((void*)(((char*)(ptr)) + (offset)))
-#define utilGetOffset(a, b) (((char*)(b)) - ((char*)(a)))
-#define TR_OFFSET(ptr, offset) ((void*)(((char*)ptr) + offset))
-
-#include "../database.types/enums.h"
 #ifdef LOCKLESS_COMMIT
 typedef struct {
   pthread_mutex_t mutex;

@@ -72,7 +72,7 @@ bool tr_node_read (Handler *H, Node *node, int attr, void *buffer) {
 
   bit_array_set(&H->read_set, hash_ptr(node));
 
-  memcpy(buffer, utilOffset(node, a.offset), attribute_size(a.type));
+  memcpy(buffer, util_apply_offset(node, a.offset), attribute_size(a.type));
 
   return tr_node_check(H, node);
 }
@@ -91,13 +91,13 @@ bool tr_node_write (Handler *H, Node *node, int attr, const void *value) {
     .attr_type = a.type
   };
 
-  memcpy(log_item.data_old, utilOffset(node, a.offset), attribute_size(a.type));
+  memcpy(log_item.data_old, util_apply_offset(node, a.offset), attribute_size(a.type));
 
   if (!utilLock(H, node)) return false;
-  if (!attribute_write(a.type, H, utilOffset(node, a.offset), value))
+  if (!attribute_write(a.type, H, util_apply_offset(node, a.offset), value))
     return false;
 
-  memcpy(log_item.data_new, utilOffset(node, a.offset), attribute_size(a.type));
+  memcpy(log_item.data_new, util_apply_offset(node, a.offset), attribute_size(a.type));
 
   fstack_push(H->log, log_item);
 
