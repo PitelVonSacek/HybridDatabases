@@ -43,7 +43,6 @@ static Database *database_alloc(const DatabaseType *type) {
   pthread_mutex_init(&D->mutex, 0);
 #endif
 
-  node_allocator_init(D->output.allocator, sizeof(struct OutputList));
   generic_allocator_init(D->tm_allocator);
 
   D->output.file = 0;
@@ -96,7 +95,6 @@ void database_close(Database *D) {
 
   free((void*)D->filename);
 
-  node_allocator_destroy(D->output.allocator);
   generic_allocator_destroy(D->tm_allocator);
 
   sem_destroy(D->output.counter);

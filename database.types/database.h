@@ -103,7 +103,6 @@ typedef struct Database_ {
   sem_t service_thread_pause;
 
   struct {
-    struct NodeAllocatorInfo allocator[1];
     FILE *file;
     sem_t counter[1];
 

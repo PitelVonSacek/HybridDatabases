@@ -1,6 +1,7 @@
 #include "database.h"
 #include <stdlib.h>
 #include <time.h>
+#include "allocators/simple_allocator.h"
 
 #undef database_close
 #undef database_dump
@@ -34,21 +35,15 @@
 
 #undef tr_node_get_type
 
-static struct NodeAllocatorInfo log_allocator = { 
-  .size = sizeof(((Handler*)0)->log->__block[0]),
-  .counter = 0,
-  .free_nodes = 0
-};
+#ifndef BD_OUTPUT_LIST_CACHE
+#define BD_OUTPUT_LIST_CACHE 32
+#endif
 
-static struct NodeAllocatorInfo transaction_allocator = { 
-  .size = sizeof(((Handler*)0)->transactions->__block[0]),
-  .counter = 0,
-  .free_nodes = 0
-};
+static struct SimpleAllocator output_list_allocator = 
+  SimpleAllocatorInit(sizeof(struct OutputList), BD_OUTPUT_LIST_CACHE);
 
 __attribute__((destructor)) static void static_allocators_destroy() {
-  node_allocator_destroy(&log_allocator);
-  node_allocator_destroy(&transaction_allocator);
+  simple_allocator_destroy(&output_list_allocator);
 }
 
 __attribute__((constructor)) static void init_rand() {
@@ -57,7 +52,7 @@ __attribute__((constructor)) static void init_rand() {
 
 #define sendServiceMsg(D, ...) \
   do { \
-    struct OutputList *__out = node_alloc(D->output.allocator); \
+    struct OutputList *__out = simple_allocator_alloc(&output_list_allocator); \
     *__out = (struct OutputList)__VA_ARGS__; \
     output_queue_push(D, __out, false); \
   } while (0)

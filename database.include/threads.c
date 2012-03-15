@@ -102,13 +102,8 @@ static uint64_t get_time(Database *D) {
 static void collect_garbage(Database *D) {
   dbDebug(I, "Collecting garbage...");
 
-  // global allocators
-  node_allocator_collect_garbage(&log_allocator, 0);
-  node_allocator_collect_garbage(&transaction_allocator, 0);
-
   uint64_t time = get_time(D);
 
-  node_allocator_collect_garbage(D->output.allocator, time);
   generic_allocator_collect_garbage(D->tm_allocator, time);
 
   for (int i = 0; i < D->node_types_count; i++) 
@@ -159,7 +154,7 @@ static void *service_thread(Database *D) {
     
     next: 
     job_next = job->next;
-    node_free(D->output.allocator, job, 0);
+    simple_allocator_free(&output_list_allocator, job);
   }
 
   if (dump_running) {

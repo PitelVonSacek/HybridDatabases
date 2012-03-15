@@ -126,7 +126,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
     return true;
   }
 
-  struct OutputList *O = node_alloc(db->output.allocator);
+  struct OutputList *O = simple_allocator_alloc(&output_list_allocator);
   *O = (struct OutputList){
     .next = 0,
  
@@ -163,7 +163,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
       pthread_mutex_unlock(&db->mutex);
       
       fstack_swap(O->content.log, H->log);
-      node_free(db->output.allocator, O, 0);
+      simple_allocator_free(&output_list_allocator, O);
       _tr_abort_main(H);
       return false;
     }
