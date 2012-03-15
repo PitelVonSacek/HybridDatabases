@@ -50,7 +50,8 @@ static inline struct Node_ *node_allocator_alloc(struct NodeAllocator *A) {
   void *ret = 0;
 
   pthread_mutex_lock(&A->mutex);
-  if (block = listGetContainer(struct NodeAllocatorBlock, head, A->blocks.prev))
+  block = listGetContainer(struct NodeAllocatorBlock, head, A->blocks.prev);
+  if (&block->head != &A->blocks)
       ret = slist_pop(&block->free_nodes);
   if (ret) block->used++;
   pthread_mutex_unlock(&A->mutex);
