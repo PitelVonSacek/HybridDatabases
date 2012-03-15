@@ -85,7 +85,7 @@
       .type = LI_TYPE_NODE_MODIFY, \
       .size = attributeSize(__node->AttrName), \
       .index = StaticGetInt(__node->_internal_##AttrName##_index), \
-      .offset = utilOffsetOf(typeof(__node), AttrName), \
+      .offset = utilOffsetOf(typeof(*__node), AttrName), \
       .attr_type = attributeTypeId(__node->AttrName) \
     }; \
     *(typeof(&__node->AttrName.value))&__log_item.data_old = \
