@@ -9,16 +9,15 @@
 #include <stdlib.h>
 
 #include "../utils/atomic.h"
+#include "../utils/slist.h"
 
-enum { PAGE_ALLOCATOR_PAGE_SIZE = 4096 };
+#define PAGE_ALLOCATOR_PAGE_SIZE ((size_t)4096)
 
 struct PageAllocator {
   size_t gc_threshold;
 
   size_t free_pages_counter;
-  struct PageAllocatorFreePage {
-    struct PageAllocatorFreePage *next;
-  } *free_pages;
+  struct SList free_pages;
 };
 
 void page_allocator_init(struct PageAllocator *A, size_t gc_threshold);
@@ -50,24 +49,15 @@ static inline void page_free(void *page) {
 
 void _page_allocator_collect_garbage(struct PageAllocator *A);
 static inline void *_page_allocator_get_page(struct PageAllocator *A) {
-  struct PageAllocatorFreePage *page;
-  
-  do {
-    page = atomic_swp(&A->free_pages, (void*)-1);
-  } while (page == (void*)-1);
+  struct SList *page;
 
-  if (!page) goto slow;
-  atomic_dec(&A->free_pages_counter);
-  atomic_swp(&A->free_pages, page->next);
+  if (page = slist_atomic_pop(&A->free_pages)) 
+    atomic_dec(&A->free_pages_counter);
   return page;
-
-  slow:
-  atomic_swp(&A->free_pages, 0);
-  return 0;
 }
 
 static inline void *page_allocator_alloc(struct PageAllocator *A) {
-  struct PageAllocatorFreePage *page;
+  struct SList *page;
 
   if (!(page = _page_allocator_get_page(A))) {
     page = mmap(0, PAGE_ALLOCATOR_PAGE_SIZE, PROT_READ | PROT_WRITE, 
@@ -79,15 +69,10 @@ static inline void *page_allocator_alloc(struct PageAllocator *A) {
   return page;
 }
 
-static inline void page_allocator_free(struct PageAllocator *A, void *page_) {
-  struct PageAllocatorFreePage *page = page_;
-
-  do {
-    page->next = atomic_swp(&A->free_pages, (void*)-1);
-  } while (page->next == (void*)-1);
+static inline void page_allocator_free(struct PageAllocator *A, void *page) {
+  slist_atomic_push(&A->free_pages, (struct SList*)page);
 
   atomic_inc(&A->free_pages_counter);
-  atomic_swp(&A->free_pages, page);
 
   if (atomic_read(&A->free_pages_counter) > atomic_read(&A->gc_threshold))
     _page_allocator_collect_garbage(A);

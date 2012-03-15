@@ -9,7 +9,7 @@ void page_allocator_init(struct PageAllocator *A, size_t gc_threshold) {
     .gc_threshold = gc_threshold,
 
     .free_pages_counter = 0,
-    .free_pages = 0
+    .free_pages = SListInit
   };
 }
 
