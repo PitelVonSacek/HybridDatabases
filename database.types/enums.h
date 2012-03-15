@@ -12,6 +12,8 @@
 // for one commited transaction
 #define DUMP__NODES_PER_TRANSACTION 5
 
+#define DB_VPAGE_ALLOCATOR_CACHE 128
+
 enum CommitType {
   CT_SYNC = 1,
   CT_ASYNC = 0,

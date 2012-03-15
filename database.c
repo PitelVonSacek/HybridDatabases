@@ -111,6 +111,7 @@ static uint64_t _generate_magic_nr();
 static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr);
 
 static void *service_thread(Database *D);
+static uint64_t get_time(Database *D);
 
 #include "attributes/attributes.h"
 

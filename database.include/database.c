@@ -12,12 +12,14 @@ static void init_node_types(Database *D) {
     D->node_types[i] = *type->node_types[i];
     D->node_types[i].update_indexes = type->update_indexes[i];
     D->node_types[i].id = i;
+    node_allocator_init(D->node_types[i].allocator, D->vpage_allocator,
+                        &D->node_types[i]);
   }
 }
 
 static void destroy_node_types(Database *D) {
   for (int i = 0; i < D->node_types_count; i++) 
-    node_allocator_destroy(D->node_types[i].allocator_info);
+    node_allocator_destroy(D->node_types[i].allocator);
 }
 
 static Database *database_alloc(const DatabaseType *type) {
@@ -43,6 +45,8 @@ static Database *database_alloc(const DatabaseType *type) {
   pthread_mutex_init(&D->mutex, 0);
 #endif
 
+  vpage_allocator_init(D->vpage_allocator,
+    DB_VPAGE_ALLOCATOR_CACHE, (uint64_t(*)(void*))&get_time, D);
   generic_allocator_init(D->tm_allocator);
 
   D->output.file = 0;
@@ -85,7 +89,7 @@ void database_close(Database *D) {
     Node *node = listGetContainer(Node, __list, item);
 
     node->type->destroy(D->tm_allocator, node, 0);
-    node_free(node->type->allocator_info, node, 0);
+    node_allocator_free(node->type->allocator, node, 0);
   }
 
   D->type->destroy_indexes(D);
@@ -96,6 +100,7 @@ void database_close(Database *D) {
   free((void*)D->filename);
 
   generic_allocator_destroy(D->tm_allocator);
+  vpage_allocator_destroy(D->vpage_allocator);
 
   sem_destroy(D->output.counter);
   pthread_mutex_destroy(D->output.dump_running);

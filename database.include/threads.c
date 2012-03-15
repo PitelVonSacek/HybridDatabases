@@ -23,7 +23,7 @@ static void process_transaction_log(TransactionLog *log, Database *D,
 
           list_remove(&node->__list);
           node->type->destroy(D->tm_allocator, node, end_time);
-          node_free(node->type->allocator_info, node, end_time);
+          node_allocator_free(node->type->allocator, node, end_time);
           break;
 
         case LI_TYPE_MEMORY_DELETE:
@@ -106,8 +106,6 @@ static void collect_garbage(Database *D) {
 
   generic_allocator_collect_garbage(D->tm_allocator, time);
 
-  for (int i = 0; i < D->node_types_count; i++) 
-    node_allocator_collect_garbage(D->node_types[i].allocator_info, time);
 
   dbDebug(I, "Collecting garbage done");
 }

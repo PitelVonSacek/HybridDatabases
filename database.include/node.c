@@ -16,7 +16,7 @@ Node *tr_node_create (Handler *H, NodeType *type) {
     found: ;
   }
 
-  Node *node = node_alloc(type->allocator_info);
+  Node *node = node_allocator_alloc(type->allocator);
   *(NodeType**)&(node->type) = type;
   *(uint64_t*)&node->id = atomic_add_and_fetch(&H->database->node_id_counter, 1);
   node->ref_count = 0;
@@ -24,7 +24,7 @@ Node *tr_node_create (Handler *H, NodeType *type) {
 
   // lock created node; really do i need to lock it???
   if (!utilLock(H, node)) {
-    node_free(type->allocator_info, node, atomic_read(&H->database->time));
+    node_allocator_free(type->allocator, node, atomic_read(&H->database->time));
     return 0;
   }
 
