@@ -36,7 +36,6 @@ static Database *database_alloc(const DatabaseType *type) {
   list_init_head(&D->node_list);
 
   stack_init(D->handlers);
-  pthread_mutex_init(D->handlers_mutex, 0);
 
   sem_init(&D->service_thread_pause, 0, 0);
 
@@ -106,7 +105,6 @@ void database_close(Database *D) {
   pthread_mutex_destroy(&D->mutex);
   sem_destroy(&D->service_thread_pause);
 
-  pthread_mutex_destroy(D->handlers_mutex);
   if (!stack_empty(D->handlers)) {
     dbDebug(DB_WARNING, "Destroying database, but some Handlers still exist");
     while (!stack_empty(D->handlers)) {
@@ -130,7 +128,7 @@ enum DbError database_dump (Database *D) {
   sendServiceMsg(D, {
     .type = DB_SERVICE__START_DUMP,
     .lock = &signal,
-    .answer = &ans
+    .content.answer = &ans
   });
 
   sem_wait(&signal);
@@ -171,7 +169,7 @@ enum DbError database_create_new_file (Database *D) {
   sendServiceMsg(D, {
     .type = DB_SERVICE__CREATE_NEW_FILE,
     .lock = &signal,
-    .answer = &ans
+    .content.answer = &ans
   });
 
   sem_wait(&signal);

@@ -93,8 +93,15 @@ static void fix_pointers(Database *D, IdToNode *nodes) {
 
 
 static void fill_indexies(Database *D) {
-  Handler H[1];
-  db_handler_init(D, H);
+  Handler H[1] = {{
+    .database = D,
+    .start_time = 1,
+    .commit_type = CT_ASYNC,
+    .acquired_locks = InlineStackInit
+  }};
+  fstack_init(H->transactions);
+  fstack_init(H->log);
+
   tr_begin(H);
 
   list_for_each_item(node, &D->node_list, Node, __list) {
@@ -113,7 +120,9 @@ static void fill_indexies(Database *D) {
   }
 
   _tr_abort_main(H);
-  db_handler_destroy(H);
+
+  fstack_destroy(H->transactions);
+  fstack_destroy(H->log);
 }
 
 #define Ensure(cond, do_always, ...) \

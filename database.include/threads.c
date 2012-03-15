@@ -91,12 +91,10 @@ static bool do_dump(Database *D, Writer *W, Node **dump_ptr) {
 static uint64_t get_time(Database *D) {
   uint64_t current_time = ~(uint64_t)0;
 
-  pthread_mutex_lock(D->handlers_mutex);
   stack_for_each(H, D->handlers) {
     uint64_t t = atomic_read(&H[0]->start_time);
     if (t && t < current_time) current_time = t; 
   }
-  pthread_mutex_unlock(D->handlers_mutex);
 
   return current_time;
 }
@@ -135,7 +133,7 @@ static void *service_thread(Database *D) {
     switch (job->type) {
       case DB_SERVICE__COMMIT:
       case DB_SERVICE__SYNC_COMMIT:
-        process_transaction_log(job->log, D, W, job->end_time, &dump_ptr);
+        process_transaction_log(job->content.log, D, W, job->end_time, &dump_ptr);
         fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
         writer_discart(W);
 
@@ -148,18 +146,7 @@ static void *service_thread(Database *D) {
         if (job->lock) sem_post(job->lock);
         break;
 
-      case DB_SERVICE__CREATE_NEW_FILE: goto new_file;
-      case DB_SERVICE__START_DUMP: goto dump_begin;  
-
-      case DB_SERVICE__COLLECT_GARBAGE:
-        collect_garbage(D);
-        break;
-
-      case DB_SERVICE__PAUSE:
-        dbDebug(I, "Service thread paused");
-        sem_wait(job->lock);
-        dbDebug(I, "Service thread resumed");
-        break;
+      default: goto unusual_type;
     }
 
     resume:
@@ -187,38 +174,69 @@ static void *service_thread(Database *D) {
 
   return 0;
 
-  new_file:
-  if (dump_running) {
-    dbDebug(O, "Cannot create new file because dump is running");
-    *job->answer = DB_ERROR__DUMP_RUNNING;
-  } else if (!_database_new_file(D, false, _generate_magic_nr())) {
-    dbDebug(O, "Cannot create new file");
-    *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
-  } else {
-    *job->answer = DB_SUCCESS;
-    dbDebug(I, "New file created");
+  unusual_type:
+  switch (job->type) {
+    case DB_SERVICE__CREATE_NEW_FILE:
+      if (dump_running) {
+        dbDebug(O, "Cannot create new file because dump is running");
+        *job->content.answer = DB_ERROR__DUMP_RUNNING;
+      } else if (!_database_new_file(D, false, _generate_magic_nr())) {
+        dbDebug(O, "Cannot create new file");
+        *job->content.answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
+      } else {
+        *job->content.answer = DB_SUCCESS;
+        dbDebug(I, "New file created");
+      }
+
+      sem_post(job->lock);
+      goto resume;
+
+    case DB_SERVICE__START_DUMP:
+      if (dump_running) {
+        dbDebug(DB_OOPS, "Cannot start dump, dump already running");
+        *job->content.answer = DB_ERROR__DUMP_RUNNING;
+      } else if (!_database_new_file(D, true, _generate_magic_nr())) {
+        dbDebug(DB_OOPS, "Dump failed, cannot create new file");
+        *job->content.answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
+      } else {
+        *job->content.answer = DB_SUCCESS;
+
+        pthread_mutex_lock(D->output.dump_running);
+        dbDebug(DB_INFO, "Dump started");
+        dump_running = true;
+        dump_ptr = listGetContainer(Node, __list, D->node_list.next);
+      }
+
+      sem_post(job->lock);
+      goto resume;
+
+    case DB_SERVICE__COLLECT_GARBAGE:
+      collect_garbage(D);
+      goto resume;
+
+    case DB_SERVICE__PAUSE:
+      dbDebug(I, "Service thread paused");
+      sem_wait(job->lock);
+      dbDebug(I, "Service thread resumed");
+      goto resume;
+
+    case DB_SERVICE__HANDLER_REGISTER:
+      stack_push(D->handlers, job->content.handler);
+      sem_post(job->lock);
+      goto resume;
+
+    case DB_SERVICE__HANDLER_UNREGISTER:
+      stack_for_each(i, D->handlers) if (*i == job->content.handler) {
+        *i = stack_top(D->handlers);
+        stack_pop(D->handlers);
+        /* *i = stack_pop(handlers) is WRONG cause pop can shrink stack */
+
+        sem_post(job->lock);
+        goto resume;
+      }
+      dbDebug(E, "Should not be here");
+
+    default: dbDebug(E, "Error in service thread!");
   }
-
-  sem_post(job->lock);
-  goto resume;
-
-  dump_begin:
-  if (dump_running) {
-    dbDebug(DB_OOPS, "Cannot start dump, dump already running");
-    *job->answer = DB_ERROR__DUMP_RUNNING;
-  } else if (!_database_new_file(D, true, _generate_magic_nr())) {
-    dbDebug(DB_OOPS, "Dump failed, cannot create new file");
-    *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
-  } else {
-    *job->answer = DB_SUCCESS;
-    
-    pthread_mutex_lock(D->output.dump_running);
-    dbDebug(DB_INFO, "Dump started");
-    dump_running = true;
-    dump_ptr = listGetContainer(Node, __list, D->node_list.next);
-  }
-
-  sem_post(job->lock);
-  goto resume;
 }
 

@@ -138,8 +138,8 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 #endif
   };
 
-  fstack_init(O->log);
-  fstack_swap(O->log, H->log);
+  fstack_init(O->content.log);
+  fstack_swap(O->content.log, H->log);
 
 #ifdef LOCKLESS_COMMIT
   end_time = atomic_add_and_fetch(&db->time, 2);
@@ -162,7 +162,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
       // readset invalid, abort
       pthread_mutex_unlock(&db->mutex);
       
-      fstack_swap(O->log, H->log);
+      fstack_swap(O->content.log, H->log);
       node_free(db->output.allocator, O, 0);
       _tr_abort_main(H);
       return false;

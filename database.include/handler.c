@@ -27,9 +27,12 @@ Handler *db_handler_init(Database *D, Handler *H) {
 
   bit_array_init(&H->read_set);
 
-  pthread_mutex_lock(D->handlers_mutex);
-  stack_push(D->handlers, H);
-  pthread_mutex_unlock(D->handlers_mutex);
+  sendServiceMsg(D, {
+    .type = DB_SERVICE__HANDLER_REGISTER,
+    .lock = H->write_finished,
+    .content.handler = H
+  });
+  sem_wait(H->write_finished);
 
   return H;
 }
@@ -39,14 +42,12 @@ void db_handler_destroy(Handler *H) {
 
   typeof(&*H->database->handlers) handlers = H->database->handlers;
 
-  pthread_mutex_lock(H->database->handlers_mutex); {
-    stack_for_each(i, handlers) if (*i == H) {
-      *i = stack_top(handlers);
-      stack_pop(handlers);
-      /* *i = stack_pop(handlers) is WRONG cause pop can shrink stack */
-      break;
-    }
-  } pthread_mutex_unlock(H->database->handlers_mutex);
+  sendServiceMsg(H->database, {
+    .type = DB_SERVICE__HANDLER_UNREGISTER,
+    .lock = H->write_finished,
+    .content.handler = H
+  });
+  sem_wait(H->write_finished);
 
   bit_array_destroy(&H->read_set);
   

@@ -94,7 +94,6 @@ typedef struct Database_ {
 
   Handler* __dummy_handler[0];  // for type magic only
   Stack(Handler*) handlers[1];
-  pthread_mutex_t handlers_mutex[1];
 
 #ifndef LOCKLESS_COMMIT
   pthread_mutex_t mutex;
@@ -120,13 +119,19 @@ typedef struct Database_ {
         DB_SERVICE__START_DUMP,
         DB_SERVICE__CREATE_NEW_FILE,
         DB_SERVICE__COLLECT_GARBAGE,
-        DB_SERVICE__PAUSE
+        DB_SERVICE__PAUSE,
+        DB_SERVICE__HANDLER_REGISTER,
+        DB_SERVICE__HANDLER_UNREGISTER
       } type;
 
       uint64_t end_time;
       sem_t *lock;
-      TransactionLog log[1];
-      uint64_t *answer;
+      union {
+        TransactionLog log[1];
+        uint64_t *answer;
+        Handler *handler;
+      } content; // anonymous member would be better but gcc < 4.6
+                 // has bug #10676 that prevents using such fields in initializers
     } *head, **tail;
   } output;
 
