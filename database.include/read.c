@@ -103,7 +103,8 @@ static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
 static bool read_node_load(Reader *R, Database *D, IdToNode *nodes) {
   NodeType *type;
   Node *node;
-  return read_node_prepare(R, D, nodes, &type, &node) && 
+  return read_node_prepare(R, D, nodes, &type, &node) &&
+         (type->init(node), true) &&
          type->load(R, D->tm_allocator, node);
 }
 

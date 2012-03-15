@@ -157,7 +157,8 @@ AttributeType String : const char* {
       tmp = generic_alloc(allocator, length + 1);
       memcpy(tmp, ptr, length);
       tmp[length] = '\0';
-    } 
+    }
+    if (attr->value) generic_free(allocator, (void*)attr->value, 0);
     attr->value = tmp;
   @
 
@@ -183,6 +184,7 @@ AttributeType RawString : const struct RawString* {
     size_t length;
     const void *ptr;
     if (!read_string(R, &ptr, &length)) return false;
+    if (attr->value) generic_free(allocator, (void*)attr->value, 0);
     if (length) {
       struct RawString *tmp = generic_alloc(allocator, sizeof(struct RawString) + length);
       tmp->length = length;
