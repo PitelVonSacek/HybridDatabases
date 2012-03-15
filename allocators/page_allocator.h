@@ -27,8 +27,6 @@ struct PageAllocator {
 void page_allocator_init(struct PageAllocator *A, size_t gc_threshold);
 void page_allocator_destroy(struct PageAllocator *A);
 
-void page_allocator_set_gc_threshold(struct PageAllocator *A, size_t gc_threshold);
-
 static inline void *page_allocator_alloc(struct PageAllocator *A);
 static inline void page_allocator_free(struct PageAllocator *A, void *page);
 
@@ -74,9 +72,8 @@ static inline void *page_allocator_alloc(struct PageAllocator *A) {
 }
 
 static inline void page_allocator_free(struct PageAllocator *A, void *page) {
-  slist_atomic_push(&A->free_pages, (struct SList*)page);
-
   atomic_inc(&A->free_pages_counter);
+  slist_atomic_push(&A->free_pages, (struct SList*)page);
 
   if (atomic_read(&A->free_pages_counter) > atomic_read(&A->gc_threshold))
     _page_allocator_collect_garbage(A);
