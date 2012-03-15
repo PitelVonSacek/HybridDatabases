@@ -16,7 +16,7 @@ struct VPageAllocator {
 
   size_t gc_threshold;
 
-  size_t free_pages_counter;
+  size_t free_pages_count;
   SList(uint64_t timestamp) free_pages;
 };
 
@@ -38,7 +38,7 @@ static inline void *_vpage_allocator_get_page(struct VPageAllocator *A) {
   SListItem(&A->free_pages) *page;
 
   if (page = slist_atomic_pop(&A->free_pages))
-    atomic_dec(&A->free_pages_counter);
+    atomic_dec(&A->free_pages_count);
   return page;
 }
 
@@ -60,10 +60,10 @@ static inline void vpage_allocator_free(struct VPageAllocator *A,
   SListItem(&A->free_pages) *page = page_;
   page->timestamp = time;
 
-  atomic_inc(&A->free_pages_counter);
+  atomic_inc(&A->free_pages_count);
   slist_atomic_push(&A->free_pages, page);
 
-  if (atomic_read(&A->free_pages_counter) > atomic_read(&A->gc_threshold))
+  if (atomic_read(&A->free_pages_count) > atomic_read(&A->gc_threshold))
     _vpage_allocator_collect_garbage(A);
 }
 

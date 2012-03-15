@@ -4,11 +4,11 @@ void vpage_allocator_init(struct VPageAllocator *A, size_t gc_threshold,
                           uint64_t (*get_time)(void*), void *context) {
   *A = (struct VPageAllocator){
     .get_time = get_time,
-    .context = context,
+    .get_time_context = context,
 
     .gc_threshold = gc_threshold,
 
-    .free_pages_counter = 0,
+    .free_pages_count = 0,
     .free_pages = SListInit
   };
 }
@@ -16,7 +16,7 @@ void vpage_allocator_init(struct VPageAllocator *A, size_t gc_threshold,
 static void _vpage_allocator_gc(struct VPageAllocator *A, uint64_t time) {
   SListItem(&A->free_pages) *page;
 
-  while (atomic_read(&A->free_pages_counter) > A->threshold) {
+  while (atomic_read(&A->free_pages_count) > A->gc_threshold) {
     page = _vpage_allocator_get_page(A);
 
     if (!page) return;
@@ -26,9 +26,9 @@ static void _vpage_allocator_gc(struct VPageAllocator *A, uint64_t time) {
   }
 
   return;
-  complicated_way:
+  complicated_way:;
 
-  typeof(&A->free_pages) free_pages = { .next = 0 };
+  typeof(A->free_pages) free_pages = { .next = 0 };
   slist_push(&free_pages, page);
   slist_atomic_swap(&A->free_pages, &free_pages);
 
@@ -47,6 +47,6 @@ void vpage_allocator_destroy(struct VPageAllocator *A) {
 }
 
 void _vpage_allocator_collect_garbage(struct VPageAllocator *A) {
-  _vpage_allocator_gc(A, A->get_time(A->context));
+  _vpage_allocator_gc(A, A->get_time(A->get_time_context));
 }
 
