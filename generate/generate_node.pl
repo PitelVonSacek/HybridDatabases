@@ -63,7 +63,7 @@ EOF
     .name = "${$attr}[0]",
     .type = ${$attr}[1],
     .index = $i,
-    .offset = __builtin_offsetof($node_type, ${$attr}[0])
+    .offset = utilOffsetOf($node_type, ${$attr}[0])
   },
 EOF
       $i++;
@@ -132,8 +132,6 @@ const NodeType ${node_type}_desc = {
 
   .init = (void(*)(Node*))&${node_type}_init,
   .destroy = (void(*)(struct GenericAllocatorInfo*, Node*, uint64_t))&${node_type}_destroy,
-
-  { sizeof($node_type), 0, 0 },
 
   .update_indexes = 0,
 
