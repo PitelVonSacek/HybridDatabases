@@ -4,6 +4,7 @@
 #include "generic_allocator.h"
 #include "node_allocator.h"
 #include "page_allocator.h"
+#include "simple_allocator.h"
 
 #endif
 
