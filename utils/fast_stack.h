@@ -3,31 +3,33 @@
 
 #include <stddef.h>
 
-#include "../allocators/node_allocator.h"
+#include "../allocators/page_allocator.h"
 #include "list.h"
 
 typedef struct {} IsFastStack;
 
-#define FastStack(Type, BlockSize) \
+#define FastStack(Type) \
   struct { \
-    struct NodeAllocatorInfo *allocator; \
     size_t block_count; \
     struct List blocks; \
     Type *begin, *ptr, *end; \
     \
     struct { \
       struct List head; \
-      Type data[BlockSize]; \
+      Type data[(PAGE_SIZE - sizeof(struct List)) / sizeof(Type)]; \
     } __block[0]; \
     IsFastStack is_fast_stack; \
+    struct { \
+      char _non_empty_block[((PAGE_SIZE - sizeof(struct List)) / sizeof(Type) > 0) ? \
+           1 : -1]; \
+    } _non_empty_block_assert[0]; \
   }
 
-#define fstack_init(stack, alloc) \
+#define fstack_init(stack) \
   ({ \
     typeof(&*(stack)) __stack = (stack); \
     STATIC_ASSERT(types_equal(typeof(__stack->is_fast_stack), IsFastStack)); \
     *__stack = (typeof(*__stack)){ \
-      .allocator = alloc, \
       .block_count = 0, \
       .blocks = ListInit(__stack->blocks), \
       \
@@ -43,8 +45,8 @@ typedef struct {} IsFastStack;
     typeof(&*(stack)) __stack_ = (stack); \
     STATIC_ASSERT(types_equal(typeof(__stack_->is_fast_stack), IsFastStack)); \
     while (!list_empty(&__stack_->blocks)) \
-      node_free(__stack_->allocator, list_remove(__stack_->blocks.next), 0); \
-    fstack_init(__stack_, __stack_->allocator); \
+      page_free(list_remove(__stack_->blocks.next), 0); \
+    fstack_init(__stack_); \
   })
 
 #define fstack_block_size(stack) \
@@ -140,7 +142,7 @@ typedef FastStack(void*, 1) GenericFastStack;
 static void _fstack_expand(GenericFastStack *stack, 
                            ptrdiff_t offset_begin, ptrdiff_t offset_end) {
   stack->block_count++; 
-  list_add_end(&stack->blocks, node_alloc(stack->allocator)); 
+  list_add_end(&stack->blocks, page_alloc()); 
   stack->begin = (void**)(((char*)(stack->blocks.prev)) + offset_begin);
   stack->ptr = stack->begin; 
   stack->end = (void**)(((char*)(stack->blocks.prev)) + offset_end);
@@ -149,7 +151,7 @@ static void _fstack_expand(GenericFastStack *stack,
 static void _fstack_shrink(GenericFastStack *stack, 
                            ptrdiff_t offset_begin, ptrdiff_t offset_end) {
   stack->block_count--;
-  node_free(stack->allocator, list_remove(stack->blocks.prev), 0);
+  page_free(list_remove(stack->blocks.prev), 0);
   stack->begin = (void**)(((char*)(stack->blocks.prev)) + offset_begin);
   stack->end = (void**)(((char*)(stack->blocks.prev)) + offset_end);
   stack->ptr = stack->end;
