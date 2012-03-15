@@ -6,7 +6,6 @@
 
 void page_allocator_init(struct PageAllocator *A, size_t gc_threshold) {
   *A = (struct PageAllocator){
-    .page_size = sysconf(_SC_PAGE_SIZE),
     .gc_threshold = gc_threshold,
 
     .free_pages_counter = 0,
@@ -22,15 +21,18 @@ void page_allocator_destroy(struct PageAllocator *A) {
 void _page_allocator_collect_garbage(struct PageAllocator *A) {
   size_t threshold = atomic_read(&A->gc_threshold);
 
-  while (atomic_read(&A->free_nodes_counter) > threshold) {
+  while (atomic_read(&A->free_pages_counter) > threshold) {
     void *page = _page_allocator_get_page(A);
 
     if (!page) return;
 
-    munmap(page, A->page_size);
+    munmap(page, PAGE_ALLOCATOR_PAGE_SIZE);
   }
 }
 
+static __attribute__((constructor)) void _page_allocator_check_page_size() {
+  if (PAGE_ALLOCATOR_PAGE_SIZE != sysconf(_SC_PAGE_SIZE)) abort();
+}
 
 struct PageAllocator page_allocator;
 

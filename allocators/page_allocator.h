@@ -5,11 +5,14 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <limits.h>
+#include <stdlib.h>
 
-#include <../utils/atomic.h>
+#include "../utils/atomic.h"
+
+enum { PAGE_ALLOCATOR_PAGE_SIZE = 4096 };
 
 struct PageAllocator {
-  size_t page_size;
   size_t gc_threshold;
 
   size_t free_pages_counter;
@@ -41,7 +44,7 @@ static inline void *page_alloc() {
 }
 
 static inline void page_free(void *page) { 
-  page_allocator_alloc(&page_allocator, page); 
+  page_allocator_free(&page_allocator, page); 
 }
 
 
@@ -50,8 +53,8 @@ static inline void *_page_allocator_get_page(struct PageAllocator *A) {
   struct PageAllocatorFreePage *page;
   
   do {
-    page = atomic_swp(&A->free_pages, -1);
-  } while (page == -1);
+    page = atomic_swp(&A->free_pages, (void*)-1);
+  } while (page == (void*)-1);
 
   if (!page) goto slow;
   atomic_dec(&A->free_pages_counter);
@@ -67,7 +70,7 @@ static inline void *page_allocator_alloc(struct PageAllocator *A) {
   struct PageAllocatorFreePage *page;
 
   if (!(page = _page_allocator_get_page(A))) {
-    page = mmap(0, A->page_size, PROT_READ | PROT_WRITE, 
+    page = mmap(0, PAGE_ALLOCATOR_PAGE_SIZE, PROT_READ | PROT_WRITE, 
                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
     if (page == MAP_FAILED) abort();
@@ -80,14 +83,14 @@ static inline void page_allocator_free(struct PageAllocator *A, void *page_) {
   struct PageAllocatorFreePage *page = page_;
 
   do {
-    page->next = atomic_swp(&A->free_pages, -1);
-  } while (page>next == -1);
+    page->next = atomic_swp(&A->free_pages, (void*)-1);
+  } while (page->next == (void*)-1);
 
-  atomic_inc(&A->free_pages_conter);
+  atomic_inc(&A->free_pages_counter);
   atomic_swp(&A->free_pages, page);
 
   if (atomic_read(&A->free_pages_counter) > atomic_read(&A->gc_threshold))
-    page_allocator_collect_garbage(A);
+    _page_allocator_collect_garbage(A);
 }
 
 #endif
