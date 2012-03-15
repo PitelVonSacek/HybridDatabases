@@ -138,7 +138,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 #endif
   };
 
-  fstack_init(O->log, H->log->allocator);
+  fstack_init(O->log);
   fstack_swap(O->log, H->log);
 
 #ifdef LOCKLESS_COMMIT

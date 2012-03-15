@@ -22,8 +22,8 @@ Handler *db_handler_init(Database *D, Handler *H) {
 
   sem_init(H->write_finished, 0, 0);
 
-  fstack_init(H->transactions, &transaction_allocator);
-  fstack_init(H->log, &log_allocator);
+  fstack_init(H->transactions);
+  fstack_init(H->log);
 
   bit_array_init(&H->read_set);
 
