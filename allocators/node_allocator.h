@@ -1,66 +1,75 @@
 #ifndef __NODE_ALLOCATOR_H__
 #define __NODE_ALLOCATOR_H__
 
-#include <stdint.h>
-#include <stdbool.h>
+/*
+ * Slab-like allocator, preferes space over speed
+ */
 
-#include "../utils/atomic.h"
+#include <pthread.h>
+#include "vpage_allocator.h"
+#include "../utils/list.h"
+#include "../utils/slist.h"
+#include "../database.types/node.h"
 
-struct FreeNode {
-  struct FreeNode *next;
-  /*
-   * For correct function, timestamps of released blocks must be nondecreasing
-   */
-  uint64_t timestamp;
+struct NodeAllocatorBlock {
+  struct List head;
+  struct SList free_nodes;
+  size_t used;
+  NodeType *type;
+  unsigned char data[0];
 };
 
-struct NodeAllocatorInfo {
-  size_t size;
-  size_t counter;
-  struct FreeNode *free_nodes;
+struct NodeAllocator {
+  struct VPageAllocator *allocator;
+  NodeType *type;
+  struct List blocks;
+  pthread_mutex_t mutex;
 };
 
+void node_allocator_init(struct NodeAllocator *A,
+                         struct VPageAllocator *page_allocator, NodeType *type);
 
-void *node_alloc_nodes(struct NodeAllocatorInfo*);
-// false when unable to resease enough nodes because they're too new
-bool node_free_nodes(struct NodeAllocatorInfo*, size_t remaining, uint64_t older_than);
+void node_allocator_destroy(struct NodeAllocator *A);
 
-void node_allocator_collect_garbage(struct NodeAllocatorInfo*, uint64_t older_than);
 
-void node_allocator_init(struct NodeAllocatorInfo *info, size_t item_size);
-void node_allocator_destroy(struct NodeAllocatorInfo *info);
+static inline void *node_allocator_alloc(struct NodeAllocator *A);
+static inline void node_allocator_free(struct NodeAllocator *A, 
+                                       void *node, uint64_t time);
 
-static inline void *node_alloc(struct NodeAllocatorInfo *info) {
-  struct FreeNode *node;
- 
-  do {
-    node = atomic_swp(&info->free_nodes, (struct FreeNode*)(char*)1);
-  } while ((size_t)node == 1);
 
-  if (node) {
-    atomic_swp(&info->free_nodes, node->next);
-    atomic_dec(&info->counter);
-    return node;
-  } else {
-    atomic_swp(&info->free_nodes, 0);
-    return node_alloc_nodes(info);
-  }
+/********************
+ *  Implementation  *
+ ********************/
+
+void *_node_allocator_alloc_page(struct NodeAllocator *A);
+
+static inline void *node_allocator_alloc(struct NodeAllocator *A) {
+  struct NodeAllocatorBlock *block;
+  void *ret = 0;
+
+  pthread_mutex_lock(&A->mutex);
+  if (block = listGetContainer(struct NodeAllocatorBlock, head, A->blocks.prev))
+      ret = slist_pop(&block->free_nodes);
+  if (ret) block->used++;
+  pthread_mutex_unlock(&A->mutex);
+
+  return ret ?: _node_allocator_alloc_page(A);
 }
 
-static inline void _node_free(struct NodeAllocatorInfo* info, struct FreeNode *node) {
-  int i = 0;
-  do {
-    node->next = atomic_read(&(info->free_nodes));
-  } while ((size_t)node->next == 1 || 
-           !atomic_cmpswp(&(info->free_nodes), node->next, node));
-}
+static inline void node_allocator_free(struct NodeAllocator *A, 
+                                       void *node, uint64_t time) {
+  struct NodeAllocatorBlock *block = page_allocator_get_page(node);
+  bool do_page_free = false;
 
-static inline void node_free(struct NodeAllocatorInfo* info, void *node_, uint64_t time) {
-  struct FreeNode *node = node_;
-  node->timestamp = time;
+  pthread_mutex_lock(&A->mutex);
+  if (!--block->used) {
+    do_page_free = true;
+    list_remove(&block->head);
+  } else 
+    slist_push(&block->free_nodes, (struct SList*)node);
+  pthread_mutex_unlock(&A->mutex);
 
-  atomic_inc(&(info->counter));
-  _node_free(info, node);
+  if (do_page_free) vpage_allocator_free(A->allocator, block, time);
 }
 
 #endif
