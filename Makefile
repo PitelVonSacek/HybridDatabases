@@ -24,8 +24,7 @@ headers= \
 	utils/type_magic.h \
 	utils/utils.h \
 	\
-	allocators/generic_allocator.h \
-	allocators/node_allocator.h \
+	allocators/*.h \
 	\
 	database.h
 
