@@ -8,8 +8,7 @@
 #include <limits.h>
 #include <stdlib.h>
 
-#include "../utils/atomic.h"
-#include "../utils/slist.h"
+#include "page_allocator.h"
 
 struct VPageAllocator {
   uint64_t (*get_time)(void*);
@@ -34,9 +33,9 @@ static inline void vpage_allocator_free(struct VPageAllocator *A,
  *   Implementation   *
  **********************/
 
-void _vpage_allocator_collect_garbage(struct VPageAllocator *A, uint64_t time);
+void _vpage_allocator_collect_garbage(struct VPageAllocator *A);
 static inline void *_vpage_allocator_get_page(struct VPageAllocator *A) {
-  struct SList *page;
+  SListItem(&A->free_pages) *page;
 
   if (page = slist_atomic_pop(&A->free_pages))
     atomic_dec(&A->free_pages_counter);

@@ -1,4 +1,4 @@
-#include "page_allocator.h"
+#include "vpage_allocator.h"
 
 void vpage_allocator_init(struct VPageAllocator *A, size_t gc_threshold,
                           uint64_t (*get_time)(void*), void *context) {
