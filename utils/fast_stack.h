@@ -16,12 +16,12 @@ typedef struct {} IsFastStack;
     \
     struct { \
       struct List head; \
-      Type data[(PAGE_SIZE - sizeof(struct List)) / sizeof(Type)]; \
+      Type data[(PAGE_ALLOCATOR_PAGE_SIZE - sizeof(struct List)) / sizeof(Type)]; \
     } __block[0]; \
     IsFastStack is_fast_stack; \
     struct { \
-      char _non_empty_block[((PAGE_SIZE - sizeof(struct List)) / sizeof(Type) > 0) ? \
-           1 : -1]; \
+      char _non_empty_block[((PAGE_ALLOCATOR_PAGE_SIZE - sizeof(struct List)) / \
+          sizeof(Type) > 0) ? 1 : -1]; \
     } _non_empty_block_assert[0]; \
   }
 
@@ -45,7 +45,7 @@ typedef struct {} IsFastStack;
     typeof(&*(stack)) __stack_ = (stack); \
     STATIC_ASSERT(types_equal(typeof(__stack_->is_fast_stack), IsFastStack)); \
     while (!list_empty(&__stack_->blocks)) \
-      page_free(list_remove(__stack_->blocks.next), 0); \
+      page_free(list_remove(__stack_->blocks.next)); \
     fstack_init(__stack_); \
   })
 
@@ -137,7 +137,7 @@ typedef struct {} IsFastStack;
 #define _fstack_offset_begin  offsetof(typeof(__stack->__block[0]), data[0])
 #define _fstack_offset_end  offsetof(typeof(__stack->__block[0]), data[fstack_block_size(__stack)])
 
-typedef FastStack(void*, 1) GenericFastStack;
+typedef FastStack(void*) GenericFastStack;
 
 static void _fstack_expand(GenericFastStack *stack, 
                            ptrdiff_t offset_begin, ptrdiff_t offset_end) {
@@ -151,7 +151,7 @@ static void _fstack_expand(GenericFastStack *stack,
 static void _fstack_shrink(GenericFastStack *stack, 
                            ptrdiff_t offset_begin, ptrdiff_t offset_end) {
   stack->block_count--;
-  page_free(list_remove(stack->blocks.prev), 0);
+  page_free(list_remove(stack->blocks.prev));
   stack->begin = (void**)(((char*)(stack->blocks.prev)) + offset_begin);
   stack->end = (void**)(((char*)(stack->blocks.prev)) + offset_end);
   stack->ptr = stack->end;
