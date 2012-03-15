@@ -9,32 +9,34 @@
 #include "vpage_allocator.h"
 #include "../utils/list.h"
 #include "../utils/slist.h"
-#include "../database.types/node.h"
+
+struct NodeType_;
+struct Node_;
 
 struct NodeAllocatorBlock {
   struct List head;
   struct SList free_nodes;
   size_t used;
-  NodeType *type;
+  struct NodeType_ *type;
   unsigned char data[0];
 };
 
 struct NodeAllocator {
   struct VPageAllocator *allocator;
-  NodeType *type;
+  struct NodeType_ *type;
   struct List blocks;
   pthread_mutex_t mutex;
 };
 
 void node_allocator_init(struct NodeAllocator *A,
-                         struct VPageAllocator *page_allocator, NodeType *type);
+                         struct VPageAllocator *page_allocator, struct NodeType_ *type);
 
 void node_allocator_destroy(struct NodeAllocator *A);
 
 
-static inline void *node_allocator_alloc(struct NodeAllocator *A);
+static inline struct Node_ *node_allocator_alloc(struct NodeAllocator *A);
 static inline void node_allocator_free(struct NodeAllocator *A, 
-                                       void *node, uint64_t time);
+                                       struct Node_ *node, uint64_t time);
 
 
 /********************
@@ -43,7 +45,7 @@ static inline void node_allocator_free(struct NodeAllocator *A,
 
 void *_node_allocator_alloc_page(struct NodeAllocator *A);
 
-static inline void *node_allocator_alloc(struct NodeAllocator *A) {
+static inline struct Node_ *node_allocator_alloc(struct NodeAllocator *A) {
   struct NodeAllocatorBlock *block;
   void *ret = 0;
 
@@ -57,7 +59,7 @@ static inline void *node_allocator_alloc(struct NodeAllocator *A) {
 }
 
 static inline void node_allocator_free(struct NodeAllocator *A, 
-                                       void *node, uint64_t time) {
+                                       struct Node_ *node, uint64_t time) {
   struct NodeAllocatorBlock *block = page_allocator_get_page(node);
   bool do_page_free = false;
 
