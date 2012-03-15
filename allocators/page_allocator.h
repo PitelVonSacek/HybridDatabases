@@ -13,6 +13,10 @@
 
 #define PAGE_ALLOCATOR_PAGE_SIZE ((size_t)4096)
 
+static inline void *page_allocator_get_page(const void *ptr) {
+  return (void*)(((size_t)ptr) & ~(PAGE_ALLOCATOR_PAGE_SIZE - 1));
+}
+
 struct PageAllocator {
   size_t gc_threshold;
 
