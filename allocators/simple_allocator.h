@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include "../utils/atomic.h"
-#include "../utils/list.h"
+#include "../utils/slist.h"
 
 struct SimpleAllocator {
   size_t obj_size;
@@ -13,7 +13,7 @@ struct SimpleAllocator {
 };
 
 #define SimpleAllocatorInit(size, GC_THRESHOLD) \
-  (struct SimpleAllocator){ \
+  { \
     .obj_size = size, \
     .gc_threshold = GC_THRESHOLD, \
     .free_objs_count = 0, \
@@ -60,7 +60,7 @@ static inline void simple_allocator_free(struct SimpleAllocator *A, void *obj) {
 
 static void simple_allocator_init(struct SimpleAllocator *A, 
                                   size_t block_size, size_t gc_threshold) {
-  *A = SimpleAllocatorInit(block_size, gc_threshold);
+  *A = (struct SimpleAllocator)SimpleAllocatorInit(block_size, gc_threshold);
 }
 
 static void simple_allocator_destroy(struct SimpleAllocator *A) {
