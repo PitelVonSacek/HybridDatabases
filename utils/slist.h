@@ -84,7 +84,7 @@ static inline void slist_atomic_swap(struct SList *head_a, struct SList *head_b)
 #define slist_empty(h) slist_empty(typeUncast(h))
 
 #define slist_push(h, i) slist_push(typeUncast(h), typeUncast(i))
-#define slist_pop(h) ((SListItem(h))slist_pop(typeUncast(h)))
+#define slist_pop(h) ((SListItem(h)*)slist_pop(typeUncast(h)))
 #define slist_swap(h, i) slist_swap(typeUncast(h), typeUncast(i))
 
 #define slist_atomic_push(h, i) slist_atomic_push(typeUncast(h), typeUncast(i))
