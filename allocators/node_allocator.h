@@ -54,6 +54,8 @@ static inline struct Node_ *node_allocator_alloc(struct NodeAllocator *A) {
   if (&block->head != &A->blocks)
       ret = slist_pop(&block->free_nodes);
   if (ret) block->used++;
+  if (slist_empty(&block->free_nodes))
+    list_add_begin(&A->blocks, list_remove(&block->head));
   pthread_mutex_unlock(&A->mutex);
 
   return ret ?: _node_allocator_alloc_page(A);
@@ -68,8 +70,11 @@ static inline void node_allocator_free(struct NodeAllocator *A,
   if (!--block->used) {
     do_page_free = true;
     list_remove(&block->head);
-  } else 
+  } else {
+    if (slist_empty(&block->free_nodes))
+      list_add_end(&A->blocks, list_remove(&block->head));
     slist_push(&block->free_nodes, (struct SList*)node);
+  }
   pthread_mutex_unlock(&A->mutex);
 
   if (do_page_free) vpage_allocator_free(A->allocator, block, time);
