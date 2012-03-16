@@ -90,8 +90,6 @@ typedef struct Database_ {
 
   Lock locks[DB_LOCKS];
 
-  struct List node_list;
-
   Handler* __dummy_handler[0];  // for type magic only
   Stack(Handler*) handlers[1];
 

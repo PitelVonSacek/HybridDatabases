@@ -87,7 +87,6 @@ static void fix_pointers(Database *D, IdToNode *nodes) {
     Node *node = var->value;
 
     node_get_type(node)->init_pointers(nodes, node);
-  //  list_add_end(&D->node_list, &node->__list); no already done in read.c
   } ndictForEnd;
 }
 
@@ -104,20 +103,22 @@ static void fill_indexies(Database *D) {
 
   tr_begin(H);
 
-  list_for_each_item(node, &D->node_list, Node, __list) {
-    if (!node_get_type(node)->update_indexes(H, CBE_NODE_LOADED, node)) {
-      dbDebug(E, "Filling indexies failed");
-      exit(1);
-    }
+  NodeType *type = D->node_types;
+  for (; type - D->node_types < D->node_types_count; type++)
+    node_for_each(node, type) {
+      if (!type->update_indexes(H, CBE_NODE_LOADED, node)) {
+        dbDebug(E, "Filling indexies failed");
+        exit(1);
+      }
 
-    while (!fstack_empty(H->log)) {
-      struct LogItem item = fstack_top(H->log);
-      fstack_pop(H->log);
+      while (!fstack_empty(H->log)) {
+        struct LogItem item = fstack_top(H->log);
+        fstack_pop(H->log);
 
-      if (item.type == LI_TYPE_MEMORY_DELETE)
-        generic_free(D->tm_allocator, item.ptr, 0);
+        if (item.type == LI_TYPE_MEMORY_DELETE)
+          generic_free(D->tm_allocator, item.ptr, 0);
+      }
     }
-  }
 
   _tr_abort_main(H);
 

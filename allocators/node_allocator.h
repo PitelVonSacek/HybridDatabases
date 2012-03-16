@@ -15,6 +15,7 @@ struct Node_;
 
 struct NodeAllocatorBlock {
   struct List head;
+  struct List dump_head;
   struct SList free_nodes;
   size_t used;
   struct NodeType_ *type;
@@ -25,6 +26,7 @@ struct NodeAllocator {
   struct VPageAllocator *allocator;
   struct NodeType_ *type;
   struct List blocks;
+  struct List dump_blocks;
   pthread_mutex_t mutex;
 };
 
@@ -66,10 +68,13 @@ static inline void node_allocator_free(struct NodeAllocator *A,
   struct NodeAllocatorBlock *block = page_allocator_get_page(node);
   bool do_page_free = false;
 
+  *(uint64_t*)util_apply_offset(node, sizeof(void*)) = 0;
+
   pthread_mutex_lock(&A->mutex);
   if (!--block->used) {
     do_page_free = true;
     list_remove(&block->head);
+    list_remove(&block->dump_head);
   } else {
     if (slist_empty(&block->free_nodes))
       list_add_end(&A->blocks, list_remove(&block->head));

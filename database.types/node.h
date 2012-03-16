@@ -6,7 +6,6 @@
 #include "../allocators/node_allocator.h"
 #include "../allocators/generic_allocator.h"
 
-#include "../utils/list.h"
 #include "../utils/num_dictionary.h"
 #include "../utils/type_magic.h"
 
@@ -55,14 +54,11 @@ typedef struct NodeType_ {
 #undef Handler
 
 typedef struct Node_ {
-  // linked list of nodes
-  struct List __list;
-
-  // node id
+  union {
+    uint64_t ref_count;
+    struct SList slist;
+  };
   const uint64_t id;
-  // # of references from other nodes
-  // node can be deleted only if ref_count == 0
-  uint64_t ref_count;
 
   DummyAncestor __ancestor;
 } Node;

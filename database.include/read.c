@@ -82,7 +82,6 @@ static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
   NodeType *node_type = &D->node_types[node_type_nr];
  
   Node *node = node_allocator_alloc(node_type->allocator);
-  list_add_end(&D->node_list, &node->__list);
 
   *(uint64_t*)&node->id = rNumber;
   node->ref_count = 0;
@@ -123,7 +122,7 @@ static bool read_node_delete(Reader *R, Database *D, IdToNode *nodes) {
   Node *node = dict_node->value;
 
   node_get_type(node)->destroy(D->tm_allocator, node, 0);
-  list_remove(&node->__list);
+  *(uint64_t*)&node->id = 0;
   node_allocator_free(node_get_type(node)->allocator, node, 0);
 
   ndict_remove(nodes, id);

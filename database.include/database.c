@@ -35,8 +35,6 @@ static Database *database_alloc(const DatabaseType *type) {
 
   init_locks(D);
 
-  list_init_head(&D->node_list);
-
   stack_init(D->handlers);
 
   sem_init(&D->service_thread_pause, 0, 0);
@@ -83,14 +81,13 @@ void database_close(Database *D) {
 #endif
   dbDebug(DB_INFO, "Waiting done");
 
-  struct List *item;
-  while ((item = D->node_list.prev) != &D->node_list) {
-    list_remove(item);
-    Node *node = listGetContainer(Node, __list, item);
-
-    node_get_type(node)->destroy(D->tm_allocator, node, 0);
-    node_allocator_free(node_get_type(node)->allocator, node, 0);
-  }
+  NodeType *type = &D->node_types[0];
+  for (; type - D->node_types < D->node_types_count; type++)
+    node_for_each(node, type) {
+      type->destroy(D->tm_allocator, node, 0);
+      // no need to call node_allocator_free, cause it keeps
+      // all blocks in list and will destroy them
+    }
 
   D->type->destroy_indexes(D);
   destroy_node_types(D);

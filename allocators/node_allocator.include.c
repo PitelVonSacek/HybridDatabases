@@ -9,6 +9,7 @@ void node_allocator_init(struct NodeAllocator *A,
   };
 
   list_init_head(&A->blocks);
+  list_init_head(&A->dump_blocks);
   pthread_mutex_init(&A->mutex, 0);
 }
 
@@ -24,6 +25,8 @@ void node_allocator_destroy(struct NodeAllocator *A) {
 void *_node_allocator_alloc_page(struct NodeAllocator *A) {
   struct NodeAllocatorBlock *block = vpage_allocator_alloc(A->allocator);
 
+  memset(block, 0x00, PAGE_ALLOCATOR_PAGE_SIZE);
+
   *block = (struct NodeAllocatorBlock){
     .free_nodes = SListInit,
     .used = 1,
@@ -36,13 +39,15 @@ void *_node_allocator_alloc_page(struct NodeAllocator *A) {
     (PAGE_ALLOCATOR_PAGE_SIZE - sizeof(struct NodeAllocatorBlock)) / size;
 
   for (unsigned i = 0; i < nodes_per_block; i++) {
-    slist_push(&block->free_nodes, (struct SList*)(block->data + i * size));
+    Node *node = (Node*)(block->data + i * size);
+    slist_push(&block->free_nodes, &node->slist);
   }
 
   void *ret = slist_pop(&block->free_nodes);
 
   pthread_mutex_lock(&A->mutex);
   list_add_end(&A->blocks, &block->head);
+  list_add_end(&A->dump_blocks, &block->dump_head);
   pthread_mutex_unlock(&A->mutex);
 
   return ret;

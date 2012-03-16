@@ -85,28 +85,3 @@ static void write_node_modify(Writer *W, uint64_t node_id, unsigned attr,
   } wArrayEnd;
 }
 
-#ifndef SINGLE_SERVICE_THREAD
-// unused with SINGLE_SERVICE_THREAD
-static void write_log(Writer *W, TransactionLog *log) {
-  wArray {
-    fstack_for_each(item, log) {
-      Node *node = (Node*)item->ptr;
-      switch (item->type) {
-        case LI_TYPE_NODE_MODIFY:
-        case LI_TYPE_ATOMIC_NODE_MODIFY: 
-          write_node_modify(W, node->id, item->index, 
-                            item->attr_type, item->data_new);
-          break;
-        case LI_TYPE_NODE_ALLOC: 
-          write_node_alloc(W, node_get_type(node), node->id);
-          break;
-        case LI_TYPE_NODE_DELETE:
-          write_node_delete(W, node->id);
-      }
-    }
-  } wArrayEnd;
-  
-  wFinish(1);
-}
-#endif
-

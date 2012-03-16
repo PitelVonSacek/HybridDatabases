@@ -1,5 +1,24 @@
-static void process_transaction_log(TransactionLog *log, Database *D, 
-                                    Writer *W, size_t end_time, Node **dump_ptr) {
+static void dump_get_next_node(Database *D, NodeType **type, Node **node) {
+  if (!D->node_types_count) return;
+
+  if (!*type) {
+    *type = &D->node_types[0];
+    *node = node_get_first(*type);
+  } else *node = node_get_next(*type, *node);
+
+  while (!*node) {
+    if (++*type - D->node_types >= D->node_types_count) {
+      *type = 0;
+      *node = 0;
+      return;
+    }
+    *node = node_get_first(*type);
+  }
+}
+
+static void process_transaction_log(TransactionLog *log, Database *D,
+                                    Writer *W, size_t end_time,
+                                    NodeType **dump_type, Node **dump_ptr) {
   wArray {
     fstack_for_each(item, log) {
       Node *node = item->ptr;
@@ -12,16 +31,13 @@ static void process_transaction_log(TransactionLog *log, Database *D,
 
         case LI_TYPE_NODE_ALLOC: 
           write_node_alloc(W, node_get_type(node), node->id);
-          list_add_end(&D->node_list, &node->__list);
           break;
 
         case LI_TYPE_NODE_DELETE:
           write_node_delete(W, node->id);
 
-          if (*dump_ptr == node) 
-            *dump_ptr = listGetContainer(Node, __list, node->__list.next);
+          if (*dump_ptr == node) dump_get_next_node(D, dump_type, dump_ptr);
 
-          list_remove(&node->__list);
           node_get_type(node)->destroy(D->tm_allocator, node, end_time);
           node_allocator_free(node_get_type(node)->allocator, node, end_time);
           break;
@@ -37,14 +53,13 @@ static void process_transaction_log(TransactionLog *log, Database *D,
   fstack_destroy(log);
 }
 
-static void dump_node(Database *D, Writer *W, Node *node) {
+static bool dump_node(Database *D, Writer *W, Node *node) {
   Lock *lock = D->locks + hash_ptr(node);
   uint64_t version = l_lock_(lock, 0, ~(uint64_t)0);
 
   if (!version) {
-    // FIXME may be sleep a while ?
     dbDebug(I, "Dump collision");
-    return;
+    return false;
   }
 
   wArray {
@@ -55,20 +70,22 @@ static void dump_node(Database *D, Writer *W, Node *node) {
   wFinish(1);
 
   l_unlock(lock, 0, version);
+
+  return true;
 }
 
 // true means dump finished
-static bool do_dump(Database *D, Writer *W, Node **dump_ptr) {
+static bool do_dump(Database *D, Writer *W, NodeType **dump_type, Node **dump_ptr) {
   do {
     for (int i = 0; i < DUMP__NODES_PER_TRANSACTION; i++) {
-      if (&dump_ptr[0]->__list == &D->node_list)  // dump finished
-        goto dump_finish;
+      if (!*dump_ptr) goto dump_finish;
 
-      dump_node(D, W, dump_ptr[0]);
-      fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
-      writer_discart(W);
+      if (dump_node(D, W, dump_ptr[0])) {
+        fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
+        writer_discart(W);
 
-      dump_ptr[0] = listGetContainer(Node, __list, dump_ptr[0]->__list.next);
+        dump_get_next_node(D, dump_type, dump_ptr);
+      }
     }
 
     // FIXME dirty, trywait() can fail for other reason than
@@ -115,6 +132,7 @@ static void *service_thread(Database *D) {
   Writer W[1];
   bool dump_running = false;
   Node *dump_ptr = 0;
+  NodeType *dump_type = 0;
 
   dbDebug(DB_INFO, "Service thread started");
 
@@ -126,7 +144,8 @@ static void *service_thread(Database *D) {
     switch (job->type) {
       case DB_SERVICE__COMMIT:
       case DB_SERVICE__SYNC_COMMIT:
-        process_transaction_log(job->content.log, D, W, job->end_time, &dump_ptr);
+        process_transaction_log(job->content.log, D, W, job->end_time,
+                                &dump_type, &dump_ptr);
         fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
         writer_discart(W);
 
@@ -144,7 +163,7 @@ static void *service_thread(Database *D) {
 
     resume:
     if (dump_running) {
-      if (do_dump(D, W, &dump_ptr)) dump_running = false;
+      if (do_dump(D, W, &dump_type, &dump_ptr)) dump_running = false;
       else goto next;
     } 
     
@@ -158,7 +177,7 @@ static void *service_thread(Database *D) {
   if (dump_running) {
     dbDebug(DB_WARNING, "Exit requests while doing dump");
 
-    while (!do_dump(D, W, &dump_ptr)) ;
+    while (!do_dump(D, W, &dump_type, &dump_ptr)) ;
   }
 
   writer_destroy(W);
@@ -197,7 +216,7 @@ static void *service_thread(Database *D) {
         pthread_mutex_lock(D->output.dump_running);
         dbDebug(DB_INFO, "Dump started");
         dump_running = true;
-        dump_ptr = listGetContainer(Node, __list, D->node_list.next);
+        dump_get_next_node(D, &dump_type, &dump_ptr);
       }
 
       sem_post(job->lock);

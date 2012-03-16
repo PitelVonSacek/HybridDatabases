@@ -113,6 +113,14 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr);
 static void *service_thread(Database *D);
 static uint64_t get_time(Database *D);
 
+
+static Node *node_get_first(NodeType *type);
+static Node *node_get_next(NodeType *type, Node *node);
+#define node_for_each(var, node_type) \
+  for (Node *var = node_get_first(node_type); var;  \
+       var = node_get_next(node_type, var))
+
+
 #include "attributes/attributes.h"
 
 #include "database.include/database.c"

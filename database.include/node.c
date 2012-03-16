@@ -17,16 +17,15 @@ Node *tr_node_create (Handler *H, NodeType *type) {
   }
 
   Node *node = node_allocator_alloc(type->allocator);
-  *(uint64_t*)&node->id = atomic_add_and_fetch(&H->database->node_id_counter, 1);
-  node->ref_count = 0;
-  list_init_head(&node->__list);
 
-  // lock created node; really do i need to lock it???
   if (!utilLock(H, node)) {
     node_allocator_free(type->allocator, node, atomic_read(&H->database->time));
     return 0;
   }
 
+  uint64_t id = atomic_add_and_fetch(&H->database->node_id_counter, 1);
+  atomic_write((uint64_t*)&node->id, id);
+  node->ref_count = 0;
   type->init(node);
 
   // add event to log
@@ -128,5 +127,59 @@ const NodeType *tr_node_get_type (Node *node) {
 const int tr_attr_get_type(NodeType *type, int index) {
   if (index >= type->attributes_count || index < 0) return 0;
   return type->attributes[index].type;  
+}
+
+static void node_offset_check() {
+  STATIC_ASSERT(sizeof(struct SList) == sizeof(((Node*)0)->id));
+  STATIC_ASSERT(sizeof(struct NodeAllocatorBlock ) % __alignof__(Node) == 0);
+}
+
+static bool _node_get_next_step(NodeType *type, struct NodeAllocatorBlock **block,
+                               Node **node) {
+  const size_t max_offset =
+    ((PAGE_ALLOCATOR_PAGE_SIZE - sizeof(struct NodeAllocatorBlock))
+    / type->size) * type->size;
+
+  *node = util_apply_offset((*node), type->size);
+
+  if (util_get_offset(block[0]->data, *node) >= max_offset) {
+    pthread_mutex_lock(&type->allocator->mutex);
+    *block = utilContainerOf(block[0]->dump_head.next,
+                             struct NodeAllocatorBlock, dump_head);
+    pthread_mutex_unlock(&type->allocator->mutex);
+
+    if (&block[0]->dump_head == &type->allocator->dump_blocks) return false;
+    *node = (void*)block[0]->data;
+  }
+
+  return true;
+}
+
+static Node *node_get_first(NodeType *type) {
+  struct NodeAllocatorBlock *block;
+
+  pthread_mutex_lock(&type->allocator->mutex);
+  block = utilContainerOf(type->allocator->dump_blocks.next,
+                          struct NodeAllocatorBlock, dump_head);
+  pthread_mutex_unlock(&type->allocator->mutex);
+
+  if (&block->dump_head == &type->allocator->dump_blocks) return 0;
+
+  Node *node = (void*)block->data;
+
+  while (!atomic_read(&node->id))
+    if (!_node_get_next_step(type, &block, &node)) return 0;
+
+  return node;
+}
+
+static Node *node_get_next(NodeType *type, Node *node) {
+  struct NodeAllocatorBlock *block = page_allocator_get_page(node);
+
+  do {
+    if (!_node_get_next_step(type, &block, &node)) return 0;
+  } while (!atomic_read(&node->id));
+
+  return node;
 }
 
