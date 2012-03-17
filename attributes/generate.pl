@@ -34,7 +34,7 @@ my $grammar = q{
   load: 'Load' block { $c{load} = $item[2] }
   store: 'Store' block { $c{store} = $item[2] }
 
-  block: /@\\s*([^@]*)@/ { $1 } 
+  block: /{([^{}]*(:?{(?1)}[^{}]*)*)}/s { $1 }
   bool: id { if ($item[1] =~ /true|yes|1/i) { 1 } else { 0 } }
   c_type: /(union|struct)\\s*{[^\}]*}|(\\w+\\s*\\**)+/ 
     { if ($item[1] =~ /^(struct|union)/) { $item[1] } else 

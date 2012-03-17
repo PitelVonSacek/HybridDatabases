@@ -61,7 +61,7 @@ my $grammar = q{
   args: '(' /[^)]*/ ')' { $item[2] }
   fnc_or_block: function | block
   function: 'function' /\\w+/ { $fnc_t = 'f'; $fnc = $item[2] }
-  block: /@\\s*([^@]*)@/ { $fnc_t = 'b'; $fnc = $1; $1 }
+  block: /{([^{}]*(:?{(?1)}[^{}]*)*)}/s { $fnc_t = 'b'; $fnc = $1; $1 }
   name: identifier   { $item[1] }
   type: identifier   { $item[1] }
   c_type: /(union|struct)\\s*{[^\}]*}|(\\w+\\s*\\**)+/ { $item[1] }
