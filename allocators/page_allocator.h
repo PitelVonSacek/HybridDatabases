@@ -58,15 +58,13 @@ static inline void *_page_allocator_get_page(struct PageAllocator *A) {
   return page;
 }
 
+void *_page_allocator_alloc_pages(struct PageAllocator *A);
+
 static inline void *page_allocator_alloc(struct PageAllocator *A) {
   struct SList *page;
 
-  if (!(page = _page_allocator_get_page(A))) {
-    page = mmap(0, PAGE_ALLOCATOR_PAGE_SIZE, PROT_READ | PROT_WRITE, 
-                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-    if (page == MAP_FAILED) abort();
-  }
+  if (!(page = _page_allocator_get_page(A)))
+    page = _page_allocator_alloc_pages(A);
 
   return page;
 }

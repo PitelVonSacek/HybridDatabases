@@ -1,12 +1,13 @@
 #include "page_allocator.h"
+#include "../utils/basic_utils.h"
 
 #ifndef PAGE_ALLOCATOR_THRESHOLD
-#define PAGE_ALLOCATOR_THRESHOLD 64
+#define PAGE_ALLOCATOR_THRESHOLD 2048 // 8 MB
 #endif
 
 void page_allocator_init(struct PageAllocator *A, size_t gc_threshold) {
   *A = (struct PageAllocator){
-    .gc_threshold = gc_threshold,
+    .gc_threshold = gc_threshold > 2 ? gc_threshold : 2,
 
     .free_pages_counter = 0,
     .free_pages = SListInit
@@ -28,6 +29,18 @@ void _page_allocator_collect_garbage(struct PageAllocator *A) {
 
     munmap(page, PAGE_ALLOCATOR_PAGE_SIZE);
   }
+}
+
+void *_page_allocator_alloc_pages(struct PageAllocator *A) {
+  void *block = mmap(0, PAGE_ALLOCATOR_PAGE_SIZE * A->gc_threshold / 2,
+                     PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+  if (block == MAP_FAILED) utilDie("mmap failed");
+
+  for (int i = 1; i < A->gc_threshold / 2; i++)
+    page_allocator_free(A, util_apply_offset(block, i * PAGE_ALLOCATOR_PAGE_SIZE));
+
+  return block;
 }
 
 static __attribute__((constructor)) void _page_allocator_check_page_size() {
