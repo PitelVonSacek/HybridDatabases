@@ -1,5 +1,5 @@
 Handler *db_handler_create(Database *D) {
-  Handler *H = malloc(sizeof(Handler));
+  Handler *H = xmalloc(sizeof(Handler));
   db_handler_init(D, H);
   H->allocated = true;
   return H;

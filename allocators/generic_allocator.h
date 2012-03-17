@@ -8,6 +8,7 @@
 
 #include "../utils/atomic.h"
 #include "../utils/slist.h"
+#include "../utils/basic_utils.h"
 
 struct GenericAllocator {
   uint64_t (*get_time)(void*);
@@ -37,7 +38,7 @@ static inline void *generic_allocator_alloc(struct GenericAllocator *A, size_t s
   if (size < sizeof(SListItem(&A->free_list)))
     size = sizeof(SListItem(&A->free_list));
 
-  return malloc(size);
+  return xmalloc(size);
 }
 
 void _generic_allocator_collect_garbage(struct GenericAllocator *A);

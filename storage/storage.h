@@ -8,6 +8,8 @@
 #include <assert.h>
 #include <stdio.h>
 
+#include "../utils/basic_utils.h"
+
 /*
  * File format description:
  * FILE := ROOT_ELEMENT*

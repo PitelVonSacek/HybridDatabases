@@ -23,7 +23,7 @@ static void destroy_node_types(Database *D) {
 }
 
 static Database *database_alloc(const DatabaseType *type) {
-  Database *D = malloc(type->size);
+  Database *D = xmalloc(type->size);
 
   *(const DatabaseType**)D = type;
   D->filename = 0;
@@ -233,7 +233,7 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
 
   FILE *new_file;
   {
-    char *buffer = malloc(strlen(D->filename) + 30);
+    char *buffer = xmalloc(strlen(D->filename) + 30);
     sprintf(buffer, "%s.%i", D->filename, D->current_file_index);
     dbDebug(DB_INFO, "Opening new file '%s'", buffer);
 

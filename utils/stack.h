@@ -1,15 +1,15 @@
 #ifndef __STACK_H__
 #define __STACK_H__
 
-#include <stdlib.h>
+#include "basic_utils.h"
 
 // simple generic stack implementation
 
 typedef struct {} IsStack;
 
-#define Stack_alloc(x)      malloc(x)
+#define Stack_alloc(x)      xmalloc(x)
 #define Stack_free(x)       free(x)
-#define Stack_realloc(x, s) realloc(x, s)
+#define Stack_realloc(x, s) xrealloc(x, s)
 
 
 #define Stack(Type) struct { \

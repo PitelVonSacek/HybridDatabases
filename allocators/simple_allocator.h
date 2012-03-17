@@ -46,7 +46,7 @@ static inline void *simple_allocator_alloc(struct SimpleAllocator *A) {
   void *obj = slist_atomic_pop(&A->free_objs);
 
   if (obj) atomic_dec(&A->free_objs_count);
-  else obj = malloc(A->obj_size);
+  else obj = xmalloc(A->obj_size);
 
   return obj;
 }

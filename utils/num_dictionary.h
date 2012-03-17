@@ -2,8 +2,7 @@
 #define __NUM_DICTIONARY_H__
 
 #include "static_if.h"
-#include <stdlib.h>
-#include <assert.h>
+#include "basic_utils.h"
 #include <stdbool.h>
 #include <string.h>
 #include <stdint.h>
@@ -83,7 +82,7 @@ typedef struct {
 
 #define ndict_insert(dict, key_, value_) \
   ({ \
-    typeof((dict)->buckets[0]) __node = malloc(sizeof(*__node)); \
+    typeof((dict)->buckets[0]) __node = xmalloc(sizeof(*__node)); \
     __node->generic_key = 0; \
     __node->key = (key_); \
     __node->value = (value_); \
@@ -304,7 +303,7 @@ static void _ndict_resize(NumDictionary *dict, int cap_index_diff) {
     assert(0);
   }
 
-  struct NumDictionaryNode **buckets = malloc(sizeof(*buckets) * new_cap);
+  struct NumDictionaryNode **buckets = xmalloc(sizeof(*buckets) * new_cap);
   memset(buckets, 0, sizeof(*buckets) * new_cap);
 
   for (size_t bucket = 0; bucket < dict->capacity; bucket++) {

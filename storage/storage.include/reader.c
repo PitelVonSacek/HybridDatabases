@@ -6,7 +6,7 @@ struct FileReaderContext {
 };
 
 static struct FileReaderContext *file_reader_context(FILE *f, bool close) {
-  struct FileReaderContext *context = malloc(sizeof(*context));
+  struct FileReaderContext *context = xmalloc(sizeof(*context));
 
   *context = (struct FileReaderContext){
     .file = f,
@@ -23,7 +23,7 @@ static int file_reader_read(void *c, size_t length, void **output) {
 
   if (ctx->buf_size < length) {
     free(ctx->buf);
-    ctx->buf = malloc(length);
+    ctx->buf = xmalloc(length);
   }
 
   size_t read = fread(ctx->buf, 1, length, ctx->file);
@@ -51,7 +51,7 @@ void file_reader_init(Reader *R, FILE *file, bool close) {
 
 Reader *reader_create(ReadFunction read, void *context, 
                       void (*destroy_context)(void*)) {
-  Reader *R = malloc(sizeof(*R));
+  Reader *R = xmalloc(sizeof(*R));
   reader_init(R, read, context, destroy_context);
   return R;
 }

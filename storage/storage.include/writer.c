@@ -1,5 +1,5 @@
 Writer* writer_create() {
-  Writer *W = malloc(sizeof(*W));
+  Writer *W = xmalloc(sizeof(*W));
   writer_init(W);
   return W;
 }
@@ -12,7 +12,7 @@ void writer_free(Writer *W) {
 void writer_init(Writer* W) {
   const size_t default_size = 4000;
   W->depth = 0;
-  W->real_begin = malloc(default_size + 10);
+  W->real_begin = xmalloc(default_size + 10);
   W->begin = W->real_begin + 10;
   W->ptr = W->begin;
   W->end = W->begin + default_size;
@@ -26,7 +26,7 @@ void _writer_get_space(Writer *W, size_t size) {
   size_t cur_size = W->end - W->real_begin;
   size_t new_size = cur_size + size;
   if (new_size < (cur_size * 3) / 2) new_size = (cur_size * 3) / 2;
-  unsigned char *data = realloc(W->real_begin, new_size);
+  unsigned char *data = xrealloc(W->real_begin, new_size);
   W->end = data + new_size;
   W->ptr = data + (W->ptr - W->real_begin);
   W->begin = data + (W->begin - W->real_begin);

@@ -154,7 +154,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
   char *_file = strdup(_dir);
   char *dir = dirname(_dir);
   char *file = basename(_file);
-  char *buffer = malloc(strlen(D->filename) + 30);
+  char *buffer = xmalloc(strlen(D->filename) + 30);
   struct dirent **files = 0;
   int files_count = 0;
 
