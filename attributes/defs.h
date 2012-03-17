@@ -33,7 +33,7 @@ struct Handler_;
 static inline size_t attribute_size(int type);
 
 static inline void attribute_init(int type, void *attr);
-static inline void attribute_destroy(int type, struct GenericAllocatorInfo *allocator,
+static inline void attribute_destroy(int type, struct GenericAllocator *allocator,
                                      uint64_t end_time, void *attr);
 
 // FIXME lock node when modifing its ref_count
@@ -42,7 +42,7 @@ static inline bool attribute_write(int type, struct Handler_ *H,
 
 static inline void attribute_store(int type, Writer *W, const void *value);
 static inline bool attribute_load(int type, Reader *R, 
-                                  struct GenericAllocatorInfo *allocator, 
+                                  struct GenericAllocator *allocator,
                                   void *attr);
 @
 
@@ -134,7 +134,7 @@ AttributeType LDouble : long double {
 ###################
 
 AttributeType String : const char* {
-  Destroy @ generic_free(allocator, (void*)attr->value, end_time) @
+  Destroy @ generic_allocator_free(allocator, (void*)attr->value, end_time) @
 
   Write @ 
     if (&attr->value != value) {
@@ -154,11 +154,11 @@ AttributeType String : const char* {
     if (!read_string(R, &ptr, &length)) return false;
     char *tmp = 0;
     if (length) {
-      tmp = generic_alloc(allocator, length + 1);
+      tmp = generic_allocator_alloc(allocator, length + 1);
       memcpy(tmp, ptr, length);
       tmp[length] = '\0';
     }
-    if (attr->value) generic_free(allocator, (void*)attr->value, 0);
+    if (attr->value) generic_allocator_free(allocator, (void*)attr->value, 0);
     attr->value = tmp;
   @
 
@@ -166,7 +166,7 @@ AttributeType String : const char* {
 }
 
 AttributeType RawString : const struct RawString* {
-  Destroy @ generic_free(allocator, (void*)attr->value, end_time) @
+  Destroy @ generic_allocator_free(allocator, (void*)attr->value, end_time) @
 
   Write @ 
     if (&attr->value != value) {
@@ -184,9 +184,9 @@ AttributeType RawString : const struct RawString* {
     size_t length;
     const void *ptr;
     if (!read_string(R, &ptr, &length)) return false;
-    if (attr->value) generic_free(allocator, (void*)attr->value, 0);
+    if (attr->value) generic_allocator_free(allocator, (void*)attr->value, 0);
     if (length) {
-      struct RawString *tmp = generic_alloc(allocator, sizeof(struct RawString) + length);
+      struct RawString *tmp = generic_allocator_alloc(allocator, sizeof(struct RawString) + length);
       tmp->length = length;
       memcpy(tmp->data, ptr, length);
       attr->value = tmp;

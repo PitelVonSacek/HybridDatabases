@@ -45,7 +45,8 @@ static Database *database_alloc(const DatabaseType *type) {
 
   vpage_allocator_init(D->vpage_allocator,
     DB_VPAGE_ALLOCATOR_CACHE, (uint64_t(*)(void*))&get_time, D);
-  generic_allocator_init(D->tm_allocator);
+  generic_allocator_init(D->tm_allocator,
+    DB_GENERIC_ALLOCATOR_CACHE, (uint64_t(*)(void*))&get_time, D);
 
   D->output.file = 0;
   sem_init(D->output.counter, 0, 0);

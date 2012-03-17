@@ -116,7 +116,7 @@ static void fill_indexies(Database *D) {
         fstack_pop(H->log);
 
         if (item.type == LI_TYPE_MEMORY_DELETE)
-          generic_free(D->tm_allocator, item.ptr, 0);
+          generic_allocator_free(D->tm_allocator, item.ptr, 0);
       }
     }
 

@@ -133,7 +133,7 @@ typedef struct Database_ {
   } output;
 
   struct VPageAllocator vpage_allocator[1];
-  struct GenericAllocatorInfo tm_allocator[1];
+  struct GenericAllocator tm_allocator[1];
 
   DummyAncestor __ancestor; // required for type magic
 

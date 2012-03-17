@@ -43,7 +43,7 @@ static void process_transaction_log(TransactionLog *log, Database *D,
           break;
 
         case LI_TYPE_MEMORY_DELETE:
-          generic_free(D->tm_allocator, node, end_time);
+          generic_allocator_free(D->tm_allocator, node, end_time);
       }
     }
   } wArrayEnd;
@@ -118,11 +118,6 @@ static uint64_t get_time(Database *D) {
 
 static void collect_garbage(Database *D) {
   dbDebug(I, "Collecting garbage...");
-
-  uint64_t time = get_time(D);
-
-  generic_allocator_collect_garbage(D->tm_allocator, time);
-
 
   dbDebug(I, "Collecting garbage done");
 }

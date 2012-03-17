@@ -28,7 +28,7 @@ typedef NumDictionary(uint64_t, Node*) IdToNode;
 typedef struct NodeType_ {
   const char * name; // this pointer is used as unique id of NodeType
 
-  bool (*load)(Reader*, struct GenericAllocatorInfo*, Node*);
+  bool (*load)(Reader*, struct GenericAllocator*, Node*);
   void (*store)(Writer*, Node*);
 
   void (*init_pointers)(IdToNode*, Node*);
@@ -37,7 +37,7 @@ typedef struct NodeType_ {
   int (*destroy_pointers)(Handler*, Node*);
 
   void (*init)(Node*);
-  void (*destroy)(struct GenericAllocatorInfo*, Node*, uint64_t end_time);
+  void (*destroy)(struct GenericAllocator*, Node*, uint64_t end_time);
 
   struct NodeAllocator allocator[1];
 

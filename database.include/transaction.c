@@ -51,7 +51,7 @@ static void log_undo_item(Handler *H, struct LogItem *item, uint64_t end_time) {
       break;
     }
     case LI_TYPE_MEMORY_ALLOC:
-      generic_free(H->database->tm_allocator, item->ptr, end_time);
+      generic_allocator_free(H->database->tm_allocator, item->ptr, end_time);
       break;
     case LI_TYPE_NODE_DELETE:
     case LI_TYPE_MEMORY_DELETE:

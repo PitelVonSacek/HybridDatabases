@@ -149,7 +149,7 @@ static inline void attribute_init_${$a}{name}(${$a}{name}_t *attr) {
 }
 
 static inline void attribute_destroy_${$a}{name}(
-        struct GenericAllocatorInfo *allocator,
+        struct GenericAllocator *allocator,
         uint64_t end_time, ${$a}{name}_t *attr) {
   ${$a}{destroy};
 }
@@ -161,7 +161,7 @@ static inline bool attribute_write_${$a}{name}(Handler *H,
 }
 
 static inline bool attribute_load_${$a}{name}(Reader *R, 
-        struct GenericAllocatorInfo *allocator, ${$a}{name}_t *attr) {
+        struct GenericAllocator *allocator, ${$a}{name}_t *attr) {
   ${$a}{load};
   return true;
 }
@@ -190,7 +190,7 @@ EOF
   print "    default: assert(0);\n  }\n}\n\n";
 
   #destroy
-  print "void attribute_destroy(int type, struct GenericAllocatorInfo *allocator,\n".
+  print "void attribute_destroy(int type, struct GenericAllocator *allocator,\n".
         "                       uint64_t end_time, void *attr) {\n" .
         "  switch (type) {\n";
   for_each "attribute_destroy_%s(allocator, end_time, attr)";
@@ -205,7 +205,7 @@ EOF
 
   # load
   print "bool attribute_load(int type, Reader *R,\n".
-        "                    struct GenericAllocatorInfo *allocator,\n".
+        "                    struct GenericAllocator *allocator,\n".
         "                    void *attr) {\n".
         "  switch (type) {\n";
   for_each "attribute_load_%s(R, allocator, attr)";

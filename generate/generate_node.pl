@@ -73,7 +73,7 @@ EOF
  
     # load
     print "static bool ${node_type}_load(Reader *R, struct " .
-          "GenericAllocatorInfo *allocator, $node_type *node) {\n" .
+          "GenericAllocator *allocator, $node_type *node) {\n" .
           "  if (\n";
  
     for my $attr (@attrs) {
@@ -117,21 +117,21 @@ EOF
     node_type_mk_fce("init", "$node_type *node", "", 
                      $node_type, \@attrs);
   
-    node_type_mk_fce("destroy", "struct GenericAllocatorInfo *a, $node_type *node," .
+    node_type_mk_fce("destroy", "struct GenericAllocator *a, $node_type *node," .
                      "uint64_t end_time", "a, end_time,", $node_type, \@attrs);
 
     print <<EOF;
 const NodeType ${node_type}_desc = {
   .name = "$node_type",
 
-  .load = (bool(*)(Reader*, struct GenericAllocatorInfo*, Node*))&${node_type}_load,
+  .load = (bool(*)(Reader*, struct GenericAllocator*, Node*))&${node_type}_load,
   .store = (void(*)(Writer*, Node*))&${node_type}_store,
 
   .init_pointers = (void(*)(IdToNode*, Node*))&${node_type}_init_pointers,
   .destroy_pointers = (int(*)(Handler*, Node*))&${node_type}_destroy_pointers,
 
   .init = (void(*)(Node*))&${node_type}_init,
-  .destroy = (void(*)(struct GenericAllocatorInfo*, Node*, uint64_t))&${node_type}_destroy,
+  .destroy = (void(*)(struct GenericAllocator*, Node*, uint64_t))&${node_type}_destroy,
 
   .update_indexes = 0,
 

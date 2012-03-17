@@ -7,13 +7,13 @@ bool _tr_commit_main(Handler*, enum CommitType);
 void _tr_handler_rollback(Handler *H, struct Transaction *tr);
 
 static inline void *_tr_memory_alloc_no_release(Handler *H, size_t size) {
-  return generic_alloc(H->database->tm_allocator, size);
+  return generic_allocator_alloc(H->database->tm_allocator, size);
 }
 
 static inline void *_tr_memory_alloc(Handler *H, size_t size) {
   struct LogItem item = {
     .type = LI_TYPE_MEMORY_ALLOC,
-    .ptr = generic_alloc(H->database->tm_allocator, size)
+    .ptr = generic_allocator_alloc(H->database->tm_allocator, size)
   };
 
   fstack_push(H->log, item);
