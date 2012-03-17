@@ -34,7 +34,7 @@ typedef struct {} IsStack;
     STATIC_ASSERT(types_equal(typeof(_stack_helper->is_stack), IsStack)); \
     typeof(_stack_helper) _stack = _stack_helper; \
     if (_stack->ptr == _stack->end) \
-      _stack_expand(sizeof(*_stack->begin), (struct GenericStack*)_stack); \
+      _stack_expand(sizeof(*_stack->begin), utilCast(struct GenericStack, _stack)); \
     *_stack->ptr++ = (value); \
     _stack; \
   });})
@@ -80,7 +80,7 @@ typedef struct {} IsStack;
     typeof(_stack_helper) _stack = _stack_helper; \
     if (stack_capacity(_stack) > 2 * stack_size(_stack) && \
         stack_capacity(_stack) > 100) \
-      _stack_shrink(sizeof(*_stack->begin), (struct GenericStack*)_stack); \
+      _stack_shrink(sizeof(*_stack->begin), utilCast(struct GenericStack, _stack)); \
     --_stack->ptr; \
   });}))
 

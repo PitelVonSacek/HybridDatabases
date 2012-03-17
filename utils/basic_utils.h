@@ -15,6 +15,18 @@
 #define util_apply_offset(ptr, offset) \
   ((void*)(((char*)(ptr)) + (offset)))
 
+
+// Casts pointer ptr to type Type* in way that
+// -fstrict-aliasing cannot screw up
+#define utilCast(Type, ptr) \
+  ({ \
+    union { \
+      Type new_; \
+      typeof(*(ptr)) old; \
+    } *_type_cast_helper = (typeof(_type_cast_helper))(ptr); \
+    &_type_cast_helper->new_; \
+  })
+
 #define util_read(ptr, dest, size, atomic) __UTIL_READ_UNIMPLEMENTED__
 #define util_write(ptr, src, size, atomic) memcpy(ptr, src, size)
 
