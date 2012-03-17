@@ -14,8 +14,6 @@ void node_allocator_init(struct NodeAllocator *A,
 }
 
 void node_allocator_destroy(struct NodeAllocator *A) {
-  void *page;
-
   while (!list_empty(&A->blocks)) 
     vpage_allocator_free(A->allocator, list_remove(A->blocks.prev), 0);
   

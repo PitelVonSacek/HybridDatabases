@@ -40,8 +40,6 @@ Handler *db_handler_init(Database *D, Handler *H) {
 void db_handler_destroy(Handler *H) {
   if (H->start_time) _tr_abort_main(H);
 
-  typeof(&*H->database->handlers) handlers = H->database->handlers;
-
   sendServiceMsg(H->database, {
     .type = DB_SERVICE__HANDLER_UNREGISTER,
     .lock = H->write_finished,

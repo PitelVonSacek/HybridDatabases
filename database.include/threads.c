@@ -81,7 +81,7 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type, Node **dump_pt
       if (!*dump_ptr) goto dump_finish;
 
       if (dump_node(D, W, dump_ptr[0])) {
-        fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
+        util_fwrite(writer_ptr(W), writer_length(W), D->output.file);
         writer_discart(W);
 
         dump_get_next_node(D, dump_type, dump_ptr);
@@ -96,7 +96,7 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type, Node **dump_pt
 
   dump_finish:
   write_dump_end(W);
-  fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
+  util_fwrite(writer_ptr(W), writer_length(W), D->output.file);
   writer_discart(W);
   fflush(D->output.file);
   
@@ -146,7 +146,7 @@ static void *service_thread(Database *D) {
       case DB_SERVICE__SYNC_COMMIT:
         process_transaction_log(job->content.log, D, W, job->end_time,
                                 &dump_type, &dump_ptr);
-        fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
+        util_fwrite(writer_ptr(W), writer_length(W), D->output.file);
         writer_discart(W);
 
         if (job->type == DB_SERVICE__SYNC_COMMIT) fflush(D->output.file);
@@ -246,9 +246,9 @@ static void *service_thread(Database *D) {
         sem_post(job->lock);
         goto resume;
       }
-      dbDebug(E, "Should not be here");
+      utilDie();
 
-    default: dbDebug(E, "Error in service thread!");
+    default: utilDie();
   }
 }
 

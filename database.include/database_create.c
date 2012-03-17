@@ -96,7 +96,7 @@ static void fill_indexies(Database *D) {
     .database = D,
     .start_time = 1,
     .commit_type = CT_ASYNC,
-    .acquired_locks = InlineStackInit
+    .acquired_locks = { InlineStackInit }
   }};
   fstack_init(H->transactions);
   fstack_init(H->log);
@@ -175,7 +175,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
   sprintf(buffer, "%s/%s.schema", dir, file);
   if (!(F = fopen(buffer, "rb"))) {
     if (!files_count) {
-      dbDebug(I, "Failed to open schema but there are no data files too", buffer);
+      dbDebug(I, "Failed to open schema but there are no data files too");
       Ensure(D->flags & DB_CREATE,);
 
       Ensure(F = fopen(buffer, "wb"),, "Failed to open '%s' for writing", buffer);

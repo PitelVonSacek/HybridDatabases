@@ -41,7 +41,7 @@
       .offset = 0, \
       .size = sizeof(*(ptr_)) \
     }; \
-    *(typeof(&*(ptr_)))__log_item.data_old = *(volatile typeof(&*(ptr_)))__log_item.ptr; \
+    memcpy(__log_item.data_old, __log_item.ptr, sizeof(*(ptr_))); \
     *(volatile typeof(&*(ptr_)))__log_item.ptr = (val); \
     fstack_push(typeUncast(H)->log, __log_item); \
   } while (0)
@@ -88,16 +88,16 @@
       .offset = utilOffsetOf(typeof(*__node), AttrName), \
       .attr_type = attributeTypeId(__node->AttrName) \
     }; \
-    *(typeof(&__node->AttrName.value))&__log_item.data_old = \
-        __node->AttrName.value; \
+    memcpy(__log_item.data_old, &__node->AttrName.value, \
+           sizeof(__node->AttrName.value)); \
     if (attributeIsPrimitive((node)->AttrName)) { \
       *(typeof(&__node->AttrName.value))&__log_item.data_new = __value; \
       __node->AttrName.value = __value; \
     } else { \
       __ret = attribute_write(attributeTypeId(__node->AttrName), \
         typeUncast(H), &__node->AttrName, &__value); \
-      *(typeof(&__node->AttrName.value))&__log_item.data_new = \
-          __node->AttrName.value; \
+      memcpy(__log_item.data_new, &__node->AttrName.value, \
+           sizeof(__node->AttrName.value)); \
     } \
     fstack_push(typeUncast(H)->log, __log_item); \
     __ret; \

@@ -29,6 +29,12 @@ static inline bool utilLock(Handler *H, const void *ptr) {
   return true;
 }
 
+// macro so utilDie reports something useful
+#define util_fwrite(ptr, length, file) \
+  do { \
+    size_t __length = (length); \
+    if (fwrite((ptr), 1, __length, (file)) != __length) utilDie("Write failed"); \
+  } while (0)
 
 #ifdef LOCKLESS_COMMIT
 typedef struct {
@@ -80,9 +86,9 @@ enum {
     const char *message_type[] = { \
       "Error", "Oops", "Warning", "Info" \
     }; \
-    fprintf(stderr, "%s at '%s' line %i: ", \
+    fprintf(stderr, "%s at '%s' line %i:", \
       message_type[DB_DBG_LEVEL_##level], __FILE__, __LINE__); \
-    fprintf(stderr, "" __VA_ARGS__); \
+    fprintf(stderr, " " __VA_ARGS__); \
     fprintf(stderr, "\n"); \
   } while (0)
 

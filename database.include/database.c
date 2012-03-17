@@ -221,7 +221,7 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
   if (D->output.file) { 
     // first close current file
     write_file_footer(W, magic_nr);
-    fwrite(writer_ptr(W), 1, writer_length(W), D->output.file);
+    util_fwrite(writer_ptr(W), writer_length(W), D->output.file);
 
     fclose(D->output.file);
 
@@ -248,7 +248,7 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
 
   write_file_header(W, D, magic_nr);
   if (dump_begin) write_dump_begin(W);
-  fwrite(writer_ptr(W), 1, writer_length(W), new_file);
+  util_fwrite(writer_ptr(W), writer_length(W), new_file);
   writer_destroy(W);
 
   fflush(new_file);
