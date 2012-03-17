@@ -22,7 +22,7 @@ static void _vpage_allocator_gc(struct VPageAllocator *A, uint64_t time) {
     if (!page) return;
     if (page->timestamp > time) goto complicated_way;
 
-    munmap(page, PAGE_ALLOCATOR_PAGE_SIZE);
+    page_free(page);
   }
 
   return;
@@ -35,7 +35,7 @@ static void _vpage_allocator_gc(struct VPageAllocator *A, uint64_t time) {
   while (page = slist_pop(&free_pages)) {
     if (page->timestamp > time) slist_atomic_push(&A->free_pages, page);
     else {
-      munmap(page, PAGE_ALLOCATOR_PAGE_SIZE);
+      page_free(page);
       atomic_dec(&A->free_pages_count);
     }
   }

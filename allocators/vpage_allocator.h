@@ -45,12 +45,8 @@ static inline void *_vpage_allocator_get_page(struct VPageAllocator *A) {
 static inline void *vpage_allocator_alloc(struct VPageAllocator *A) {
   struct SList *page;
 
-  if (!(page = _vpage_allocator_get_page(A))) {
-    page = mmap(0, PAGE_ALLOCATOR_PAGE_SIZE, PROT_READ | PROT_WRITE,
-                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-    if (page == MAP_FAILED) abort();
-  }
+  if (!(page = _vpage_allocator_get_page(A)))
+    page = page_alloc();
 
   return page;
 }
