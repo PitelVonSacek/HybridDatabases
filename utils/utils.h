@@ -29,12 +29,6 @@ static inline bool utilLock(Handler *H, const void *ptr) {
   return true;
 }
 
-// macro so utilDie reports something useful
-#define util_fwrite(ptr, length, file) \
-  do { \
-    size_t __length = (length); \
-    if (fwrite((ptr), 1, __length, (file)) != __length) utilDie("Write failed"); \
-  } while (0)
 
 #ifdef LOCKLESS_COMMIT
 typedef struct {
@@ -69,29 +63,7 @@ static inline void util_signal_destroy(Signal *s) {
 }
 #endif
 
-enum {
-  DB_DBG_LEVEL_DB_ERROR = 0,
-  DB_DBG_LEVEL_DB_OOPS = 1,
-  DB_DBG_LEVEL_DB_WARNING = 2,
-  DB_DBG_LEVEL_DB_INFO = 3,
-
-  DB_DBG_LEVEL_E = 0,
-  DB_DBG_LEVEL_O = 1,
-  DB_DBG_LEVEL_W = 2,
-  DB_DBG_LEVEL_I = 3
-};
-
-#define dbDebug(level, ...) \
-  do { \
-    const char *message_type[] = { \
-      "Error", "Oops", "Warning", "Info" \
-    }; \
-    fprintf(stderr, "%s at '%s' line %i:", \
-      message_type[DB_DBG_LEVEL_##level], __FILE__, __LINE__); \
-    fprintf(stderr, " " __VA_ARGS__); \
-    fprintf(stderr, "\n"); \
-  } while (0)
-
+#define dbDebug(...) utilDebug(__VA_ARGS__)
 
 #endif
 
