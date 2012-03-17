@@ -47,7 +47,7 @@ typedef struct {
 #define _ndict_uncast(dict) \
   static_if( \
     types_equal(typeof((dict)->__dummy), IsNumDictionaryDummy), \
-    utilCast(struct GenericDictionary, dict), \
+    utilCast(NumDictionary, dict), \
     (void)0 \
   )
 
