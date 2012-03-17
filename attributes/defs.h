@@ -38,7 +38,7 @@ static inline void attribute_destroy(int type, struct GenericAllocator *allocato
 
 // FIXME lock node when modifing its ref_count
 static inline bool attribute_write(int type, struct Handler_ *H, 
-                                   void *attr, const void *value);
+                                   void * restrict attr, const void * restrict value);
 
 static inline void attribute_store(int type, Writer *W, const void *value);
 static inline bool attribute_load(int type, Reader *R, 
