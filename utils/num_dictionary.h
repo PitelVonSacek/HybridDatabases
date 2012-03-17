@@ -105,9 +105,9 @@ typedef struct {
         var; var = var->next) { \
 
 #define ndictForEnd \
-      _ndict_continue_label: ; \
+      _ndict_continue_label: __attribute__((unused)); \
     } \
-  _ndict_break_label: ; \
+  _ndict_break_label: __attribute__((unused)); \
   } while (0)
 
 #define ndictContinue goto _ndict_continue_label

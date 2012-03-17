@@ -139,8 +139,9 @@ typedef struct {} IsFastStack;
 
 typedef FastStack(void*) GenericFastStack;
 
-static void _fstack_expand(GenericFastStack *stack, 
-                           ptrdiff_t offset_begin, ptrdiff_t offset_end) {
+static __attribute__((unused))
+void _fstack_expand(GenericFastStack *stack,
+                    ptrdiff_t offset_begin, ptrdiff_t offset_end) {
   stack->block_count++; 
   list_add_end(&stack->blocks, page_alloc()); 
   stack->begin = (void**)(((char*)(stack->blocks.prev)) + offset_begin);
@@ -148,8 +149,9 @@ static void _fstack_expand(GenericFastStack *stack,
   stack->end = (void**)(((char*)(stack->blocks.prev)) + offset_end);
 }
 
-static void _fstack_shrink(GenericFastStack *stack, 
-                           ptrdiff_t offset_begin, ptrdiff_t offset_end) {
+static __attribute__((unused))
+void _fstack_shrink(GenericFastStack *stack,
+                    ptrdiff_t offset_begin, ptrdiff_t offset_end) {
   stack->block_count--;
   page_free(list_remove(stack->blocks.prev));
   stack->begin = (void**)(((char*)(stack->blocks.prev)) + offset_begin);

@@ -90,7 +90,7 @@ EOF
     }
     print "}\n\n";
     # init_pointers
-    print "static bool ${node_type}_init_pointers(IdToNode *nodes, $node_type *node) {\n";
+    print "static void ${node_type}_init_pointers(IdToNode *nodes, $node_type *node) {\n";
  
     for my $attr (@attrs) {
       print "  node->${$attr}[0].value = node->${$attr}[0].id ? \n" .
@@ -128,7 +128,7 @@ const NodeType ${node_type}_desc = {
   .store = (void(*)(Writer*, Node*))&${node_type}_store,
 
   .init_pointers = (void(*)(IdToNode*, Node*))&${node_type}_init_pointers,
-  .destroy_pointers = (int(*)(Handler*, Node*))&${node_type}_destroy_pointers,
+  .destroy_pointers = (bool(*)(Handler*, Node*))&${node_type}_destroy_pointers,
 
   .init = (void(*)(Node*))&${node_type}_init,
   .destroy = (void(*)(struct GenericAllocator*, Node*, uint64_t))&${node_type}_destroy,

@@ -112,7 +112,7 @@ sub database_implementation {
       sprintf <<EOF, $t, $nt, $t;
 static bool %s_update_indexes_%s(Handler *H, 
         enum CallbackEvent event, Node *node) {
-  %s *D = (void*)H->database;
+  %s *D __attribute__((unused)) = (void*)H->database;
   if (
 $total_indexes
 $indexes
@@ -172,7 +172,8 @@ static void ${t}_destroy_indexes($t *D) {
 $destroy_indexes
 }
 
-static void ${t}_struct_layout_check() {
+static __attribute__((unused))
+void ${t}_struct_layout_check() {
 $layout_check
 }
 

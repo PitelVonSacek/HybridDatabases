@@ -20,9 +20,9 @@ struct SimpleAllocator {
     .free_objs = SListInit \
   }
 
-static void simple_allocator_init(struct SimpleAllocator *A, 
-                                  size_t block_size, size_t gc_threshold);
-static void simple_allocator_destroy(struct SimpleAllocator *A);
+static inline void simple_allocator_init(struct SimpleAllocator *A,
+                                        size_t block_size, size_t gc_threshold);
+static inline void simple_allocator_destroy(struct SimpleAllocator *A);
 
 static inline void *simple_allocator_alloc(struct SimpleAllocator *A);
 static inline void simple_allocator_free(struct SimpleAllocator *A, void *obj);
@@ -58,12 +58,12 @@ static inline void simple_allocator_free(struct SimpleAllocator *A, void *obj) {
     _simple_allocator_gc(A);
 }
 
-static void simple_allocator_init(struct SimpleAllocator *A, 
-                                  size_t block_size, size_t gc_threshold) {
+static inline void simple_allocator_init(struct SimpleAllocator *A,
+                                         size_t block_size, size_t gc_threshold) {
   *A = (struct SimpleAllocator)SimpleAllocatorInit(block_size, gc_threshold);
 }
 
-static void simple_allocator_destroy(struct SimpleAllocator *A) {
+static inline void simple_allocator_destroy(struct SimpleAllocator *A) {
   A->gc_threshold = 0;
   _simple_allocator_gc(A);
 }

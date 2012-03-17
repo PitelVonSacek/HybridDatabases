@@ -53,7 +53,7 @@ bool process_element(Reader *R, Writer *W) {
   return false;
 }
 
-void main() {
+int main() {
   Reader R[1];
   Writer W[1];
   
@@ -76,5 +76,7 @@ void main() {
   end:
   writer_destroy(W);
   reader_destroy(R);
+
+  return 0;
 }
 

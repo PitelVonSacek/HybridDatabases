@@ -235,7 +235,7 @@ static void *service_thread(Database *D) {
     case DB_SERVICE__HANDLER_UNREGISTER:
       stack_for_each(i, D->handlers) if (*i == job->content.handler) {
         *i = stack_top(D->handlers);
-        stack_pop(D->handlers);
+        (void)stack_pop(D->handlers);
         /* *i = stack_pop(handlers) is WRONG cause pop can shrink stack */
 
         sem_post(job->lock);

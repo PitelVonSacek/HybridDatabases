@@ -82,7 +82,7 @@ bool ${t}_ctx_update(${t}_context_t *context, Handler *H,
         enum CallbackEvent event, Node *node) {
 $update_ptr;
   return true;
-  tr_failed:
+  tr_failed: __attribute__((unused));
   return false;
 }
 EOF

@@ -73,6 +73,7 @@ static inline bool tr_commit(Handler *H, enum CommitType commit_type) {
       break;
     case CT_FORCE_ASYNC:
       H->commit_type = CT_ASYNC;
+    case CT_ASYNC: ;
   }
 
   return true;

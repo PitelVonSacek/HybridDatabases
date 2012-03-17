@@ -111,7 +111,8 @@ typedef struct {} IsStack;
 
 struct GenericStack { unsigned char *begin, *ptr, *end; IsStack is_stack; };
 
-static void _stack_expand(size_t elem_size, struct GenericStack* stack) {
+static __attribute__((unused))
+void _stack_expand(size_t elem_size, struct GenericStack* stack) {
   size_t new_cap = stack_capacity(stack) * 2 + 20 * elem_size;
   unsigned char *new_stack = Stack_realloc(stack->begin, new_cap);
   stack->ptr = new_stack + (stack->ptr - stack->begin);
@@ -119,7 +120,8 @@ static void _stack_expand(size_t elem_size, struct GenericStack* stack) {
   stack->begin = new_stack;
 }
 
-static void _stack_shrink(size_t elem_size, struct GenericStack* stack) {
+static __attribute__((unused))
+void _stack_shrink(size_t elem_size, struct GenericStack* stack) {
   size_t new_cap = ((stack_capacity(stack) + elem_size) / (2 * elem_size)) * elem_size;
   unsigned char *new_stack = Stack_realloc(stack->begin, new_cap);
   stack->ptr = new_stack + (stack->ptr - stack->begin);

@@ -129,7 +129,7 @@ const int tr_attr_get_type(NodeType *type, int index) {
   return type->attributes[index].type;  
 }
 
-static void node_offset_check() {
+static __attribute__((unused)) void node_offset_check() {
   STATIC_ASSERT(sizeof(struct SList) == sizeof(((Node*)0)->id));
   STATIC_ASSERT(sizeof(struct NodeAllocatorBlock ) % __alignof__(Node) == 0);
 }

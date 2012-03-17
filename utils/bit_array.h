@@ -62,9 +62,9 @@ typedef struct {} IsBitArray;
 
 #define bitArrayForEnd \
          } \
-         _bit_array_continue: ; \
+         _bit_array_continue: __attribute__((unused)); \
        } \
-    _bit_array_break: ; \
+    _bit_array_break: __attribute__((unused)); \
   } while (0)
 
 #define bitArrayContinue goto _bit_array_continue

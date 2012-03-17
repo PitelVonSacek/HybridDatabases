@@ -34,7 +34,7 @@ typedef struct NodeType_ {
   void (*init_pointers)(IdToNode*, Node*);
 
   // changes all pointers in node to 0, required for deleting node
-  int (*destroy_pointers)(Handler*, Node*);
+  bool (*destroy_pointers)(Handler*, Node*);
 
   void (*init)(Node*);
   void (*destroy)(struct GenericAllocator*, Node*, uint64_t end_time);

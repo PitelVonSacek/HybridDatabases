@@ -192,7 +192,7 @@ void _tr_retry_wait(int loop);
       } while (0); \
       if (!tr_commit(H, type)) { \
         if (0) { \
-          tr_failed: \
+          tr_failed: __attribute__((unused)); \
           if (!tr_is_main(H)) { \
             tr_abort(H); \
             goto _tr_restart_label; \
@@ -207,7 +207,7 @@ void _tr_retry_wait(int loop);
       do { __VA_ARGS__; } while (0); \
       assert(0); \
     } \
-    _tr_success_label: ; \
+    _tr_success_label: __attribute__((unused)); \
   } while (0)
 
 

@@ -108,7 +108,7 @@ bool process_element(Reader *R) {
   return false;
 }
 
-void main() {
+int main() {
   Reader R[1];
   
   file_reader_init(R, stdin, 0);
@@ -125,5 +125,7 @@ void main() {
 
   end:
   reader_destroy(R);
+
+  return 0;
 }
 
