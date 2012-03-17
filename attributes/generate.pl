@@ -12,12 +12,13 @@ our @attr_types;
 our $int = "";
 our $impl = "";
 
+$Parse::RecDescent::skip = "(\\s|;|#[^\n]*\n)*";
+
 my $grammar = q{
   { my %c; }
 
-  root: ( int | impl | attr_type | comment | <error> )(s?) /^\\Z/ { 1 }
+  root: ( int | impl | attr_type | <error> )(s?) /^\\Z/ { 1 }
 
-  comment: /#[^\\n]*/
   int: 'Interface' block { $::int = $::int . $item[2] }
   impl: 'Implementation' block { $::impl = $::impl . $item[2] }
 

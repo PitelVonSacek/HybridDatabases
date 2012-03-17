@@ -24,15 +24,14 @@ our %index_types = ();
 our $int = "";
 our $impl = "";
 
-$Parse::RecDescent::skip = '(\s|;)*';
+$Parse::RecDescent::skip = "(\\s|;|#[^\n]*\n)*";
 
 my $grammar = q{
   { my @c = (); my %c = (); my $fnc; my $fnc_t; my $signature  }
 
   root: ( node_type | index_type | database_type | int | impl | 
-          comment | <error> )(s?) /^\\Z/ { 1 }
+          <error> )(s?) /^\\Z/ { 1 }
  
-  comment: /#[^\\n]*/
   int: 'Interface' block { $::int = $::int . $item[2] }
   impl: 'Implementation' block { $::impl = $::impl . $item[2] }
 
