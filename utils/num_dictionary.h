@@ -47,7 +47,7 @@ typedef struct {
 #define _ndict_uncast(dict) \
   static_if( \
     types_equal(typeof((dict)->__dummy), IsNumDictionaryDummy), \
-    (NumDictionary*)(dict), \
+    utilCast(struct GenericDictionary, dict), \
     (void)0 \
   )
 
@@ -86,7 +86,8 @@ typedef struct {
     __node->generic_key = 0; \
     __node->key = (key_); \
     __node->value = (value_); \
-    ndict_generic_insert(_ndict_uncast(dict), (struct NumDictionaryNode*)__node); \
+    ndict_generic_insert(_ndict_uncast(dict), \
+                         utilCast(struct NumDictionaryNode, __node)); \
   })
 
 #define ndict_remove(dict, key) \

@@ -74,7 +74,7 @@ typedef struct {} IsFastStack;
     typeof(&*(stack)) __stack = (stack); \
     STATIC_ASSERT(types_equal(typeof(__stack->is_fast_stack), IsFastStack)); \
     if (__stack->ptr == __stack->end) \
-      _fstack_expand((GenericFastStack*)__stack, _fstack_offsets); \
+      _fstack_expand(utilCast(GenericFastStack, __stack), _fstack_offsets); \
     *__stack->ptr++ = (item); \
     (void)0; \
   })
@@ -90,7 +90,7 @@ typedef struct {} IsFastStack;
     typeof(&*(stack)) __stack = (stack); \
     STATIC_ASSERT(types_equal(typeof(__stack->is_fast_stack), IsFastStack)); \
     if (--__stack->ptr == __stack->begin) \
-      _fstack_shrink((GenericFastStack*)__stack, _fstack_offsets); \
+      _fstack_shrink(utilCast(GenericFastStack, __stack), _fstack_offsets); \
     (void)0; \
   })
 
