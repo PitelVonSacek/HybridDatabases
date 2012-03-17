@@ -91,13 +91,14 @@
     memcpy(__log_item.data_old, &__node->AttrName.value, \
            sizeof(__node->AttrName.value)); \
     if (attributeIsPrimitive((node)->AttrName)) { \
-      *(typeof(&__node->AttrName.value))&__log_item.data_new = __value; \
+      memcpy(__log_item.data_new, &__value, \
+             sizeof(__node->AttrName.value)); \
       __node->AttrName.value = __value; \
     } else { \
       __ret = attribute_write(attributeTypeId(__node->AttrName), \
         typeUncast(H), &__node->AttrName, &__value); \
       memcpy(__log_item.data_new, &__node->AttrName.value, \
-           sizeof(__node->AttrName.value)); \
+             sizeof(__node->AttrName.value)); \
     } \
     fstack_push(typeUncast(H)->log, __log_item); \
     __ret; \
