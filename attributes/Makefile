@@ -1,3 +1,5 @@
+include ../make_env.mk
+
 .PHONY: all clean
 all: attributes.h attributes.inline.h
 

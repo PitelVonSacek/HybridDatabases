@@ -1,4 +1,4 @@
-CC=gcc -std=gnu99
+include ../make_env.mk
 
 headers=storage.h storage.include/*.h
 sources=storage.c storage.include/*.c

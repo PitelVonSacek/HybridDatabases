@@ -1,4 +1,4 @@
-CC=gcc -std=gnu99
+include ../make_env.mk
 
 .PHONY: all clean
 all: allocators.o
