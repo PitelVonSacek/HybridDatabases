@@ -1,5 +1,7 @@
 CC=gcc -std=gnu99
-CFLAGS+= -ggdb
+WARNINGS=-Wall -Wuninitialized -Winit-self -Wno-switch -Wcast-align \
+         -Wno-format-zero-length -Wno-parentheses
+CFLAGS+= ${WARNINGS} -ggdb
 
 headers= \
   database.include/macros.h \
