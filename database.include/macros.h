@@ -13,6 +13,7 @@
 #define trNodeDelete(...) trNodeDelete_(H, __VA_ARGS__)
 
 #define trMemoryRead(...) trMemoryRead_(H, __VA_ARGS__)
+#define trMemoryUncheckedRead(...) trMemoryUncheckedRead_(H, __VA_ARGS__)
 #define trMemoryWrite(...) trMemoryWrite_(H, __VA_ARGS__)
 
 #define nodeCast(Type, node) \
