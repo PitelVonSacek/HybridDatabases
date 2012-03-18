@@ -11,8 +11,11 @@ database_sources= \
   database.include/*.c \
 	database.c
 
-.PHONY: all storage allocators attributes
-all: database.o storage allocators
+.PHONY: all storage allocators attributes docs
+all: database.o storage allocators docs
+
+docs: ${headers} ${database_sources}
+	doxygen
 
 database.o: ${headers} ${database_sources} allocators/allocators.o attributes storage
 
