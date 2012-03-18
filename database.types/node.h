@@ -1,13 +1,13 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
+#include "../utils/basic_utils.h"
 #include "../storage/storage.h"
 
 #include "../allocators/node_allocator.h"
 #include "../allocators/generic_allocator.h"
 
 #include "../utils/num_dictionary.h"
-#include "../utils/type_magic.h"
 
 #include "enums.h"
 

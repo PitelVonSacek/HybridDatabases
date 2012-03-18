@@ -3,13 +3,10 @@
 
 #include <pthread.h>
 #include <semaphore.h>
-#include <stdint.h>
-#include <stdlib.h>
 
+#include "../utils/basic_utils.h"
 #include "../utils/lock.h"
 #include "../utils/stack.h"
-
-#include "../utils/type_magic.h"
 
 #include "../allocators/node_allocator.h"
 #include "../allocators/generic_allocator.h"

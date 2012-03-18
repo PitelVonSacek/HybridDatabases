@@ -1,14 +1,9 @@
 #ifndef __GENERIC_ALLOCATOR_H__ 
 #define __GENERIC_ALLOCATOR_H__ 
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdbool.h>
-
+#include "../utils/basic_utils.h"
 #include "../utils/atomic.h"
 #include "../utils/slist.h"
-#include "../utils/basic_utils.h"
 
 struct GenericAllocator {
   uint64_t (*get_time)(void*);

@@ -1,11 +1,7 @@
 #ifndef __NUM_DICTIONARY_H__
 #define __NUM_DICTIONARY_H__
 
-#include "static_if.h"
 #include "basic_utils.h"
-#include <stdbool.h>
-#include <string.h>
-#include <stdint.h>
 
 typedef struct {} IsNumDictionaryDummy;
 typedef uint64_t GenericKey;

@@ -1,7 +1,7 @@
 #ifndef __BLOCK_ALLOCATOR_H__
 #define __BLOCK_ALLOCATOR_H__
 
-#include <stdlib.h>
+#include "../utils/basic_utils.h"
 #include "../utils/atomic.h"
 #include "../utils/slist.h"
 

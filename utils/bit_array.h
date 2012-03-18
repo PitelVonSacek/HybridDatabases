@@ -1,10 +1,7 @@
 #ifndef __BIT_ARRAY_H__
 #define __BIT_ARRAY_H__
 
-#include <stdint.h>
-#include <string.h>
-
-#include "static_if.h"
+#include "basic_utils.h"
 
 typedef struct {} IsBitArray;
 

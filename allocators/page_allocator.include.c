@@ -1,5 +1,4 @@
 #include "page_allocator.h"
-#include "../utils/basic_utils.h"
 
 #ifndef PAGE_ALLOCATOR_THRESHOLD
 #define PAGE_ALLOCATOR_THRESHOLD 2048 // 8 MB

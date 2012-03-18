@@ -1,13 +1,10 @@
 #ifndef __PAGE_ALLOCATOR_H__
 #define __PAGE_ALLOCATOR_H__
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <unistd.h>
 #include <sys/mman.h>
 #include <limits.h>
-#include <stdlib.h>
 
+#include "../utils/basic_utils.h"
 #include "../utils/atomic.h"
 #include "../utils/slist.h"
 

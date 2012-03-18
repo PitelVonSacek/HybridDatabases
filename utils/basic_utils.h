@@ -3,6 +3,14 @@
 
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdbool.h>
+
+#include "static_if.h"
+#include "type_magic.h"
 
 #define utilOffsetOf(type, member) __builtin_offsetof(type, member)
 

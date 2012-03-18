@@ -1,16 +1,11 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
-
 #include <semaphore.h>
 #include <pthread.h>
 
-#include "lock.h"
-#include "type_magic.h"
 #include "basic_utils.h"
+#include "lock.h"
 
 
 #include "../database.types/enums.h"

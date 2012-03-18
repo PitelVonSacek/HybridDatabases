@@ -1,13 +1,10 @@
 #ifndef __VPAGE_ALLOCATOR_H__
 #define __VPAGE_ALLOCATOR_H__
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <unistd.h>
 #include <sys/mman.h>
 #include <limits.h>
-#include <stdlib.h>
 
+#include "../utils/basic_utils.h"
 #include "page_allocator.h"
 
 struct VPageAllocator {

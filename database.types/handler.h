@@ -1,8 +1,9 @@
 #ifndef __HANDLER_H__
 #define __HANDLER_H__
 
-#include <string.h>
 #include <semaphore.h>
+
+#include "../utils/basic_utils.h"
 
 #include "enums.h"
 #include "attributes.h"
@@ -10,8 +11,6 @@
 #include "../utils/fast_stack.h"
 #include "../utils/inline_stack.h"
 #include "../utils/bit_array.h"
-
-#include "../utils/type_magic.h"
 
 struct LogItem {
   void *ptr;

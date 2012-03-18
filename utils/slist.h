@@ -1,8 +1,8 @@
 #ifndef __SINGLE_LIST_H__
 #define __SINGLE_LIST_H__
 
+#include "basic_utils.h"
 #include "atomic.h"
-#include "type_magic.h"
 
 struct SList {
   struct SList *next;
