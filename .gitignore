@@ -1,0 +1,7 @@
+*.o
+.*.swp
+/test/*
+/doc/*
+/attributes/attributes.inline.h
+/attributes/attributes.h
+
