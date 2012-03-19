@@ -1,8 +1,10 @@
 #include "database.h"
 #include <stdlib.h>
 #include <time.h>
+#include <dirent.h>
 #include "allocators/simple_allocator.h"
 
+// undef macros defined in type_magic.h so underlaying functions can be implemented
 #undef database_close
 #undef database_dump
 #undef database_wait_for_dump
@@ -35,6 +37,8 @@
 
 #undef tr_node_get_type
 
+
+
 #ifndef BD_OUTPUT_LIST_CACHE
 #define BD_OUTPUT_LIST_CACHE 32
 #endif
@@ -57,22 +61,62 @@ __attribute__((constructor)) static void init_rand() {
     output_queue_push(D, __out, false); \
   } while (0)
 
-// write.c
-static void write_schema(Writer *W, Database *D);
-static void write_file_header(Writer *W, Database *D, uint64_t magic);
-static void write_file_footer(Writer *W, uint64_t magic);
-static void write_dump_begin(Writer *W);
-static void write_dump_end(Writer *W);
 
-static void write_node_store(Writer *W, Node* node);
-static void write_node_alloc(Writer *W, NodeType *type, uint64_t id);
-static void write_node_delete(Writer *W, uint64_t id);
-static void write_node_modify(Writer *W, uint64_t node_id, unsigned attr, 
-                              unsigned attr_type, const void *value);
+#define node_for_each(var, node_type) \
+  for (Node *var = node_get_first(node_type); var;  \
+       var = node_get_next(node_type, var))
 
-#ifndef SINGLE_SERVICE_THREAD
-static void write_log(Writer *W, TransactionLog *log);
-#endif
+
+
+// database.c
+// void database_close(Database *D);
+// enum DbError database_dump (Database *D);
+// void database_collect_garbage(Database* D);
+// void database_pause_service_thread(Database* D);
+// void database_resume_service_thread(Database* D);
+// enum DbError database_create_new_file (Database *D);
+static void init_locks(Database *D);
+static void init_node_types(Database *D);
+static void destroy_node_types(Database *D);
+static Database *database_alloc(const DatabaseType *type);
+static uint64_t _generate_magic_nr();
+static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr);
+
+
+// database_create.h
+// Database *database_create (const DatabaseType *type, const char *file, unsigned flags);
+static int get_db_files(struct dirent*** files, const char* dir, const char* db_name_);
+static void fix_pointers(Database *D, IdToNode *nodes);
+static void fill_indexies(Database *D);
+static bool load_data(Database *D, IdToNode *nodes);
+static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
+                     IdToNode *nodes, bool first_file);
+
+
+// handler.c
+// Handler *db_handler_create(Database *D);
+// void db_handler_free (Handler *H);
+// Handler *db_handler_init(Database *D, Handler *H);
+// void db_handler_destroy(Handler *H);
+
+
+// node.c
+// Node *tr_node_create (Handler *H, NodeType *type);
+// bool tr_node_delete (Handler *H, Node *node);
+// bool tr_node_read (Handler *H, Node *node, int attr, void *buffer);
+// bool tr_node_write (Handler *H, Node *node, int attr, const void *value);
+// int tr_attr_count(NodeType *type);
+// const char *tr_attr_get_name(NodeType *type, int index);
+// int tr_attr_get_index(NodeType *type, const char *attr);
+// const NodeType *tr_node_get_type (Node *node);
+// const int tr_attr_get_type(NodeType *type, int index);
+static __attribute__((unused)) void node_offset_check();
+
+static bool _node_get_next_step(NodeType *type, struct NodeAllocatorBlock **block,
+                                Node **node);
+static Node *node_get_first(NodeType *type);
+static Node *node_get_next(NodeType *type, Node *node);
+
 
 // read.c
 static bool read_schema(Reader *R, Database *D);
@@ -90,35 +134,44 @@ static bool read_node_delete(Reader *R, Database *D, IdToNode *nodes);
 static bool read_node_modify(Reader *R, Database *D, IdToNode *nodes);
 
 
+// threads.c
+static void process_transaction_log(TransactionLog *log, Database *D,
+                                    Writer *W, size_t end_time,
+                                    NodeType **dump_type, Node **dump_ptr);
+
+static void dump_get_next_node(Database *D, NodeType **type, Node **node);
+static bool dump_node(Database *D, Writer *W, Node *node);
+static bool do_dump(Database *D, Writer *W, NodeType **dump_type, Node **dump_ptr);
+
+static uint64_t get_time(Database *D);
+static void collect_garbage(Database *D);
+static void *service_thread(Database *D);
+
+
 // transaction.c
-static void _tr_unlock(Handler* H, uint64_t ver);
-static void handler_cleanup(Handler *H);
-
-static void log_undo_item(Handler *H, struct LogItem *item, uint64_t end_time);
-void _tr_handler_rollback(Handler *H, struct Transaction *tr);
-
-static void output_queue_push(Database *D, struct OutputList *item, bool hash_lock);
-
+// void _tr_retry_wait(int loop);
+// void _tr_handler_rollback(Handler *H, struct Transaction *tr);
 // void _tr_abort_main(Handler *H);
 // bool _tr_commit_main(Handler *H, enum CommitType commit_type);
-
-// database.c
-static Database *database_alloc(const DatabaseType *type);
-// database_close()
-// ...
-
-static uint64_t _generate_magic_nr();
-static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr);
-
-static void *service_thread(Database *D);
-static uint64_t get_time(Database *D);
+static void _tr_unlock(Handler* H, uint64_t ver);
+static void handler_cleanup(Handler *H);
+static void log_undo_item(Handler *H, struct LogItem *item, uint64_t end_time);
+static void output_queue_push(Database *D, struct OutputList *O, bool has_lock);
 
 
-static Node *node_get_first(NodeType *type);
-static Node *node_get_next(NodeType *type, Node *node);
-#define node_for_each(var, node_type) \
-  for (Node *var = node_get_first(node_type); var;  \
-       var = node_get_next(node_type, var))
+// write.c
+static void write_schema(Writer *W, Database *D);
+static void write_file_header(Writer *W, Database *D, uint64_t magic);
+static void write_file_footer(Writer *W, uint64_t magic);
+static void write_dump_begin(Writer *W);
+static void write_dump_end(Writer *W);
+
+static void write_node_store(Writer *W, Node* node);
+static void write_node_alloc(Writer *W, NodeType *type, uint64_t id);
+static void write_node_delete(Writer *W, uint64_t id);
+static void write_node_modify(Writer *W, uint64_t node_id, unsigned attr,
+                              unsigned attr_type, const void *value);
+
 
 
 #include "attributes/attributes.h"
