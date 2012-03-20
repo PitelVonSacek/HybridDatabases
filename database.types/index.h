@@ -5,6 +5,7 @@
 
 #include "node.h"
 #include "handler.h"
+#include "../allocators/generic_allocator.h"
 
 typedef struct {
   const char* name;
@@ -13,8 +14,8 @@ typedef struct {
   size_t context_size;
   size_t node_context_size;
 
-  void (*context_init)(void*);
-  void (*context_destroy)(void*);
+  void (*context_init)(void*, struct GenericAllocator*);
+  void (*context_destroy)(void*, struct GenericAllocator*);
 } IndexType;
 
 /*

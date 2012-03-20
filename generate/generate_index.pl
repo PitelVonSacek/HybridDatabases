@@ -54,11 +54,12 @@ sub index_implementation {
     my $init_ptr = ${$i{init}}[1];
     if (${$i{init}}[0] eq 'b') {
       $init = <<EOF;
-void ${t}_ctx_init(${t}_context_t *context) {
+void ${t}_ctx_init(${t}_context_t *context,
+                   struct GenericAllocator *allocator) {
 $init_ptr;
 }
 EOF
-      $init_ptr = "(void(*)(void*))&${t}_ctx_init";
+      $init_ptr = "(void(*)(void*, struct GenericAllocator*))&${t}_ctx_init";
     }
 
     # destroy
@@ -66,11 +67,12 @@ EOF
     my $destroy_ptr = ${$i{destroy}}[1];
     if (${$i{destroy}}[0] eq 'b') {
       $destroy = <<EOF;
-void ${t}_ctx_destroy(${t}_context_t *context) {
+void ${t}_ctx_destroy(${t}_context_t *context,
+                      struct GenericAllocator *allocator) {
 $destroy_ptr;
 }
 EOF
-      $destroy_ptr = "(void(*)(void*))&${t}_ctx_destroy";
+      $destroy_ptr = "(void(*)(void*, struct GenericAllocator*))&${t}_ctx_destroy";
     }
 
     # update
