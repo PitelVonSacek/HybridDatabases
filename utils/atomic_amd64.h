@@ -117,7 +117,17 @@ extern void __xadd_wrong_size(void);
 	case __X86_CASE_Q:						\
 	{								\
 		volatile uint64_t *__ptr = (volatile uint64_t *)(ptr);		\
-		asm volatile(lock "cmpxchgq %2,%1"			\
+    if (sizeof(size_t) == 4) { /* compiled on 32bit system */ \
+      uint64_t __old2; \
+      asm volatile(lock "cmpxchg8b %1" \
+		     : "=A" (__old2), \
+		       "+m" (*__ptr) \
+		     : "b" ((uint32_t)__new), \
+		       "c" ((uint32_t)(__new >> 32)), \
+		       "0" (__old) \
+		     : "memory"); \
+      __old = __old2; \
+    } else asm volatile(lock "cmpxchgq %2,%1"			\
 			     : "=a" (__ret), "+m" (*__ptr)		\
 			     : "r" (__new), "0" (__old)			\
 			     : "memory");				\
