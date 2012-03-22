@@ -24,16 +24,31 @@ our %index_types = ();
 our $int = "";
 our $impl = "";
 
+our $parser;
+
+sub parse {
+  my ($file) = @_;
+
+  open(my $inp, "<", $file) or die "Failed to open $file: $!";
+  my @inp = <$inp>;
+  close $inp;
+  $inp = join("", @inp);
+  $parser->root($inp) or die "Parse error!";
+
+  1;
+}
+
 $Parse::RecDescent::skip = "(\\s|;|#[^\n]*\n)*";
 
 my $grammar = q{
   { my @c = (); my %c = (); my $fnc; my $fnc_t; my $signature  }
 
   root: ( node_type | index_type | database_type | int | impl | 
-          <error> )(s?) /^\\Z/ { 1 }
+          include | <error> )(s?) /^\\Z/ { 1 }
  
   int: 'Interface' block { $::int = $::int . $item[2] }
   impl: 'Implementation' block { $::impl = $::impl . $item[2] }
+  include: 'Include' /"([^"]+)"/ { ::parse($1); }
 
   node_type: 'NodeType' name '{' node_attribute(s?) '}'
     { $::node_types{$item{name}} = $item[4] }
@@ -67,9 +82,9 @@ my $grammar = q{
   identifier: /\\w+/ { $item[1] }
 };
 
-my $parser = new Parse::RecDescent($grammar) or die "Error\n";
+$parser = new Parse::RecDescent($grammar) or die "Error\n";
 my @input = <STDIN>;
-my $input = join(" ", @input);
+my $input = join("", @input);
 $parser->root($input) or die "Parse error!";
 
 if (not $silent) {
