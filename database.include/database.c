@@ -48,11 +48,11 @@ static Database *database_alloc(const DatabaseType *type) {
   generic_allocator_init(D->tm_allocator,
     DB_GENERIC_ALLOCATOR_CACHE, (uint64_t(*)(void*))&get_time, D);
 
-  D->output.file = 0;
-  sem_init(D->output.counter, 0, 0);
-  pthread_mutex_init(D->output.dump_running, 0);
-  D->output.head = 0;
-  D->output.tail = &D->output.head;
+  D->file = 0;
+  sem_init(D->counter, 0, 0);
+  pthread_mutex_init(D->dump_running, 0);
+  D->head = 0;
+  D->tail = &D->head;
 
   init_node_types(D);
   type->init_indexes(D);
@@ -63,16 +63,16 @@ static Database *database_alloc(const DatabaseType *type) {
 
 void database_close(Database *D) {
 #ifdef SINGLE_SERVICE_THREAD
-  sem_post(D->output.counter);
+  sem_post(D->counter);
 
   dbDebug(DB_INFO, "Waiting for service thread");
   pthread_join(D->service_thread, 0);
 #else
   {
-    struct OutputList *out = node_alloc(D->output.allocator);
+    struct OutputList *out = node_alloc(D->allocator);
     out->flags = DB_OUTPUT__SHUTDOWN;
     output_queue_push(D, out);
-    util_signal_signal(D->output.io_signal);
+    util_signal_signal(D->io_signal);
   }
 
   dbDebug(DB_INFO, "Waiting for IO thread");
@@ -93,15 +93,15 @@ void database_close(Database *D) {
   D->type->destroy_indexes(D);
   destroy_node_types(D);
 
-  if (D->output.file) fclose(D->output.file);
+  if (D->file) fclose(D->file);
 
   free((void*)D->filename);
 
   generic_allocator_destroy(D->tm_allocator);
   vpage_allocator_destroy(D->vpage_allocator);
 
-  sem_destroy(D->output.counter);
-  pthread_mutex_destroy(D->output.dump_running);
+  sem_destroy(D->counter);
+  pthread_mutex_destroy(D->dump_running);
   
   pthread_mutex_destroy(&D->mutex);
   sem_destroy(&D->service_thread_pause);
@@ -140,8 +140,8 @@ enum DbError database_dump (Database *D) {
 
 
 void database_wait_for_dump (Database *D) {
-  pthread_mutex_lock(D->output.dump_running);
-  pthread_mutex_unlock(D->output.dump_running);
+  pthread_mutex_lock(D->dump_running);
+  pthread_mutex_unlock(D->dump_running);
 }
 
 void database_collect_garbage(Database* D) {
@@ -207,10 +207,10 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
 
 #if !defined(SINGLE_SERVICE_THREAD) || defined(LOCKLESS_COMMIT)  
   {
-    struct OutputList *out = node_alloc(D->output.allocator);
+    struct OutputList *out = node_alloc(D->allocator);
     out->flags = DB_OUTPUT__DUMP_SIGNAL;
     output_queue_push(D, out, 0);
-    util_signal_signal(D->output.io_signal);
+    util_signal_signal(D->io_signal);
   }
 
   utilSignalWaitUntil(D->dump.signal, 
@@ -219,12 +219,12 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
   atomic_add(&D->dump.flags, -DB_DUMP__IO_THREAD_WAITS);
 #endif
 
-  if (D->output.file) { 
+  if (D->file) { 
     // first close current file
     write_file_footer(W, magic_nr);
-    util_fwrite(writer_ptr(W), writer_length(W), D->output.file);
+    util_fwrite(writer_ptr(W), writer_length(W), D->file);
 
-    fclose(D->output.file);
+    fclose(D->file);
 
     writer_discart(W);
   }
@@ -254,7 +254,7 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
 
   fflush(new_file);
 
-  D->output.file = new_file;
+  D->file = new_file;
 
 #if !defined(SINGLE_SERVICE_THREAD) || defined(LOCKLESS_COMMIT)
   atomic_add(&D->dump.flags, DB_DUMP__RESUME_IO_THREAD);

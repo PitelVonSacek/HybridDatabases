@@ -99,5 +99,17 @@ enum DbError {
                                     ///  datový soubor.
 };
 
+enum DbService {
+    DB_SERVICE__COMMIT = 1,
+    DB_SERVICE__SYNC_COMMIT,
+    DB_SERVICE__SYNC_ME,
+    DB_SERVICE__START_DUMP,
+    DB_SERVICE__CREATE_NEW_FILE,
+    DB_SERVICE__COLLECT_GARBAGE,
+    DB_SERVICE__PAUSE,
+    DB_SERVICE__HANDLER_REGISTER,
+    DB_SERVICE__HANDLER_UNREGISTER
+};
+
 #endif
 

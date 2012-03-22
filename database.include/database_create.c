@@ -139,7 +139,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
   if (!D->filename || D->filename[0] == '\0') {
     dbDebug(I, "No input files specified, using /dev/null");
     D->flags |= DB_READ_ONLY;
-    if (!(D->output.file = fopen("/dev/null", "wb"))) {
+    if (!(D->file = fopen("/dev/null", "wb"))) {
       dbDebug(E, "Failed to open /dev/null");
       return false;
     }
@@ -251,14 +251,14 @@ static bool load_data(Database *D, IdToNode *nodes) {
         Writer W[1];
         writer_init(W);
         write_dump_end(W);      
-        Ensure(fwrite(writer_ptr(W), 1, writer_length(W), D->output.file) == 
+        Ensure(fwrite(writer_ptr(W), 1, writer_length(W), D->file) == 
                writer_length(W), writer_destroy(W), "Failed to write schema");
       }
     else 
-      Ensure(D->output.file = fopen(buffer, "ab"),,
+      Ensure(D->file = fopen(buffer, "ab"),,
              "Failed to open '%s' for append", buffer);
   } else {
-    Ensure(D->output.file = fopen("/dev/null", "wb"),, "Failed to open '/dev/null'");
+    Ensure(D->file = fopen("/dev/null", "wb"),, "Failed to open '/dev/null'");
   }
 
   if (0) {

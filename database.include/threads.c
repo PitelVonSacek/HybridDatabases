@@ -81,7 +81,7 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type, Node **dump_pt
       if (!*dump_ptr) goto dump_finish;
 
       if (dump_node(D, W, dump_ptr[0])) {
-        util_fwrite(writer_ptr(W), writer_length(W), D->output.file);
+        util_fwrite(writer_ptr(W), writer_length(W), D->file);
         writer_discart(W);
 
         dump_get_next_node(D, dump_type, dump_ptr);
@@ -90,18 +90,18 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type, Node **dump_pt
 
     // FIXME dirty, trywait() can fail for other reason than
     // semaphore having value 0 !!!
-  } while (sem_trywait(D->output.counter));
+  } while (sem_trywait(D->counter));
 
   return false;
 
   dump_finish:
   write_dump_end(W);
-  util_fwrite(writer_ptr(W), writer_length(W), D->output.file);
+  util_fwrite(writer_ptr(W), writer_length(W), D->file);
   writer_discart(W);
-  fflush(D->output.file);
+  fflush(D->file);
   
   dbDebug(DB_INFO, "Dump finished");
-  pthread_mutex_unlock(D->output.dump_running);
+  pthread_mutex_unlock(D->dump_running);
   return true;
 }
 
@@ -133,23 +133,23 @@ static void *service_thread(Database *D) {
 
   writer_init(W);
 
-  sem_wait(D->output.counter);
+  sem_wait(D->counter);
 
-  for (job = D->output.head; job; job = job_next) {
+  for (job = D->head; job; job = job_next) {
     switch (job->type) {
       case DB_SERVICE__COMMIT:
       case DB_SERVICE__SYNC_COMMIT:
         process_transaction_log(job->content.log, D, W, job->end_time,
                                 &dump_type, &dump_ptr);
-        util_fwrite(writer_ptr(W), writer_length(W), D->output.file);
+        util_fwrite(writer_ptr(W), writer_length(W), D->file);
         writer_discart(W);
 
-        if (job->type == DB_SERVICE__SYNC_COMMIT) fflush(D->output.file);
+        if (job->type == DB_SERVICE__SYNC_COMMIT) fflush(D->file);
         if (job->lock) sem_post(job->lock);
         break;
 
       case DB_SERVICE__SYNC_ME:
-        fflush(D->output.file);
+        fflush(D->file);
         if (job->lock) sem_post(job->lock);
         break;
 
@@ -162,7 +162,7 @@ static void *service_thread(Database *D) {
       else goto next;
     } 
     
-    sem_wait(D->output.counter);
+    sem_wait(D->counter);
     
     next: 
     job_next = job->next;
@@ -208,7 +208,7 @@ static void *service_thread(Database *D) {
       } else {
         *job->content.answer = DB_SUCCESS;
 
-        pthread_mutex_lock(D->output.dump_running);
+        pthread_mutex_lock(D->dump_running);
         dbDebug(DB_INFO, "Dump started");
         dump_running = true;
         dump_get_next_node(D, &dump_type, &dump_ptr);

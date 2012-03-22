@@ -67,6 +67,20 @@ struct {
 
 */
 
+struct OutputList {
+  struct OutputList *next;
+
+  enum DbService type;
+
+  uint64_t end_time;
+  sem_t *lock;
+  union {
+    TransactionLog log[1];
+    uint64_t *answer;
+    Handler *handler;
+  } content; // anonymous member would be better but gcc < 4.6
+             // has bug #10676 that prevents using such fields in initializers
+};
 
 #undef Database
 /**
@@ -110,37 +124,13 @@ typedef struct Database_ {
   sem_t service_thread_pause; ///< Semafor předávaný servisnímu vláknu ve volání
                               //   #DB_SERVICE__PAUSE.
 
-  struct {
-    FILE *file; ///< Soubor do něhož probíhá zápis.
-    sem_t counter[1]; ///< Počítadlo prvků ve výstupní frontě.
+  FILE *file; ///< Soubor do něhož probíhá zápis.
+  sem_t counter[1]; ///< Počítadlo prvků ve výstupní frontě.
 
-    pthread_mutex_t dump_running[1]; ///< Tento zámek je zamčen vždy, když probíhá dump.
+  pthread_mutex_t dump_running[1]; ///< Tento zámek je zamčen vždy, když probíhá dump.
 
-    struct OutputList {
-      struct OutputList *next;
-
-      enum {
-        DB_SERVICE__COMMIT = 1,
-        DB_SERVICE__SYNC_COMMIT,
-        DB_SERVICE__SYNC_ME,
-        DB_SERVICE__START_DUMP,
-        DB_SERVICE__CREATE_NEW_FILE,
-        DB_SERVICE__COLLECT_GARBAGE,
-        DB_SERVICE__PAUSE,
-        DB_SERVICE__HANDLER_REGISTER,
-        DB_SERVICE__HANDLER_UNREGISTER
-      } type;
-
-      uint64_t end_time;
-      sem_t *lock;
-      union {
-        TransactionLog log[1];
-        uint64_t *answer;
-        Handler *handler;
-      } content; // anonymous member would be better but gcc < 4.6
-                 // has bug #10676 that prevents using such fields in initializers
-    } *head, **tail;
-  } output;
+  struct OutputList *head, **tail; ///< Výstupní fronta. Skrze ni se předávají
+                                   //   požadavky servisnímu vláknu.
 
   struct VPageAllocator vpage_allocator[1];
   struct GenericAllocator tm_allocator[1];

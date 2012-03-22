@@ -91,17 +91,17 @@ void _tr_abort_main(Handler *H) {
 
 static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) {
 #ifdef LOCKLESS_COMMIT
-  while (!atomic_cmpswp(atomic_read(&db->output.tail), 0, O)) ;
-  atomic_write(&db->output.tail, &O->next);
+  while (!atomic_cmpswp(atomic_read(&db->tail), 0, O)) ;
+  atomic_write(&db->tail, &O->next);
 
-  pthread_cond_broadcast(db->output.io_signal);
+  pthread_cond_broadcast(db->io_signal);
 #else
   if (!has_lock) pthread_mutex_lock(&D->mutex);
-  *(D->output.tail) = O;
-  D->output.tail = &O->next;
+  *(D->tail) = O;
+  D->tail = &O->next;
   if (!has_lock) pthread_mutex_unlock(&D->mutex);
 
-  sem_post(D->output.counter);
+  sem_post(D->counter);
 #endif
 }
 
@@ -148,14 +148,14 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   output_queue_push(D, O);
 
   if (!tr_validate(H)) {
-    atomic_add(&O->output.flags, BD_OUTPUT__READY | DB_OUTPUT__CANCELED);
+    atomic_add(&O->flags, BD_OUTPUT__READY | DB_OUTPUT__CANCELED);
 
     fstack_swap(O->log, H->log);
     _tr_abort_main(H);
     return false;
   }
 
-  atomic_add(&O->output.flags, DB_OUTPUT__READY);
+  atomic_add(&O->flags, DB_OUTPUT__READY);
 #else
   pthread_mutex_lock(&db->mutex); {
     if (!tr_validate(H)) {
