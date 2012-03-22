@@ -18,7 +18,7 @@ Node *tr_node_create (Handler *H, NodeType *type) {
 
   Node *node = node_allocator_alloc(type->allocator);
 
-  if (!utilLock(H, node)) {
+  if (!util_lock(H, node)) {
     node_allocator_free(type->allocator, node, atomic_read(&H->database->time));
     return 0;
   }
@@ -44,7 +44,7 @@ Node *tr_node_create (Handler *H, NodeType *type) {
 
 // fails if node is referenced by other nodes
 bool tr_node_delete (Handler *H, Node *node) {
-  if (!utilLock(H, node)) return false;
+  if (!util_lock(H, node)) return false;
 
   if (node->ref_count) return false;
 
@@ -91,7 +91,7 @@ bool tr_node_write (Handler *H, Node *node, int attr, const void *value) {
 
   memcpy(log_item.data_old, util_apply_offset(node, a.offset), attribute_size(a.type));
 
-  if (!utilLock(H, node)) return false;
+  if (!util_lock(H, node)) return false;
   if (!attribute_write(a.type, H, util_apply_offset(node, a.offset), value))
     return false;
 

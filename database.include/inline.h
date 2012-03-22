@@ -99,13 +99,13 @@ static inline bool tr_node_check(Handler *H, Node *node) {
 }
 
 static inline bool _node_ref_count_increase(Handler *H, Node *node) {
-  if (!utilLock(H, node)) return false;
+  if (!util_lock(H, node)) return false;
   trMemoryInternalWrite_(H, &node->ref_count, node->ref_count + 1);
   return true;
 }
 
 static inline bool _node_ref_count_decrease(Handler *H, Node *node) {
-  if (!utilLock(H, node)) return false;
+  if (!util_lock(H, node)) return false;
   assert(node->ref_count > 0);
   trMemoryInternalWrite_(H, &node->ref_count, node->ref_count - 1);
   return true;

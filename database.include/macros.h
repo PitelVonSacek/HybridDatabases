@@ -1,5 +1,11 @@
 #define trFail goto tr_failed
 
+#define trLock(ptr) trLock_(H, ptr)
+#define trLock_(H, ptr) \
+  do { \
+    if (!util_lock(H, ptr)) trFail; \
+  } while (0)
+
 #define trRead(...) trRead_(H, __VA_ARGS__)
 #define trUncheckedRead(...) trUncheckedRead_(H, __VA_ARGS__)
 #define trWrite(...) trWrite_(H, __VA_ARGS__)
@@ -15,6 +21,10 @@
 #define trMemoryRead(...) trMemoryRead_(H, __VA_ARGS__)
 #define trMemoryUncheckedRead(...) trMemoryUncheckedRead_(H, __VA_ARGS__)
 #define trMemoryWrite(...) trMemoryWrite_(H, __VA_ARGS__)
+
+#define trMemoryInternalRead(ptr) trMemoryInternalRead_(H, ptr)
+#define trMemoryInternalWrite(ptr_, val) trMemoryInternalWrite_(H, ptr_, val)
+
 
 #define nodeCast(Type, node) \
   static_if(types_equal(Type*, typeof(node)), \
@@ -68,7 +78,7 @@
 #define trMemoryWrite_(H, obj, attr, value) \
   do { \
     typeof(&*(obj)) __obj = (obj); \
-    if (!utilLock(typeUncast(H), __obj)) trFail; \
+    if (!util_lock(typeUncast(H), __obj)) trFail; \
     trMemoryInternalWrite_(H, &(__obj attr), value); \
   } while (0)
 
@@ -127,7 +137,7 @@
 #define trWrite_(H, node, AttrName, value) \
   do { \
     typeof(node) __node = (node); \
-    if (!utilLock(typeUncast(H), __node) || \
+    if (!util_lock(typeUncast(H), __node) || \
         !trInternalWrite_(H, __node, AttrName, value))  trFail; \
   } while (0)
 

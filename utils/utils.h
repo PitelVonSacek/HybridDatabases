@@ -15,7 +15,7 @@ static inline unsigned hash_ptr(const void *ptr) {
 
 #include "../database.types/handler.h"
 #include "../database.types/database.h"
-static inline bool utilLock(Handler *H, const void *ptr) {
+static inline bool util_lock(Handler *H, const void *ptr) {
   size_t hash = hash_ptr(ptr);
   switch (l_lock(H->database->locks + hash, H, H->start_time)) {
     case 0: return false; 
