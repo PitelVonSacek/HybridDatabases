@@ -1,6 +1,8 @@
 #ifndef __DATABASE_TYPES_H__
 #define __DATABASE_TYPES_H__
 
+/// @file
+
 #include <pthread.h>
 #include <semaphore.h>
 
@@ -23,6 +25,10 @@ typedef bool(*UpdateIndexes)(Handler*, enum CallbackEvent, Node*);
 struct Database_;
 #define Database struct Database_
 
+
+/**
+ * @brief Deskriptor typu databáze.
+ */
 typedef struct {
   const char *name;
   const char *version;
@@ -61,47 +67,54 @@ struct {
 
 */
 
+
 #undef Database
+/**
+ * @brief Databáze, abstraktní třída, předek konkrétních typů databází.
+ */
 typedef struct Database_ {
-  const DatabaseType * const type;
+  const DatabaseType * const type; ///< Deskriptor typu databáze.
   
-  /*
-   * Filenames will be:
-   * name.desc - database description
-   * name.n for n = 1.. - data files
+  /**
+   * @brief Název souborů obsahujících databázi.
+   *
+   * Schéma databáze se jmenuje <tt>filename.schema</tt>,
+   * datové soubory <tt>filename.N</tt> pro @c N = 1, 2, ...
    */
   const char *filename;
 
-  /* nr of data file we're writing in */
-  int current_file_index;
+  int current_file_index; ///< Číslo datového souboru, do kterého probíhá zápis.
 
   enum {
-    DB_READ_ONLY = 1,  // if set, output.file is /dev/null
-    DB_CREATE = 2
-  } flags;
+    DB_READ_ONLY = 1, ///< Databáze je otevřena pouze pro čtení,
+                      //   zápis probíhá do /dev/null
+    DB_CREATE = 2     ///< Pokud databáze nexistuje, bude vytvořena
+  } flags;            ///< Příznaky databáze, k jejich čtení užijte database_get_flags()
 
-  /* global time, read by each strarting transaction, increased during commit */
-  uint64_t time;
-  /* id which will be given to next created node */
-  uint64_t node_id_counter;
 
-  Lock locks[DB_LOCKS];
+  uint64_t time; ///< Globální hodiny
+  uint64_t node_id_counter; ///< Nejvyšší id přidělěné nějakému uzlu,
+                            //   novému uzlu bude přidělěno id @c node_id_counter + 1.
 
-  Handler* __dummy_handler[0];  // for type magic only
-  Stack(Handler*) handlers[1];
+  Lock locks[DB_LOCKS]; ///< Globální pole zámků
+
+  Handler* __dummy_handler[0]; ///< Nutné pro získání typové informace při výrobě
+                               // handleru pomocí dbHandlderCreate().
+  Stack(Handler*) handlers[1]; ///< Seznam všech handlerů.
 
 #ifndef LOCKLESS_COMMIT
-  pthread_mutex_t mutex;
+  pthread_mutex_t mutex; ///< Zámek chránící vkládání do výstupní fronty.
 #endif
 
-  pthread_t service_thread;
-  sem_t service_thread_pause;
+  pthread_t service_thread;   ///< Thread id servisního vlákna.
+  sem_t service_thread_pause; ///< Semafor předávaný servisnímu vláknu ve volání
+                              //   #DB_SERVICE__PAUSE.
 
   struct {
-    FILE *file;
-    sem_t counter[1];
+    FILE *file; ///< Soubor do něhož probíhá zápis.
+    sem_t counter[1]; ///< Počítadlo prvků ve výstupní frontě.
 
-    pthread_mutex_t dump_running[1];
+    pthread_mutex_t dump_running[1]; ///< Tento zámek je zamčen vždy, když probíhá dump.
 
     struct OutputList {
       struct OutputList *next;
