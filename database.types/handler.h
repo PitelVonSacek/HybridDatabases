@@ -1,6 +1,8 @@
 #ifndef __HANDLER_H__
 #define __HANDLER_H__
 
+/// @file
+
 #include <semaphore.h>
 
 #include "../utils/basic_utils.h"
@@ -39,23 +41,23 @@ typedef FastStack(struct LogItem) TransactionLog;
 struct Database_;
 
 typedef struct Handler_ {
-  struct Database_ *database;
+  struct Database_ *database; ///< Odkaz na databázi, ke které handler patří.
 
-  uint64_t start_time;
-  ReadSet read_set;
+  uint64_t start_time; ///< Čas zahájení současné transakce nebo 0 pokud žádná neprohíbá.
+  ReadSet read_set; ///< Readset současné transakce.
 
   FastStack(struct Transaction) transactions[1];
 
-  TransactionLog log[1];
+  TransactionLog log[1]; ///< Transakční log.
 
-  bool allocated;
+  bool allocated; ///< @c true pokud tento handler byl alokován pomocí db_handler_create().
   enum CommitType commit_type;
 
-  // keep list of acquired lock, so we dont have to iterate
-  // through all locks when releasing them
+  /// Seznam zámků vlastněných současnou transakcí.
   InlineStack(DB_LOCKS_NR_TYPE, DB_LOCKS) acquired_locks[1];
 
-  sem_t write_finished[1];
+  sem_t write_finished[1]; ///< Semafor pro synchronizaci se servisním vláknem
+                           ///  v případě synchroního commitu.
 
   DummyAncestor __ancestor; // required for type magic
 } Handler;

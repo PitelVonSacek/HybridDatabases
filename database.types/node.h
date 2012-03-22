@@ -1,6 +1,8 @@
 #ifndef __NODE_H__
 #define __NODE_H__
 
+/// @file
+
 #include "../utils/basic_utils.h"
 #include "../storage/storage.h"
 
@@ -11,11 +13,17 @@
 
 #include "enums.h"
 
+
+/**
+ * @brief Struktura popisující atribut uzlu.
+ *
+ * Používáno pouze tr_node_write() a tr_node_read().
+ */
 struct NodeAttribute {
-  const char * name;
-  short type;
-  short index;
-  int offset;
+  const char * name;  ///< Název atributu.
+  short type;         ///< Typ atributu.
+  short index;        ///< Pořadí atributu v rámci daného uzlu.
+  int offset;         ///< Offset atributu od začátku uzlu.
 };
 
 #define Node struct Node_
@@ -23,8 +31,20 @@ struct NodeAttribute {
 struct Node_;
 struct Handler_;
 
+
+/**
+ * @brief Slovník pro překlad id uzlů na jejich adresy při načítání
+ * databáze z disku. @ref NumDictionary
+ */
 typedef NumDictionary(uint64_t, Node*) IdToNode;
 
+
+/**
+ * @brief Deskriptor typu uzlu.
+ *
+ * Pro každou instanci databáze, která tento typ uzlu používá je deskriptor
+ * zkopírován a doplněn o index typu v rámci databáze a alokátor.
+ */
 typedef struct NodeType_ {
   const char * name; // this pointer is used as unique id of NodeType
 
@@ -58,11 +78,14 @@ typedef struct Node_ {
     uint64_t ref_count;
     struct SList slist;
   };
-  const uint64_t id;
+  const uint64_t id; ///< Unikátní id uzlu. Pro každý validní uzel > 0.
 
-  DummyAncestor __ancestor;
+  DummyAncestor __ancestor; ///< @ref type_magic
 } Node;
 
+/**
+ * @brief Vrátí deskriptor daného uzlu.
+ */
 static inline NodeType *node_get_type(Node *node) {
   return ((struct NodeAllocatorBlock*)page_allocator_get_page(node))->type;
 }

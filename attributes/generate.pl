@@ -78,8 +78,10 @@ EOF
 
   for my $a (@attr_types) {
     print "typedef ${$a}{type} ${$a}{name}_t;\n" .
+          "  /// \@cond 0\n".
           "typedef typeof(((${$a}{name}_t*)0)->value) ${$a}{name}_value_t;\n".
-          "enum { ${$a}{name}_is_primitive = ${$a}{is_primitive} };\n\n";
+          "enum { ${$a}{name}_is_primitive = ${$a}{is_primitive} };\n".
+          "  /// \@endcond\n\n";
   }
 
   print "union UniversalAttribute {\n";

@@ -78,8 +78,8 @@ struct OutputList {
     TransactionLog log[1];
     uint64_t *answer;
     Handler *handler;
-  } content; // anonymous member would be better but gcc < 4.6
-             // has bug #10676 that prevents using such fields in initializers
+  } content; ///< Anonymous member would be better but gcc < 4.6
+             ///  has bug #10676 that prevents using such fields in initializers.
 };
 
 #undef Database
@@ -104,12 +104,12 @@ typedef struct Database_ {
 
   uint64_t time; ///< Globální hodiny
   uint64_t node_id_counter; ///< Nejvyšší id přidělěné nějakému uzlu,
-                            //   novému uzlu bude přidělěno id @c node_id_counter + 1.
+                            ///  novému uzlu bude přidělěno id @c node_id_counter + 1.
 
   Lock locks[DB_LOCKS]; ///< Globální pole zámků
 
   Handler* __dummy_handler[0]; ///< Nutné pro získání typové informace při výrobě
-                               // handleru pomocí dbHandlderCreate().
+                               ///  handleru pomocí dbHandlderCreate().
   Stack(Handler*) handlers[1]; ///< Seznam všech handlerů.
 
 #ifndef LOCKLESS_COMMIT
@@ -118,7 +118,7 @@ typedef struct Database_ {
 
   pthread_t service_thread;   ///< Thread id servisního vlákna.
   sem_t service_thread_pause; ///< Semafor předávaný servisnímu vláknu ve volání
-                              //   #DB_SERVICE__PAUSE.
+                              ///  DB_SERVICE__PAUSE.
 
   FILE *file; ///< Soubor do něhož probíhá zápis.
   sem_t counter[1]; ///< Počítadlo prvků ve výstupní frontě.
@@ -126,7 +126,7 @@ typedef struct Database_ {
   pthread_mutex_t dump_running[1]; ///< Tento zámek je zamčen vždy, když probíhá dump.
 
   struct OutputList *head, **tail; ///< Výstupní fronta. Skrze ni se předávají
-                                   //   požadavky servisnímu vláknu.
+                                   ///  požadavky servisnímu vláknu.
 
   struct VPageAllocator vpage_allocator[1];
   struct GenericAllocator tm_allocator[1];

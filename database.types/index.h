@@ -1,6 +1,8 @@
 #ifndef __DATABASE_TYPES__INDEX_H__
 #define __DATABASE_TYPES__INDEX_H__
 
+/// @file
+
 #include <stdint.h>
 
 #include "node.h"

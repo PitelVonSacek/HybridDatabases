@@ -15,7 +15,8 @@ database_sources= \
 all: database.o storage allocators docs
 
 docs: ${headers} ${database_sources}
-	doxygen
+	rm -rf doc/*
+	doxygen >/dev/null
 
 database.o: ${headers} ${database_sources} allocators/allocators.o attributes storage
 
