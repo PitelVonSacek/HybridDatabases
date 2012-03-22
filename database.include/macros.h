@@ -91,7 +91,7 @@
     }; \
     memcpy(__log_item.data_old, &__node->AttrName.value, \
            sizeof(__node->AttrName.value)); \
-    if (attributeIsPrimitive((node)->AttrName)) { \
+    if (attributeIsPrimitive((__node)->AttrName)) { \
       memcpy(__log_item.data_new, &__value, \
              sizeof(__node->AttrName.value)); \
       __node->AttrName.value = __value; \
