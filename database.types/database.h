@@ -99,11 +99,7 @@ typedef struct Database_ {
 
   int current_file_index; ///< Číslo datového souboru, do kterého probíhá zápis.
 
-  enum {
-    DB_READ_ONLY = 1, ///< Databáze je otevřena pouze pro čtení,
-                      //   zápis probíhá do /dev/null
-    DB_CREATE = 2     ///< Pokud databáze nexistuje, bude vytvořena
-  } flags;            ///< Příznaky databáze, k jejich čtení užijte database_get_flags()
+  enum DbFlags flags; ///< Příznaky databáze, k jejich čtení užijte database_get_flags()
 
 
   uint64_t time; ///< Globální hodiny

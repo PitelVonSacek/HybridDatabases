@@ -45,7 +45,7 @@
  *          databáze vyskytly chyby, které nebyly fatální, může nastavit
  *          příznak DB_READ_ONLY. V případě fatální chyby vrací 0.
  */
-Database *database_create(const DatabaseType *type, const char *file, unsigned flags);
+Database *database_create(const DatabaseType *type, const char *file, enum DbFlags flags);
 
 /**
  * @brief Uzavře databázi a uvolní s ní asociované zdroje.
@@ -61,7 +61,7 @@ void database_close(Database *D);
  * @param D Databáze.
  * @returns Příznaky databáze D.
  */
-static inline unsigned database_get_flags(Database *D);
+static inline enum DbFlags database_get_flags(Database *D);
 
 
 /**

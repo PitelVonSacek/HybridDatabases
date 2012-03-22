@@ -99,6 +99,12 @@ enum DbError {
                                     ///  datový soubor.
 };
 
+enum DbFlags {
+  DB_READ_ONLY = 1, ///< Databáze je otevřena pouze pro čtení,
+                    //   zápis probíhá do /dev/null
+  DB_CREATE = 2     ///< Pokud databáze nexistuje, bude vytvořena
+};
+
 enum DbService {
     DB_SERVICE__COMMIT = 1,
     DB_SERVICE__SYNC_COMMIT,

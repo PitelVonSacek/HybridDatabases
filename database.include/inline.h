@@ -1,4 +1,4 @@
-static inline unsigned database_get_flags(Database *D) {
+static inline enum DbFlags database_get_flags(Database *D) {
   return D->flags;
 }
 
