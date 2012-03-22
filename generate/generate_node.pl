@@ -103,7 +103,7 @@ EOF
  
     # destroy_pointers
     print "static bool ${node_type}_destroy_pointers(Handler *H, $node_type *node) {\n" .
-          "  Node *zero = 0;\n" .
+          "  Node *zero __attribute__((unused)) = 0;\n" .
           "  if (\n";
  
     for my $attr (@attrs) {
