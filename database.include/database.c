@@ -62,6 +62,14 @@ static Database *database_alloc(const DatabaseType *type) {
 
 
 void database_close(Database *D) {
+  if (!stack_empty(D->handlers)) {
+    dbDebug(DB_WARNING, "Destroying database, but some Handlers still exist");
+    stack_for_each(H, D->handlers) {
+      if (H[0]->allocated) db_handler_free(*H);
+      else db_handler_destroy(*H);
+    }
+  }
+
 #ifdef SINGLE_SERVICE_THREAD
   sem_post(D->counter);
 
@@ -81,6 +89,8 @@ void database_close(Database *D) {
   pthread_join(D->gc_thread, 0);
 #endif
   dbDebug(DB_INFO, "Waiting done");
+
+  stack_destroy(D->handlers);
 
   NodeType *type = &D->node_types[0];
   for (; type - D->node_types < D->node_types_count; type++)
@@ -105,16 +115,6 @@ void database_close(Database *D) {
   
   pthread_mutex_destroy(&D->mutex);
   sem_destroy(&D->service_thread_pause);
-
-  if (!stack_empty(D->handlers)) {
-    dbDebug(DB_WARNING, "Destroying database, but some Handlers still exist");
-    while (!stack_empty(D->handlers)) {
-      Handler *H = stack_pop(D->handlers);
-      if (H->allocated) db_handler_free(H);
-      else db_handler_destroy(H);
-    }
-  }
-  stack_destroy(D->handlers);
 
   free(D);
 }

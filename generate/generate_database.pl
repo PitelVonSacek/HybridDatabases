@@ -83,14 +83,14 @@ sub database_implementation {
 
     # indexes
     my $init_indexes = join "\n", map {
-      sprintf "  %2\$s_desc.desc.context_init(&D->indexes.%1\$s.context, D->tm_allocator);\n".
+      sprintf "  %2\$s_desc.desc.context_init(&D->indexes.%1\$s.context, D->__ancestor.tm_allocator);\n".
               "  D->indexes.%1\$s.callback = %2\$s_desc.desc.callback;\n".
               "  D->indexes.%1\$s.functions = %2\$s_desc.functions;\n",
               @{ $_ }
     } @{ $i{index_types} };
 
     my $destroy_indexes = join "\n", map {
-      sprintf "  %2\$s_desc.desc.context_destroy(&D->indexes.%1\$s.context, D->tm_allcator);\n",
+      sprintf "  %2\$s_desc.desc.context_destroy(&D->indexes.%1\$s.context, D->__ancestor.tm_allocator);\n",
               @{ $_ }
     } @{ $i{index_types} };
 
