@@ -26,6 +26,13 @@
 
 
 /**
+ * Maximální počet nevyřízených transakcí, které mohou náležet
+ * jednomu handleru.
+ */
+#define BD_MAX_PENDING_TRANSACTIONS_PER_HANDLER 128
+
+
+/**
  * Konstanta udávající kolik uzlů je při dumpu vypsáno
  * na zpracování jednoho požadavku z fronty. @ref service_thread
  */

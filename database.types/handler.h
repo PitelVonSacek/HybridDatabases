@@ -59,6 +59,8 @@ typedef struct Handler_ {
   sem_t write_finished[1]; ///< Semafor pro synchronizaci se servisním vláknem
                            ///  v případě synchroního commitu.
 
+  sem_t pending_transactions[1];
+
   DummyAncestor __ancestor; // required for type magic
 } Handler;
 

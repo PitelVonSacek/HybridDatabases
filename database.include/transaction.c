@@ -135,7 +135,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   *O = (struct OutputList){
     .next = 0,
  
-    .lock = ((commit_type == CT_SYNC) ? H->write_finished : 0),
+    .lock = ((commit_type == CT_SYNC) ? H->write_finished : H->pending_transactions),
 #if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)  
     .type = ((commit_type == CT_SYNC) ? DB_SERVICE__SYNC_COMMIT: DB_SERVICE__COMMIT)
 #else
@@ -185,7 +185,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 
   handler_cleanup(H);
 
-  if (commit_type == CT_SYNC) sem_wait(H->write_finished);
+  sem_wait((commit_type == CT_SYNC) ? H->write_finished : H->pending_transactions);
 
   return true;
 }

@@ -21,6 +21,7 @@ Handler *db_handler_init(Database *D, Handler *H) {
   };
 
   sem_init(H->write_finished, 0, 0);
+  sem_init(H->pending_transactions, 0, BD_MAX_PENDING_TRANSACTIONS_PER_HANDLER);
 
   fstack_init(H->transactions);
   fstack_init(H->log);
@@ -50,6 +51,7 @@ void db_handler_destroy(Handler *H) {
   bit_array_destroy(&H->read_set);
   
   sem_destroy(H->write_finished);
+  sem_destroy(H->pending_transactions);
 
   fstack_destroy(H->transactions);
   fstack_destroy(H->log);
