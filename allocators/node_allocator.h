@@ -9,9 +9,9 @@
 #include "vpage_allocator.h"
 #include "../utils/list.h"
 #include "../utils/slist.h"
+#include "../database.types/node.h"
 
 struct NodeType_;
-struct Node_;
 
 struct NodeAllocatorBlock {
   struct List head;
@@ -36,9 +36,9 @@ void node_allocator_init(struct NodeAllocator *A,
 void node_allocator_destroy(struct NodeAllocator *A);
 
 
-static inline struct Node_ *node_allocator_alloc(struct NodeAllocator *A);
+static inline Node *node_allocator_alloc(struct NodeAllocator *A);
 static inline void node_allocator_free(struct NodeAllocator *A, 
-                                       struct Node_ *node, uint64_t time);
+                                       Node *node, uint64_t time);
 
 
 /********************
@@ -47,7 +47,7 @@ static inline void node_allocator_free(struct NodeAllocator *A,
 
 void *_node_allocator_alloc_page(struct NodeAllocator *A);
 
-static inline struct Node_ *node_allocator_alloc(struct NodeAllocator *A) {
+static inline Node *node_allocator_alloc(struct NodeAllocator *A) {
   struct NodeAllocatorBlock *block;
   void *ret = 0;
 
@@ -64,11 +64,11 @@ static inline struct Node_ *node_allocator_alloc(struct NodeAllocator *A) {
 }
 
 static inline void node_allocator_free(struct NodeAllocator *A, 
-                                       struct Node_ *node, uint64_t time) {
+                                       Node *node, uint64_t time) {
   struct NodeAllocatorBlock *block = page_allocator_get_page(node);
   bool do_page_free = false;
 
-  *(uint64_t*)util_apply_offset(node, sizeof(void*)) = 0;
+  node->id = 0;
 
   pthread_mutex_lock(&A->mutex);
   if (!--block->used) {

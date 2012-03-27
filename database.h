@@ -20,6 +20,7 @@
 #include "database.types/handler.h"
 #include "database.types/index.h"
 #include "database.types/node.h"
+#include "database.types/node_type.h"
 #include "utils/utils.h"
 
 

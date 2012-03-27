@@ -1,5 +1,6 @@
 #include "node_allocator.h"
 #include "../database.types/node.h"
+#include "../database.types/node_type.h"
 
 void node_allocator_init(struct NodeAllocator *A,
                          struct VPageAllocator *page_allocator, struct NodeType_ *type) {

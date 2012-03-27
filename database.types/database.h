@@ -16,6 +16,7 @@
 #include "enums.h"
 #include "attributes.h"
 #include "node.h"
+#include "node_type.h"
 #include "handler.h"
 #include "index.h"
 

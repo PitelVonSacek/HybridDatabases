@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "node.h"
+#include "node_type.h"
 #include "handler.h"
 #include "../allocators/generic_allocator.h"
 
