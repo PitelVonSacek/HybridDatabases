@@ -17,12 +17,12 @@
  * by měla být prvočíslo, jinak hrozí, že některé
  * zámky nebou využívany. @see hash_ptr()
  */
-#define DB_LOCKS 251
+#define DB_LOCKS 101
 
 /**
  * Nejmenší datový typ do kterého se vejde konstanta #DB_LOCKS
  */
-#define DB_LOCKS_NR_TYPE unsigned char
+#define DB_LOCKS_NR_TYPE unsigned short // char
 
 
 /**

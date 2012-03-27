@@ -10,7 +10,7 @@
 
 #include "../database.types/enums.h"
 static inline unsigned hash_ptr(const void *ptr) {
-  return (((size_t)ptr) * 997) % DB_LOCKS; // find betterr prime :-)
+  return (((size_t)ptr) * 780119) % DB_LOCKS; // find betterr prime :-)
 }
 
 #include "../database.types/handler.h"

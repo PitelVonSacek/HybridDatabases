@@ -7,8 +7,13 @@ static void _tr_unlock(Handler* H, uint64_t ver) {
 }
 
 void _tr_retry_wait(int loop) {
-  uint64_t t = (loop < 14) ? (10000 << loop) : 180000000;
-  t = (rand() * rand()) % t;
+  uint64_t t = 10000;
+
+  while (--loop > 0) t *= 2;
+
+  if (t > 100000000) t = 100000000;
+
+  t += rand() % 500000;
 
   struct timespec timeout = { 
     .tv_sec = 0, 
