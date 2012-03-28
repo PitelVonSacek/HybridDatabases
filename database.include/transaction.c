@@ -95,6 +95,8 @@ void _tr_abort_main(Handler *H) {
 }
 
 static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) {
+  O->next = 0;
+
 #ifdef LOCKLESS_COMMIT
   while (!atomic_cmpswp(atomic_read(&db->tail), 0, O)) ;
   atomic_write(&db->tail, &O->next);
@@ -132,19 +134,15 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   }
 
   struct OutputList *O = simple_allocator_alloc(&output_list_allocator);
-  *O = (struct OutputList){
-    .next = 0,
  
-    .lock = ((commit_type == CT_SYNC) ? H->write_finished : H->pending_transactions),
+  O->lock = ((commit_type == CT_SYNC) ? H->write_finished : H->pending_transactions);
 #if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)  
-    .type = ((commit_type == CT_SYNC) ? DB_SERVICE__SYNC_COMMIT: DB_SERVICE__COMMIT)
+  O->type = ((commit_type == CT_SYNC) ? DB_SERVICE__SYNC_COMMIT: DB_SERVICE__COMMIT);
 #else
-    .flags = ((commit_type == CT_SYNC) ? DB_DUMP__SYNC_COMMIT : 0)
+  O->flags = ((commit_type == CT_SYNC) ? DB_DUMP__SYNC_COMMIT : 0);
 #endif
-  };
 
-  fstack_init(O->content.log);
-  fstack_swap(O->content.log, H->log);
+  sem_init(&O->ready, 0, 0);
 
 #ifdef LOCKLESS_COMMIT
   end_time = atomic_add_and_fetch(&db->time, 2);
@@ -167,7 +165,6 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
       // readset invalid, abort
       pthread_mutex_unlock(&db->mutex);
       
-      fstack_swap(O->content.log, H->log);
       simple_allocator_free(&output_list_allocator, O);
       _tr_abort_main(H);
       return false;
@@ -175,14 +172,17 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 
     end_time = atomic_add_and_fetch(&db->time, 2);
 
-    O->end_time = end_time;
-
     output_queue_push(db, O, 1);
   } pthread_mutex_unlock(&db->mutex);
 #endif
 
+  process_transaction_log(H->log, db, O->W, end_time);
+
   _tr_unlock(H, end_time);
 
+  sem_post(&O->ready);
+
+  fstack_init(H->log);
   handler_cleanup(H);
 
   sem_wait((commit_type == CT_SYNC) ? H->write_finished : H->pending_transactions);

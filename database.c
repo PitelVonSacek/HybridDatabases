@@ -43,8 +43,22 @@
 #define BD_OUTPUT_LIST_CACHE 32
 #endif
 
+static void output_list_init(void *ptr) {
+  struct OutputList *O = ptr;
+  sem_init(&O->ready, 0, 0);
+  writer_init(O->W);
+}
+
+static void output_list_destroy(void *ptr) {
+  struct OutputList *O = ptr;
+  sem_destroy(&O->ready);
+  writer_destroy(O->W);
+}
+
 static struct SimpleAllocator output_list_allocator = 
-  SimpleAllocatorInit(sizeof(struct OutputList), BD_OUTPUT_LIST_CACHE);
+  SimpleAllocatorInit(sizeof(struct OutputList), BD_OUTPUT_LIST_CACHE,
+                      &output_list_init, &output_list_destroy);
+
 
 __attribute__((destructor)) static void static_allocators_destroy() {
   simple_allocator_destroy(&output_list_allocator);
@@ -57,7 +71,10 @@ __attribute__((constructor)) static void init_rand() {
 #define sendServiceMsg(D, ...) \
   do { \
     struct OutputList *__out = simple_allocator_alloc(&output_list_allocator); \
-    *__out = (struct OutputList)__VA_ARGS__; \
+    struct OutputList __tmp = __VA_ARGS__; \
+    __out->type = __tmp.type; \
+    __out->lock = __tmp.lock; \
+    __out->content = __tmp.content; \
     output_queue_push(D, __out, false); \
   } while (0)
 

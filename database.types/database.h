@@ -73,10 +73,12 @@ struct OutputList {
 
   enum DbService type;
 
-  uint64_t end_time;
   sem_t *lock;
+  sem_t ready;
+
+  Writer W[1];
+
   union {
-    TransactionLog log[1];
     uint64_t *answer;
     Handler *handler;
   } content; ///< Anonymous member would be better but gcc < 4.6
