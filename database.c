@@ -63,8 +63,9 @@ __attribute__((constructor)) static void init_rand() {
 
 
 #define node_for_each(var, node_type) \
-  for (Node *var = node_get_first(node_type); var;  \
-       var = node_get_next(node_type, var))
+  for (Node *var = (node_allocator_dump_init(node_type->allocator), (void*)0); \
+       var = node_type->allocator->dump_ptr;  \
+       node_allocator_dump_next(node_type->allocator))
 
 
 
@@ -112,11 +113,6 @@ static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
 // const int tr_attr_get_type(NodeType *type, int index);
 static __attribute__((unused)) void node_offset_check();
 
-static bool _node_get_next_step(NodeType *type, struct NodeAllocatorBlock **block,
-                                Node **node);
-static Node *node_get_first(NodeType *type);
-static Node *node_get_next(NodeType *type, Node *node);
-
 
 // read.c
 static bool read_schema(Reader *R, Database *D);
@@ -136,12 +132,9 @@ static bool read_node_modify(Reader *R, Database *D, IdToNode *nodes);
 
 // threads.c
 static void process_transaction_log(TransactionLog *log, Database *D,
-                                    Writer *W, size_t end_time,
-                                    NodeType **dump_type, Node **dump_ptr);
+                                    Writer *W, size_t end_time);
 
-static void dump_get_next_node(Database *D, NodeType **type, Node **node);
-static bool dump_node(Database *D, Writer *W, Node *node);
-static bool do_dump(Database *D, Writer *W, NodeType **dump_type, Node **dump_ptr);
+static bool do_dump(Database *D, Writer *W, NodeType **dump_type);
 
 static uint64_t get_time(Database *D);
 static void collect_garbage(Database *D);

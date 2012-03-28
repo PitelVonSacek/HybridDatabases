@@ -6,7 +6,8 @@ void node_allocator_init(struct NodeAllocator *A,
                          struct VPageAllocator *page_allocator, struct NodeType_ *type) {
   *A = (struct NodeAllocator){
     .allocator = page_allocator,
-    .type = type
+    .type = type,
+    .dump_ptr = 0
   };
 
   list_init_head(&A->blocks);
@@ -50,5 +51,67 @@ void *_node_allocator_alloc_page(struct NodeAllocator *A) {
   pthread_mutex_unlock(&A->mutex);
 
   return ret;
+}
+
+
+static bool _node_get_next_step(NodeType *type, struct NodeAllocatorBlock **block,
+                               Node **node) {
+  const size_t max_offset =
+    ((PAGE_ALLOCATOR_PAGE_SIZE - sizeof(struct NodeAllocatorBlock))
+    / type->size) * type->size;
+
+  *node = util_apply_offset((*node), type->size);
+
+  if (util_get_offset(block[0]->data, *node) >= max_offset) {
+    *block = utilContainerOf(block[0]->dump_head.next,
+                             struct NodeAllocatorBlock, dump_head);
+
+    if (&block[0]->dump_head == &type->allocator->dump_blocks) return false;
+    *node = (void*)block[0]->data;
+  }
+
+  return true;
+}
+
+void node_allocator_dump_init(struct NodeAllocator *A) {
+  struct NodeAllocatorBlock *block;
+
+  pthread_mutex_lock(&A->mutex);
+  A->dump_ptr = 0;
+
+  block = utilContainerOf(A->dump_blocks.next,
+                          struct NodeAllocatorBlock, dump_head);
+
+  if (&block->dump_head == &A->dump_blocks) goto end;
+
+  Node *node = (void*)block->data;
+
+  while (!atomic_read(&node->id))
+    if (!_node_get_next_step(A->type, &block, &node)) goto end;
+
+  A->dump_ptr = node;
+
+  end:
+  pthread_mutex_unlock(&A->mutex);
+}
+
+void node_allocator_dump_next(struct NodeAllocator *A) {
+  pthread_mutex_lock(&A->mutex);
+  _node_allocator_dump_next_nolock(A);
+  pthread_mutex_unlock(&A->mutex);
+}
+
+void _node_allocator_dump_next_nolock(struct NodeAllocator *A) {
+  Node *node = A->dump_ptr;
+  struct NodeAllocatorBlock *block = page_allocator_get_page(node);
+
+  do {
+    if (!_node_get_next_step(A->type, &block, &node)) {
+      A->dump_ptr = 0;
+      return;
+    }
+  } while (!atomic_read(&node->id));
+
+  A->dump_ptr = node;
 }
 
