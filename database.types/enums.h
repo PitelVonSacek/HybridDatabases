@@ -1,6 +1,8 @@
 #ifndef __DATABASE_ENUMS_H__
 #define __DATABASE_ENUMS_H__
 
+#include "../config.h"
+
 /**
  * @file
  * Definice konstant a výčtových datových typů.
@@ -17,40 +19,51 @@
  * by měla být prvočíslo, jinak hrozí, že některé
  * zámky nebou využívany. @see hash_ptr()
  */
+#ifndef DB_LOCKS
 #define DB_LOCKS 101
+#endif
 
 /**
  * Nejmenší datový typ do kterého se vejde konstanta #DB_LOCKS
  */
+#ifndef DB_LOCKS_NR_TYPE
 #define DB_LOCKS_NR_TYPE unsigned short // char
+#endif
 
 
 /**
  * Maximální počet nevyřízených transakcí, které mohou náležet
  * jednomu handleru.
  */
+#ifndef BD_MAX_PENDING_TRANSACTIONS_PER_HANDLER
 #define BD_MAX_PENDING_TRANSACTIONS_PER_HANDLER 128
-
+#endif
 
 /**
  * Konstanta udávající kolik uzlů je při dumpu vypsáno
  * na zpracování jednoho požadavku z fronty. @ref service_thread
  */
+#ifndef DUMP__NODES_PER_TRANSACTION
 #define DUMP__NODES_PER_TRANSACTION 5
+#endif
 
 
 /**
  * Počet stránek, které udržujě v cache <tt>vpage allocator</tt>.
  * Je-li příliš nízký způsobuje časté volání get_time().
  */
+#ifndef DB_VPAGE_ALLOCATOR_CACHE
 #define DB_VPAGE_ALLOCATOR_CACHE 128
+#endif
 
 /**
  * Počet položek v seznamu <tt>generic allocatoru</tt> než
  * začne uvolňovat paměť. Je-li příliš nízký způsobuje
  * časté volání get_time().
  */
+#ifndef DB_GENERIC_ALLOCATOR_CACHE
 #define DB_GENERIC_ALLOCATOR_CACHE 4096
+#endif
 
 
 /**
