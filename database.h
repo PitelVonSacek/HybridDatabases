@@ -372,7 +372,7 @@ bool tr_node_write(Handler *H, Node *node, int attr, const void *value);
  * @returns true v případě úspěchu. Vrátí-li false je třeba restartovat
  *          transakci.
  */
-static inline bool tr_node_update_indexies(Handler *H, Node *node);
+static inline bool tr_node_update_indexes(Handler *H, Node *node);
 
 /**
  * @brief Ověří zda uzel nebyl modifikován jinou transakcí.

@@ -44,7 +44,12 @@ typedef struct Handler_ {
   struct Database_ *database; ///< Odkaz na databázi, ke které handler patří.
 
   uint64_t start_time; ///< Čas zahájení současné transakce nebo 0 pokud žádná neprohíbá.
+
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+  Stack(Lock*) read_set;
+#else
   ReadSet read_set; ///< Readset současné transakce.
+#endif
 
   FastStack(struct Transaction) transactions[1];
 
@@ -53,8 +58,12 @@ typedef struct Handler_ {
   bool allocated; ///< @c true pokud tento handler byl alokován pomocí db_handler_create().
   enum CommitType commit_type;
 
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+  Stack(Lock*) acquired_locks[1];
+#else
   /// Seznam zámků vlastněných současnou transakcí.
   InlineStack(DB_LOCKS_NR_TYPE, DB_LOCKS) acquired_locks[1];
+#endif
 
   sem_t write_finished[1]; ///< Semafor pro synchronizaci se servisním vláknem
                            ///  v případě synchroního commitu.

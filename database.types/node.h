@@ -12,6 +12,9 @@ typedef struct {
     struct SList slist;
   };
   uint64_t id; ///< Unikátní id uzlu. Pro každý validní uzel > 0.
+#if INPLACE_LOCKS
+  Lock lock;
+#endif
 
   DummyAncestor __ancestor; ///< @ref type_magic
 } Node;

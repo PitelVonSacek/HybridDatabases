@@ -31,8 +31,8 @@
   tr_node_read(typeUncast(H), typeUncast(node), attr, buffer)
 #define tr_node_write(H, node, attr, value) \
   tr_node_write(typeUncast(H), typeUncast(node), attr, value)
-#define tr_node_update_indexies(H, node) \
-  tr_node_update_indexies(typeUncast(H), typeUncast(node))
+#define tr_node_update_indexes(H, node) \
+  tr_node_update_indexes(typeUncast(H), typeUncast(node))
 
 #define tr_node_check(H, node) \
   tr_node_check(typeUncast(H), typeUncast(node))

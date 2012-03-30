@@ -45,7 +45,7 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type) {
 
       pthread_mutex_lock(&dump_type[0]->allocator->mutex);
       if (node = dump_type[0]->allocator->dump_ptr) {
-        lock = D->locks + hash_ptr(node);
+        lock = &_nodeGetLock(D, node);
         version = l_lock_(lock, 0, ~(uint64_t)0);
       }
       pthread_mutex_unlock(&dump_type[0]->allocator->mutex);

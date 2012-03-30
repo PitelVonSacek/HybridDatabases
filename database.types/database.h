@@ -62,7 +62,7 @@ struct {
   struct {
     Index1_desc_t *Index1_desc;
     ...
-  } indexies;
+  } indexes;
 
 } MyDatabase_desc_t;
 
@@ -115,7 +115,7 @@ typedef struct Database_ {
                                ///  handleru pomocí dbHandlderCreate().
   Stack(Handler*) handlers[1]; ///< Seznam všech handlerů.
 
-#ifndef LOCKLESS_COMMIT
+#if !LOCKLESS_COMMIT
   pthread_mutex_t mutex; ///< Zámek chránící vkládání do výstupní fronty.
 #endif
 

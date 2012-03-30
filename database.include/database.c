@@ -39,7 +39,7 @@ static Database *database_alloc(const DatabaseType *type) {
 
   sem_init(&D->service_thread_pause, 0, 0);
 
-#ifndef LOCKLESS_COMMIT
+#if !LOCKLESS_COMMIT
   pthread_mutex_init(&D->mutex, 0);
 #endif
 
@@ -205,7 +205,7 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
   Writer W[1];
   writer_init(W);
 
-#if !defined(SINGLE_SERVICE_THREAD) || defined(LOCKLESS_COMMIT)  
+#if LOCKLESS_COMMIT
   {
     struct OutputList *out = node_alloc(D->allocator);
     out->flags = DB_OUTPUT__DUMP_SIGNAL;
@@ -256,7 +256,7 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
 
   D->file = new_file;
 
-#if !defined(SINGLE_SERVICE_THREAD) || defined(LOCKLESS_COMMIT)
+#if LOCKLESS_COMMIT
   atomic_add(&D->dump.flags, DB_DUMP__RESUME_IO_THREAD);
   util_signal_signal(D->dump.signal);
 #endif

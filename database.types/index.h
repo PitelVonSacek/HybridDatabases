@@ -3,8 +3,7 @@
 
 /// @file
 
-#include <stdint.h>
-
+#include "../utils/basic_utils.h"
 #include "node.h"
 #include "node_type.h"
 #include "handler.h"
@@ -20,6 +19,12 @@ typedef struct {
   void (*context_init)(void*, struct GenericAllocator*);
   void (*context_destroy)(void*, struct GenericAllocator*);
 } IndexType;
+
+#if INPLACE_INDEX_LOCKS
+typedef Lock IndexLock;
+#else
+typedef struct {} IndexLock;
+#endif
 
 /*
   Real index:
@@ -47,7 +52,7 @@ typedef struct {
 extern const MyIndex_desc_t MyIndex_desc;
 
 #define trIndex(Index, Function, ...) \
-  H->my_database->indexies.Index.Function(&H->my_database->indexies.Index.context, \
+  H->my_database->indexes.Index.Function(&H->my_database->indexes.Index.context, \
                                           H, __VA_ARGS__)
 
 */

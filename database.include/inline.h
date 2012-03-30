@@ -83,29 +83,34 @@ static inline bool tr_validate(Handler *H) {
   Lock *locks = H->database->locks;
   const uint64_t start_time = H->start_time;
 
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+  for (int i = 0; i < stack_size(&H->read_set); i++)
+    if (!l_check(stack_at(&H->read_set, i), H, start_time))
+#else
   bitArrayFor(i, &H->read_set) {
     if (!l_check(locks + i, H, start_time)) return false;
   } bitArrayForEnd;
+#endif
 
   return true;
 }
 
-static inline bool tr_node_update_indexies(Handler *H, Node *node) {
+static inline bool tr_node_update_indexes(Handler *H, Node *node) {
   return node_get_type(node)->update_indexes(H, CBE_NODE_MODIFIED, node);
 }
 
 static inline bool tr_node_check(Handler *H, Node *node) {
-  return l_check(H->database->locks + hash_ptr(node), H, H->start_time);
+  return l_check(&_nodeGetLock(H->database, node), H, H->start_time);
 }
 
 static inline bool _node_ref_count_increase(Handler *H, Node *node) {
-  if (!util_lock(H, node)) return false;
+  if (!util_lock(H, &_nodeGetLock(H->database, node))) return false;
   trMemoryInternalWrite_(H, &node->ref_count, node->ref_count + 1);
   return true;
 }
 
 static inline bool _node_ref_count_decrease(Handler *H, Node *node) {
-  if (!util_lock(H, node)) return false;
+  if (!util_lock(H, &_nodeGetLock(H->database, node))) return false;
   assert(node->ref_count > 0);
   trMemoryInternalWrite_(H, &node->ref_count, node->ref_count - 1);
   return true;

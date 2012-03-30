@@ -2,8 +2,13 @@
 static void _tr_unlock(Handler* H, uint64_t ver) {
   Lock * const locks = H->database->locks;
 
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+  while (!stack_empty(H->acquired_locks))
+    l_unlock(stack_pop(H->acquired_locks), H, ver);
+#else
   while (!istack_empty(H->acquired_locks))
     l_unlock(locks + istack_pop(H->acquired_locks), H, ver);
+#endif
 }
 
 void _tr_retry_wait(int loop) {
@@ -97,7 +102,7 @@ void _tr_abort_main(Handler *H) {
 static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) {
   O->next = 0;
 
-#ifdef LOCKLESS_COMMIT
+#if LOCKLESS_COMMIT
   while (!atomic_cmpswp(atomic_read(&db->tail), 0, O)) ;
   atomic_write(&db->tail, &O->next);
 
@@ -136,15 +141,11 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   struct OutputList *O = simple_allocator_alloc(&output_list_allocator);
  
   O->lock = ((commit_type == CT_SYNC) ? H->write_finished : H->pending_transactions);
-#if defined(SINGLE_SERVICE_THREAD) && !defined(LOCKLESS_COMMIT)  
   O->type = ((commit_type == CT_SYNC) ? DB_SERVICE__SYNC_COMMIT: DB_SERVICE__COMMIT);
-#else
-  O->flags = ((commit_type == CT_SYNC) ? DB_DUMP__SYNC_COMMIT : 0);
-#endif
 
   sem_init(&O->ready, 0, 0);
 
-#ifdef LOCKLESS_COMMIT
+#if LOCKLESS_COMMIT
   end_time = atomic_add_and_fetch(&db->time, 2);
   O->end_time = end_time;
 

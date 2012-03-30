@@ -15,17 +15,21 @@ static inline unsigned hash_ptr(const void *ptr) {
 
 #include "../database.types/handler.h"
 #include "../database.types/database.h"
-static inline bool util_lock(Handler *H, const void *ptr) {
-  size_t hash = hash_ptr(ptr);
-  switch (l_lock(H->database->locks + hash, H, H->start_time)) {
+static inline bool util_lock(Handler *H, Lock *lock) {
+  switch (l_lock(lock, H, H->start_time)) {
     case 0: return false; 
-    case 1: istack_push(H->acquired_locks, hash);
+    case 1:
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+      stack_push(H->acquired_locks, lock);
+#else
+      istack_push(H->acquired_locks, lock - H->database->locks);
+#endif
   }
   return true;
 }
 
 
-#ifdef LOCKLESS_COMMIT
+#if LOCKLESS_COMMIT
 typedef struct {
   pthread_mutex_t mutex;
   pthread_cond_t cond;

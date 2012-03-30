@@ -31,7 +31,7 @@
 
 #undef tr_node_read
 #undef tr_node_write
-#undef tr_node_update_indexies
+#undef tr_node_update_indexes
 
 #undef tr_node_check
 
@@ -105,7 +105,7 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr);
 // Database *database_create (const DatabaseType *type, const char *file, unsigned flags);
 static int get_db_files(struct dirent*** files, const char* dir, const char* db_name_);
 static void fix_pointers(Database *D, IdToNode *nodes);
-static void fill_indexies(Database *D);
+static void fill_indexes(Database *D);
 static bool load_data(Database *D, IdToNode *nodes);
 static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
                      IdToNode *nodes, bool first_file);

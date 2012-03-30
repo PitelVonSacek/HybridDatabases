@@ -1,9 +1,31 @@
 #define trFail goto tr_failed
 
+#if INPLACE_NODE_LOCKS
+# define _nodeGetLock(D, node) (typeUncast(node)->lock)
+#else
+# define _nodeGetLock(D, node) (D->locks[hash_ptr(node)])
+#endif
+
+#if INPLACE_INDEX_LOCKS
+# define _objGetLock(D, obj) ((obj)->lock)
+#else
+# define _objGetLock(D, obj) (D->locks[hash_ptr(obj)])
+#endif
+
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+# define _readSetAddNode(H, node) stack_push(&typeUncast(H)->read_set, &(node)->lock)
+# define _readSetAddObj(H, node) stack_push(&typeUncast(H)->read_set, &(node)->lock)
+#else
+# define _readSetAddNode(H, node) \
+    bit_array_set(&typeUncast(H)->read_set, hash_ptr(node))
+# define _readSetAddObj(H, node) \
+    bit_array_set(&typeUncast(H)->read_set, hash_ptr(node))
+#endif
+
 #define trLock(ptr) trLock_(H, ptr)
 #define trLock_(H, ptr) \
   do { \
-    if (!util_lock(H, ptr)) trFail; \
+    if (!util_lock(H, &_nodeGetLock(H->database, ptr))) trFail; \
   } while (0)
 
 #define trRead(...) trRead_(H, __VA_ARGS__)
@@ -60,25 +82,24 @@
 #define trMemoryUncheckedRead_(H, obj, attr) \
   ({ \
     typeof(&*(obj)) __obj = (obj); \
-    bit_array_set(&typeUncast(H)->read_set, hash_ptr(__obj)); \
+    _readSetAddObj(H, __obj); \
     trMemoryInternalRead_(H, &(__obj attr)); \
   })
 
 #define trMemoryRead_(H, obj, attr) \
   ({ \
     typeof(&*(obj)) __obj = (obj); \
-    const uint64_t __hash = hash_ptr(__obj); \
-    bit_array_set(&typeUncast(H)->read_set, __hash); \
+    _readSetAddObj(H, __obj); \
     typeof(trMemoryInternalRead_(H, &(__obj attr))) __ret = \
       trMemoryInternalRead_(H, &(__obj attr)); \
-    if (!l_check(H->database->locks + __hash, H, typeUncast(H)->start_time)) trFail; \
+    if (!l_check(&_objGetLock(H->database, __obj), H, typeUncast(H)->start_time)) trFail; \
     __ret; \
   })
 
 #define trMemoryWrite_(H, obj, attr, value) \
   do { \
     typeof(&*(obj)) __obj = (obj); \
-    if (!util_lock(typeUncast(H), __obj)) trFail; \
+    if (!util_lock(typeUncast(H), &_objGetLock(H->database, __obj))) trFail; \
     trMemoryInternalWrite_(H, &(__obj attr), value); \
   } while (0)
 
@@ -119,38 +140,37 @@
 #define trUncheckedRead_(H, node, AttrName) \
   ({ \
     typeof(node) __node = (node); \
-    bit_array_set(&typeUncast(H)->read_set, hash_ptr(__node)); \
+    _readSetAddNode(H, __node); \
     trInternalRead_(H, __node, AttrName); \
   })
 
 #define trRead_(H, node, AttrName) \
   ({ \
     typeof(node) __node = (node); \
-    const uint64_t __hash = hash_ptr(__node); \
-    bit_array_set(&typeUncast(H)->read_set, __hash); \
+    _readSetAddNode(H, __node); \
     typeof(trInternalRead_(H, __node, AttrName)) __ret = \
       trInternalRead_(H, __node, AttrName); \
-    if (!l_check(H->database->locks + __hash, H, typeUncast(H)->start_time)) trFail; \
+    if (!l_check(&_nodeGetLock(H->database, __node), H, typeUncast(H)->start_time)) trFail; \
     __ret; \
   })
 
 #define trWrite_(H, node, AttrName, value) \
   do { \
     typeof(node) __node = (node); \
-    if (!util_lock(typeUncast(H), __node) || \
+    if (!util_lock(typeUncast(H), &_nodeGetLock(H->database, __node)) || \
         !trInternalWrite_(H, __node, AttrName, value))  trFail; \
   } while (0)
 
 
 #define trUpdateIndexies_(H, node) \
   do { \
-    if (!tr_node_update_indexies(typeUncast(H), node)) trFail; \
+    if (!tr_node_update_indexes(typeUncast(H), node)) trFail; \
   } while (0)
 
 
 #define trCheck_(H, node) \
   do { \
-    if (!l_check(H->database->locks + hash_ptr(node), H, typeUncast(H)->start_time)) \
+    if (!l_check(&_nodeGetLock(H->database, node), H, typeUncast(H)->start_time)) \
       trFail; \
   } while (0)
 

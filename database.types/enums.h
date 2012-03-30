@@ -11,6 +11,22 @@
 #define SINGLE_SERVICE_THREAD
 // #define LOCKLESS_COMMIT
 
+#ifndef SIMPLE_SERVICE_THREAD
+#define SIMPLE_SERVICE_THREAD 0
+#endif
+
+#ifndef INPLACE_NODE_LOCKS
+#define INPLACE_NODE_LOCKS 0
+#endif
+
+#ifndef INPLACE_INDEX_LOCKS
+#define INPLACE_INDEX_LOCKS 0
+#endif
+
+#ifndef LOCKLESS_COMMIT
+#define LOCKLESS_COMMIT 0
+#endif
+
 /**
  * @brief Počet zámků transakční paměti
  *

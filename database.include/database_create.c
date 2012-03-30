@@ -6,7 +6,7 @@ static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
                      IdToNode *nodes, bool first_file);
 static bool load_data(Database *D, IdToNode *nodes);
 static void fix_pointers(Database *D, IdToNode *nodes);
-static void fill_indexies(Database *D);
+static void fill_indexes(Database *D);
 
 enum {
   LOAD_SUCCESS,
@@ -27,7 +27,7 @@ Database *database_create (const DatabaseType *type, const char *file, unsigned 
 
   fix_pointers(D, &nodes);
   ndict_destroy(&nodes);
-  fill_indexies(D);
+  fill_indexes(D);
 
   if (pthread_create(&D->service_thread, 0, (void*(*)(void*))service_thread, (void*)D))
     goto error;
@@ -91,7 +91,7 @@ static void fix_pointers(Database *D, IdToNode *nodes) {
 }
 
 
-static void fill_indexies(Database *D) {
+static void fill_indexes(Database *D) {
   Handler H[1] = {{
     .database = D,
     .start_time = 1,
@@ -107,7 +107,7 @@ static void fill_indexies(Database *D) {
   for (; type - D->node_types < D->node_types_count; type++)
     node_for_each(node, type) {
       if (!type->update_indexes(H, CBE_NODE_LOADED, node)) {
-        dbDebug(E, "Filling indexies failed");
+        dbDebug(E, "Filling indexes failed");
         exit(1);
       }
 
