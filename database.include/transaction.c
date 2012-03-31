@@ -152,7 +152,10 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   O->lock = ((commit_type == CT_SYNC) ? H->write_finished : H->pending_transactions);
   O->type = ((commit_type == CT_SYNC) ? DB_SERVICE__SYNC_COMMIT: DB_SERVICE__COMMIT);
 
-  sem_init(&O->ready, 0, 0);
+#if !SIMPLE_SERVICE_THREAD
+  fstack_init(O->content.log);
+  fstack_swap(H->log, O->content.log);
+#endif
 
 #if LOCKLESS_COMMIT
   end_time = atomic_add_and_fetch(&db->time, 2);
@@ -163,7 +166,10 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   if (!tr_validate(H)) {
     atomic_add(&O->flags, BD_OUTPUT__READY | DB_OUTPUT__CANCELED);
 
-    fstack_swap(O->log, H->log);
+#if !SIMPLE_SERVICE_THREAD
+    fstack_swap(H->log, O->content.log);
+    fstack_destroy(O->content.log);
+#endif
     _tr_abort_main(H);
     return false;
   }
@@ -174,23 +180,34 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
     if (!tr_validate(H)) {
       // readset invalid, abort
       pthread_mutex_unlock(&db->mutex);
-      
+
+#if !SIMPLE_SERVICE_THREAD
+      fstack_swap(H->log, O->content.log);
+      fstack_destroy(O->content.log);
+#endif
       simple_allocator_free(&output_list_allocator, O);
       _tr_abort_main(H);
       return false;
     }
 
     end_time = atomic_add_and_fetch(&db->time, 2);
+#if !SIMPLE_SERVICE_THREAD
+    O->end_time = end_time;
+#endif
 
     output_queue_push(db, O, 1);
   } pthread_mutex_unlock(&db->mutex);
 #endif
 
+#if SIMPLE_SERVICE_THREAD
   process_transaction_log(H->log, db, O->W, end_time);
+#endif
 
   _tr_unlock(H, end_time);
 
+#if SIMPLE_SERVICE_THREAD
   sem_post(&O->ready);
+#endif
 
   fstack_init(H->log);
   handler_cleanup(H);

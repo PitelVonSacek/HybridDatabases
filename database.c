@@ -44,15 +44,19 @@
 #endif
 
 static void output_list_init(void *ptr) {
+#if SIMPLE_SERVICE_THREAD
   struct OutputList *O = ptr;
   sem_init(&O->ready, 0, 0);
   writer_init(O->W);
+#endif
 }
 
 static void output_list_destroy(void *ptr) {
+#if SIMPLE_SERVICE_THREAD
   struct OutputList *O = ptr;
   sem_destroy(&O->ready);
   writer_destroy(O->W);
+#endif
 }
 
 static struct SimpleAllocator output_list_allocator = 

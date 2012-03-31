@@ -74,11 +74,18 @@ struct OutputList {
   enum DbService type;
 
   sem_t *lock;
-  sem_t ready;
 
+#if SIMPLE_SERVICE_THREAD
+  sem_t ready;
   Writer W[1];
+#else
+  uint64_t end_time;
+#endif
 
   union {
+#if !SIMPLE_SERVICE_THREAD
+    TransactionLog log[1];
+#endif
     uint64_t *answer;
     Handler *handler;
   } content; ///< Anonymous member would be better but gcc < 4.6

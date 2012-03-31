@@ -126,9 +126,15 @@ static void *service_thread(Database *D) {
     switch (job->type) {
       case DB_SERVICE__COMMIT:
       case DB_SERVICE__SYNC_COMMIT:
+#if SIMPLE_SERVICE_THREAD
         sem_wait(&job->ready);
         util_fwrite(writer_ptr(job->W), writer_length(job->W), D->file);
         writer_discart(job->W);
+#else
+        process_transaction_log(job->content.log, D, W, job->end_time);
+        util_fwrite(writer_ptr(W), writer_length(W), D->file);
+        writer_discart(W);
+#endif
 
         if (job->type == DB_SERVICE__SYNC_COMMIT) fflush(D->file);
         if (job->lock) sem_post(job->lock);
