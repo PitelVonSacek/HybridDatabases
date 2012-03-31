@@ -30,7 +30,11 @@ struct LogItem {
 typedef BitArray(DB_LOCKS) ReadSet;
 
 struct Transaction {
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+  unsigned read_set;
+#else
   ReadSet read_set;
+#endif
   struct LogItem *pos;
   unsigned acquired_locks;
   enum CommitType commit_type;
@@ -46,7 +50,7 @@ typedef struct Handler_ {
   uint64_t start_time; ///< Čas zahájení současné transakce nebo 0 pokud žádná neprohíbá.
 
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
-  Stack(Lock*) read_set;
+  Stack(const Lock*) read_set;
 #else
   ReadSet read_set; ///< Readset současné transakce.
 #endif

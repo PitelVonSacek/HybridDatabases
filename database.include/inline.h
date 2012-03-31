@@ -41,9 +41,14 @@ static inline bool tr_is_main(Handler *H) {
 static inline void tr_begin(Handler *H) {
   if (H->start_time) { // create nested transaction
     struct Transaction nt = {
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+      .read_set = stack_size(&H->read_set),
+      .acquired_locks = stack_size(H->acquired_locks),
+#else
       .read_set = H->read_set,
-      .pos = &fstack_top(H->log),
       .acquired_locks = istack_size(H->acquired_locks),
+#endif
+      .pos = &fstack_top(H->log),
       .commit_type = H->commit_type
     };
 
@@ -80,13 +85,14 @@ static inline bool tr_commit(Handler *H, enum CommitType commit_type) {
 }
 
 static inline bool tr_validate(Handler *H) {
-  Lock *locks = H->database->locks;
   const uint64_t start_time = H->start_time;
 
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
   for (int i = 0; i < stack_size(&H->read_set); i++)
-    if (!l_check(stack_at(&H->read_set, i), H, start_time))
+    if (!l_check(stack_at(&H->read_set, i), H, start_time)) return false;
 #else
+  Lock *locks = H->database->locks;
+
   bitArrayFor(i, &H->read_set) {
     if (!l_check(locks + i, H, start_time)) return false;
   } bitArrayForEnd;

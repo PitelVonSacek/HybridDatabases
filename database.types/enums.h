@@ -16,11 +16,11 @@
 #endif
 
 #ifndef INPLACE_NODE_LOCKS
-#define INPLACE_NODE_LOCKS 0
+#define INPLACE_NODE_LOCKS 1
 #endif
 
 #ifndef INPLACE_INDEX_LOCKS
-#define INPLACE_INDEX_LOCKS 0
+#define INPLACE_INDEX_LOCKS 1
 #endif
 
 #ifndef LOCKLESS_COMMIT
@@ -34,6 +34,8 @@
  * makro nastavuje jejich počet. Hodnota
  * by měla být prvočíslo, jinak hrozí, že některé
  * zámky nebou využívany. @see hash_ptr()
+ *
+ * Nepoužito pokud #INPLACE_NODE_LOCKS && #INPLACE_INDEX_LOCKS
  */
 #ifndef DB_LOCKS
 #define DB_LOCKS 101
@@ -41,6 +43,8 @@
 
 /**
  * Nejmenší datový typ do kterého se vejde konstanta #DB_LOCKS
+ *
+ * Nepoužito pokud #INPLACE_NODE_LOCKS && #INPLACE_INDEX_LOCKS
  */
 #ifndef DB_LOCKS_NR_TYPE
 #define DB_LOCKS_NR_TYPE unsigned short // char

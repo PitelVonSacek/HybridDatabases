@@ -1,11 +1,11 @@
 // unlocks all locks held by H
 static void _tr_unlock(Handler* H, uint64_t ver) {
-  Lock * const locks = H->database->locks;
-
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
   while (!stack_empty(H->acquired_locks))
     l_unlock(stack_pop(H->acquired_locks), H, ver);
 #else
+  Lock * const locks = H->database->locks;
+
   while (!istack_empty(H->acquired_locks))
     l_unlock(locks + istack_pop(H->acquired_locks), H, ver);
 #endif
@@ -31,12 +31,17 @@ void _tr_retry_wait(int loop) {
 static void handler_cleanup(Handler *H) {
   atomic_write(&H->start_time, 0);
 
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+  stack_erase(&H->read_set);
+  stack_erase(H->acquired_locks);
+#else
   bit_array_erase(&H->read_set);
+  istack_erase(H->acquired_locks);
+#endif
 
   fstack_erase(H->transactions);
  
   fstack_erase(H->log);
-  istack_erase(H->acquired_locks);
 
   H->commit_type = CT_ASYNC;
 }
@@ -72,7 +77,11 @@ static void log_undo_item(Handler *H, struct LogItem *item, uint64_t end_time) {
 }
 
 void _tr_handler_rollback(Handler *H, struct Transaction *tr) {
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+  H->read_set.ptr = H->read_set.begin + tr->read_set;
+#else
   H->read_set = tr->read_set;
+#endif
 
   const uint64_t end_time = atomic_read(&H->database->time);
 

@@ -40,6 +40,9 @@ void *_node_allocator_alloc_page(struct NodeAllocator *A) {
 
   for (unsigned i = 0; i < nodes_per_block; i++) {
     Node *node = (Node*)(block->data + i * size);
+#if INPLACE_NODE_LOCKS
+    l_init(&node->lock);
+#endif
     slist_push(&block->free_nodes, &node->slist);
   }
 

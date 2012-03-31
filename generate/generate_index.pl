@@ -57,6 +57,9 @@ sub index_implementation {
 void ${t}_ctx_init(${t}_context_t *context,
                    struct GenericAllocator *allocator) {
 $init_ptr;
+#if INPLACE_INDEX_LOCKS
+  l_init(&context->lock);
+#endif
 }
 EOF
       $init_ptr = "(void(*)(void*, struct GenericAllocator*))&${t}_ctx_init";

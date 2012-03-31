@@ -60,6 +60,8 @@ typedef struct {} IsStack;
     _stack->end - _stack->begin; \
   });})
 
+#define stack_at(stack, i) ((stack)->begin[i])
+
 #define stack_erase(stack) ({ \
     typeof(&*(stack)) _stack_helper = (stack); ({ \
     STATIC_ASSERT(types_equal(typeof(_stack_helper->is_stack), IsStack)); \
@@ -69,10 +71,10 @@ typedef struct {} IsStack;
   });})
 
 #define stack_top(stack) \
-  (*({ \
+  ({ \
     STATIC_ASSERT(types_equal(typeof((stack)->is_stack), IsStack)); \
-    (stack)->ptr - 1; \
-  }))
+    (stack)->ptr[-1]; \
+  })
 
 #define stack_pop(stack) (*({ \
     typeof(&*(stack)) _stack_helper = (stack); ({ \

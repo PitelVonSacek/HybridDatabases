@@ -17,7 +17,12 @@ Handler *db_handler_init(Database *D, Handler *H) {
     .allocated = false,
 
     .commit_type = CT_ASYNC,
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+    .acquired_locks = { StackInit },
+    .read_set = StackInit
+#else
     .acquired_locks = { InlineStackInit }
+#endif
   };
 
   sem_init(H->write_finished, 0, 0);
@@ -26,7 +31,9 @@ Handler *db_handler_init(Database *D, Handler *H) {
   fstack_init(H->transactions);
   fstack_init(H->log);
 
+#if !INPLACE_NODE_LOCKS && !INPLACE_INDEX_LOCKS
   bit_array_init(&H->read_set);
+#endif
 
   sendServiceMsg(D, {
     .type = DB_SERVICE__HANDLER_REGISTER,
@@ -48,7 +55,12 @@ void db_handler_destroy(Handler *H) {
   });
   sem_wait(H->write_finished);
 
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+  stack_destroy(&H->read_set);
+  stack_destroy(H->acquired_locks);
+#else
   bit_array_destroy(&H->read_set);
+#endif
   
   sem_destroy(H->write_finished);
   sem_destroy(H->pending_transactions);

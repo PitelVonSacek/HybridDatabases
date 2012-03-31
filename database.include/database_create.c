@@ -96,7 +96,12 @@ static void fill_indexes(Database *D) {
     .database = D,
     .start_time = 1,
     .commit_type = CT_ASYNC,
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+    .acquired_locks = { StackInit },
+    .read_set = StackInit
+#else
     .acquired_locks = { InlineStackInit }
+#endif
   }};
   fstack_init(H->transactions);
   fstack_init(H->log);
@@ -121,6 +126,11 @@ static void fill_indexes(Database *D) {
     }
 
   _tr_abort_main(H);
+
+#if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
+  stack_destroy(&H->read_set);
+  stack_destroy(H->acquired_locks);
+#endif
 
   fstack_destroy(H->transactions);
   fstack_destroy(H->log);

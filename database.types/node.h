@@ -3,8 +3,10 @@
 
 /// @file
 
+#include "enums.h"
 #include "../utils/basic_utils.h"
 #include "../utils/slist.h"
+#include "../utils/lock.h"
 
 typedef struct {
   union {
@@ -12,7 +14,7 @@ typedef struct {
     struct SList slist;
   };
   uint64_t id; ///< Unikátní id uzlu. Pro každý validní uzel > 0.
-#if INPLACE_LOCKS
+#if INPLACE_NODE_LOCKS
   Lock lock;
 #endif
 

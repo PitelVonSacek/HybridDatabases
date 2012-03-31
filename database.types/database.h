@@ -109,7 +109,9 @@ typedef struct Database_ {
   uint64_t node_id_counter; ///< Nejvyšší id přidělěné nějakému uzlu,
                             ///  novému uzlu bude přidělěno id @c node_id_counter + 1.
 
+#if !INPLACE_NODE_LOCKS || !INPLACE_INDEX_LOCKS
   Lock locks[DB_LOCKS]; ///< Globální pole zámků
+#endif
 
   Handler* __dummy_handler[0]; ///< Nutné pro získání typové informace při výrobě
                                ///  handleru pomocí dbHandlderCreate().

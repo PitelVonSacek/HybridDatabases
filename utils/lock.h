@@ -56,7 +56,7 @@ static inline int l_unlock(Lock* l, void* ptr, uint64_t version) {
   return atomic_cmpswp(&l->value, (uint64_t)ptr, version);
 }
 
-static inline bool l_check (Lock* l, void* ptr, uint64_t version) {
+static inline bool l_check (const Lock* l, void* ptr, uint64_t version) {
   uint64_t v = atomic_read(&l->value);
   bool ret =  (v & 1) ? (v <= version) : (v == (uint64_t)ptr);
   if (!ret) lockDebug("Lock failed (read: %lx, ptr: %lx, version: %lx)\n",

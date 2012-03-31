@@ -1,6 +1,8 @@
 static void init_locks(Database *D) {
+#if !INPLACE_NODE_LOCKS || !INPLACE_INDEX_LOCKS
   for (int i = 0; i < DB_LOCKS; i++)
     D->locks[i].value = 1;
+#endif
 }
 
 static void init_node_types(Database *D) {

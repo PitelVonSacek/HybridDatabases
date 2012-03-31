@@ -13,8 +13,10 @@
 #endif
 
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
-# define _readSetAddNode(H, node) stack_push(&typeUncast(H)->read_set, &(node)->lock)
-# define _readSetAddObj(H, node) stack_push(&typeUncast(H)->read_set, &(node)->lock)
+# define _readSetAddNode(H, node) \
+    stack_push(&typeUncast(H)->read_set, &_nodeGetLock(H->database, node))
+# define _readSetAddObj(H, node) \
+    stack_push(&typeUncast(H)->read_set, &_objGetLock(H->database, node))
 #else
 # define _readSetAddNode(H, node) \
     bit_array_set(&typeUncast(H)->read_set, hash_ptr(node))
@@ -27,6 +29,13 @@
   do { \
     if (!util_lock(H, &_nodeGetLock(H->database, ptr))) trFail; \
   } while (0)
+
+#define trIndexLock(ptr) trIndexLock_(H, ptr)
+#define trIndexLock_(H, ptr) \
+  do { \
+    if (!util_lock(H, &_objGetLock(H->database, ptr))) trFail; \
+  } while (0)
+
 
 #define trRead(...) trRead_(H, __VA_ARGS__)
 #define trUncheckedRead(...) trUncheckedRead_(H, __VA_ARGS__)
