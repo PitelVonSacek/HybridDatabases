@@ -133,6 +133,8 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   if (commit_type == CT_ASYNC) commit_type = H->commit_type;
   
   if (fstack_empty(H->log)) {
+    uint64_t end_time = atomic_add_and_fetch(&H->database->time, 2);
+    _tr_unlock(H, end_time);
     // read-only transaction
     handler_cleanup(H);
 
