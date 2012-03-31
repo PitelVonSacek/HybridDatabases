@@ -72,24 +72,10 @@ void database_close(Database *D) {
     }
   }
 
-#ifdef SINGLE_SERVICE_THREAD
   sem_post(D->counter);
 
   dbDebug(DB_INFO, "Waiting for service thread");
   pthread_join(D->service_thread, 0);
-#else
-  {
-    struct OutputList *out = node_alloc(D->allocator);
-    out->flags = DB_OUTPUT__SHUTDOWN;
-    output_queue_push(D, out);
-    util_signal_signal(D->io_signal);
-  }
-
-  dbDebug(DB_INFO, "Waiting for IO thread");
-  pthread_join(D->io_thread, 0);
-  dbDebug(DB_INFO, "Waiting for GC thread");
-  pthread_join(D->gc_thread, 0);
-#endif
   dbDebug(DB_INFO, "Waiting done");
 
   stack_destroy(D->handlers);

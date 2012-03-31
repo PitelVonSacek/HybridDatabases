@@ -113,7 +113,7 @@ static void fill_indexes(Database *D) {
     node_for_each(node, type) {
       if (!type->update_indexes(H, CBE_NODE_LOADED, node)) {
         dbDebug(E, "Filling indexes failed");
-        exit(1);
+        abort();
       }
 
       while (!fstack_empty(H->log)) {

@@ -8,8 +8,9 @@
  * Definice konstant a výčtových datových typů.
  */
 
-#define SINGLE_SERVICE_THREAD
-// #define LOCKLESS_COMMIT
+#ifndef LOCKLESS_COMMIT
+#define LOCKLESS_COMMIT 0
+#endif
 
 #ifndef SIMPLE_SERVICE_THREAD
 #define SIMPLE_SERVICE_THREAD 0
