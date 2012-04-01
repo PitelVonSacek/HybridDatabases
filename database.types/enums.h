@@ -2,31 +2,83 @@
 #define __DATABASE_ENUMS_H__
 
 #include "../config.h"
+#include "../utils/basic_utils.h"
 
 /**
  * @file
  * Definice konstant a výčtových datových typů.
  */
 
+
+/**
+ * @brief Odstraní mutex používaný při commitu
+ *
+ * Pokud je 1, je při commitu transakce přidána do fronty
+ * pomocí atomických operací místo užití zámku.
+ *
+ * Implikuje #FAST_COMMIT
+ */
 #ifndef LOCKLESS_COMMIT
 #define LOCKLESS_COMMIT 0
 #endif
 
+#if LOCKLESS_COMMIT
+# if defined(FAST_COMMIT) && !FAST_COMMIT
+#   error "FAST_COMMIT is implied by LOCKLESS_COMMIT"
+# endif
+#define FAST_COMMIT 1
+#endif
+
+
+/**
+ * @brief Vysune validaci readsetu mimo kritickou sekci.
+ *
+ * Za cenu vyšší mezivláknové komunikace vysune validaci
+ * readsetu mimo kritickou sekci. Může být vhodné především
+ * v kombinaci s #INPLACE_NODE_LOCKS a #INPLACE_INDEX_LOCKS,
+ * jelikož v těchto případech není velikost readsetu omezena
+ * konstantou.
+ *
+ * Je implikováno #LOCKLESS_COMMIT. (Protože při použití #LOCKLESS_COMMIT
+ * neexistuje kritická sekce, ve které by mohla být validace readsetu
+ * umístěna.)
+ */
+#ifndef FAST_COMMIT
+#define FAST_COMMIT 0
+#endif
+
+
+/**
+ * @brief Přesune většinu práce pryč ze servisního vlákna.
+ *
+ * Přesune zpracování transakčního logu ze servisního vlákna
+ * do vlákna, které provádí commit. To zvýší výkon při práci
+ * z více vláken.
+ */
 #ifndef SIMPLE_SERVICE_THREAD
 #define SIMPLE_SERVICE_THREAD 0
 #endif
 
+
+/**
+ * @brief Zámky uzlů jsou umístěny v nich místo v centrální tabulce.
+ */
 #ifndef INPLACE_NODE_LOCKS
 #define INPLACE_NODE_LOCKS 1
 #endif
 
+
+/**
+ * @brief Zámky indexů jsou umístěny v nich místo v centrální tabulce.
+ *
+ * Je-li tato volba zapnuta, měly by všechny indexy obsahovat položku
+ * @c lock type @c IndexLock. (Je-li tato volba vypnuta, je @c IndexLock
+ * definován jako prázná struktura, takže nezabírá žádné místo.)
+ */
 #ifndef INPLACE_INDEX_LOCKS
 #define INPLACE_INDEX_LOCKS 1
 #endif
 
-#ifndef LOCKLESS_COMMIT
-#define LOCKLESS_COMMIT 0
-#endif
 
 /**
  * @brief Počet zámků transakční paměti
@@ -39,7 +91,7 @@
  * Nepoužito pokud #INPLACE_NODE_LOCKS && #INPLACE_INDEX_LOCKS
  */
 #ifndef DB_LOCKS
-#define DB_LOCKS 101
+#define DB_LOCKS 251
 #endif
 
 /**
@@ -48,7 +100,8 @@
  * Nepoužito pokud #INPLACE_NODE_LOCKS && #INPLACE_INDEX_LOCKS
  */
 #ifndef DB_LOCKS_NR_TYPE
-#define DB_LOCKS_NR_TYPE unsigned short // char
+#define DB_LOCKS_NR_TYPE \
+  StaticIf(DB_LOCKS < 0x100, unsigned char, unsigned short)
 #endif
 
 

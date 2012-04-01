@@ -75,8 +75,10 @@ struct OutputList {
 
   sem_t *lock;
 
-#if SIMPLE_SERVICE_THREAD
+#if SIMPLE_SERVICE_THREAD || FAST_COMMIT
   sem_t ready;
+#endif
+#if SIMPLE_SERVICE_THREAD
   Writer W[1];
 #else
   uint64_t end_time;

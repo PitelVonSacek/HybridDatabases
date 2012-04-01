@@ -1,6 +1,7 @@
 #include "node_allocator.h"
 #include "../database.types/node.h"
 #include "../database.types/node_type.h"
+#include "../database.types/enums.h"
 
 void node_allocator_init(struct NodeAllocator *A,
                          struct VPageAllocator *page_allocator, struct NodeType_ *type) {
@@ -25,8 +26,6 @@ void node_allocator_destroy(struct NodeAllocator *A) {
 void *_node_allocator_alloc_page(struct NodeAllocator *A) {
   struct NodeAllocatorBlock *block = vpage_allocator_alloc(A->allocator);
 
-  memset(block, 0x00, PAGE_ALLOCATOR_PAGE_SIZE);
-
   *block = (struct NodeAllocatorBlock){
     .free_nodes = SListInit,
     .used = 1,
@@ -40,6 +39,7 @@ void *_node_allocator_alloc_page(struct NodeAllocator *A) {
 
   for (unsigned i = 0; i < nodes_per_block; i++) {
     Node *node = (Node*)(block->data + i * size);
+    node->id = 0;
 #if INPLACE_NODE_LOCKS
     l_init(&node->lock);
 #endif

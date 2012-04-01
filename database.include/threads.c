@@ -126,13 +126,17 @@ static void *service_thread(Database *D) {
     switch (job->type) {
       case DB_SERVICE__COMMIT:
       case DB_SERVICE__SYNC_COMMIT:
-#if SIMPLE_SERVICE_THREAD
+#if SIMPLE_SERVICE_THREAD || FAST_COMMIT
         sem_wait(&job->ready);
-        util_fwrite(writer_ptr(job->W), writer_length(job->W), D->file);
+#endif
+#if SIMPLE_SERVICE_THREAD
+        if (writer_length(job->W))
+          util_fwrite(writer_ptr(job->W), writer_length(job->W), D->file);
         writer_discart(job->W);
 #else
         process_transaction_log(job->content.log, D, W, job->end_time);
-        util_fwrite(writer_ptr(W), writer_length(W), D->file);
+        if (writer_length(W))
+          util_fwrite(writer_ptr(W), writer_length(W), D->file);
         writer_discart(W);
 #endif
 

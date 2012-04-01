@@ -112,7 +112,7 @@ static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) 
   O->next = 0;
 
 #if LOCKLESS_COMMIT
-  while (!atomic_cmpswp(atomic_read(&db->tail), 0, O)) ;
+  while (!atomic_cmpswp(atomic_read(&db->tail), 0, O)) ; // WRONG FIXME
   atomic_write(&db->tail, &O->next);
 
   pthread_cond_broadcast(db->io_signal);
@@ -159,43 +159,41 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   fstack_swap(H->log, O->content.log);
 #endif
 
-#if LOCKLESS_COMMIT
+#if FAST_COMMIT
   end_time = atomic_add_and_fetch(&db->time, 2);
+# if !SIMPLE_SERVICE_THREAD
   O->end_time = end_time;
+# endif
 
-  output_queue_push(D, O);
+  output_queue_push(db, O, false);
 
   if (!tr_validate(H)) {
-    atomic_add(&O->flags, BD_OUTPUT__READY | DB_OUTPUT__CANCELED);
-
-#if !SIMPLE_SERVICE_THREAD
+# if !SIMPLE_SERVICE_THREAD
     fstack_swap(H->log, O->content.log);
-    fstack_destroy(O->content.log);
-#endif
+# endif
+    sem_post(&O->ready);
     _tr_abort_main(H);
     return false;
   }
-
-  atomic_add(&O->flags, DB_OUTPUT__READY);
 #else
   pthread_mutex_lock(&db->mutex); {
     if (!tr_validate(H)) {
       // readset invalid, abort
       pthread_mutex_unlock(&db->mutex);
 
-#if !SIMPLE_SERVICE_THREAD
+# if !SIMPLE_SERVICE_THREAD
       fstack_swap(H->log, O->content.log);
       fstack_destroy(O->content.log);
-#endif
+# endif
       simple_allocator_free(&output_list_allocator, O);
       _tr_abort_main(H);
       return false;
     }
 
     end_time = atomic_add_and_fetch(&db->time, 2);
-#if !SIMPLE_SERVICE_THREAD
+# if !SIMPLE_SERVICE_THREAD
     O->end_time = end_time;
-#endif
+# endif
 
     output_queue_push(db, O, 1);
   } pthread_mutex_unlock(&db->mutex);
@@ -207,7 +205,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 
   _tr_unlock(H, end_time);
 
-#if SIMPLE_SERVICE_THREAD
+#if SIMPLE_SERVICE_THREAD || FAST_COMMIT
   sem_post(&O->ready);
 #endif
 

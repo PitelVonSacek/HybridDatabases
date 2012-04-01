@@ -44,17 +44,21 @@
 #endif
 
 static void output_list_init(void *ptr) {
-#if SIMPLE_SERVICE_THREAD
-  struct OutputList *O = ptr;
+  struct OutputList *O __attribute__((unused)) = ptr;
+#if SIMPLE_SERVICE_THREAD || FAST_COMMIT
   sem_init(&O->ready, 0, 0);
+#endif
+#if SIMPLE_SERVICE_THREAD
   writer_init(O->W);
 #endif
 }
 
 static void output_list_destroy(void *ptr) {
-#if SIMPLE_SERVICE_THREAD
-  struct OutputList *O = ptr;
+  struct OutputList *O __attribute__((unused)) = ptr;
+#if SIMPLE_SERVICE_THREAD || FAST_COMMIT
   sem_destroy(&O->ready);
+#endif
+#if SIMPLE_SERVICE_THREAD
   writer_destroy(O->W);
 #endif
 }

@@ -101,7 +101,9 @@ void database_close(Database *D) {
   sem_destroy(D->counter);
   pthread_mutex_destroy(D->dump_running);
   
+#if !LOCKLESS_COMMIT
   pthread_mutex_destroy(&D->mutex);
+#endif
   sem_destroy(&D->service_thread_pause);
 
   free(D);

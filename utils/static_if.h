@@ -13,6 +13,9 @@ typedef struct {} StaticFalse;
 #define StaticGetInt(var) sizeof((var)._static_int->value)
 
 
+#define StaticIf(cond, A, B) \
+  typeof(static_if(cond, *((typeof(A)*)0), *((typeof(B)*)0)))
+
 
 #define STATIC_ASSERT(x) switch (0) { case 0: case (x): ; }
 
