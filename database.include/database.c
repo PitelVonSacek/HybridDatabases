@@ -41,6 +41,9 @@ static Database *database_alloc(const DatabaseType *type) {
 
   sem_init(&D->service_thread_pause, 0, 0);
 
+  pthread_mutex_init(&D->sync_helper_mutex, 0);
+  D->sync_helper_period = 0;
+
 #if !LOCKLESS_COMMIT
   pthread_mutex_init(&D->mutex, 0);
 #endif
@@ -100,6 +103,9 @@ void database_close(Database *D) {
 
   sem_destroy(D->counter);
   pthread_mutex_destroy(D->dump_running);
+
+  database_set_sync_period(D, 0.0);
+  pthread_mutex_destroy(&D->sync_helper_mutex);
   
 #if !LOCKLESS_COMMIT
   pthread_mutex_destroy(&D->mutex);
@@ -252,5 +258,32 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
 #endif
 
   return true;
+}
+
+double database_get_sync_period(Database *D) {
+  return atomic_read(&D->sync_helper_period);
+}
+
+void database_set_sync_period(Database *D, double period) {
+  bool running;
+  if (period < 0.001) period = 0.0;
+
+  pthread_mutex_lock(&D->sync_helper_mutex);
+  running = (D->sync_helper_period != 0);
+
+  if (running && period < D->sync_helper_period) {
+    pthread_cancel(D->sync_helper_thread);
+    pthread_join(D->sync_helper_thread, 0);
+    running = false;
+  }
+
+  atomic_write(&D->sync_helper_period, period);
+
+  if (period != 0 && !running) {
+    if (pthread_create(&D->sync_helper_thread, 0, (void*(*)(void*))&sync_thread, D))
+      utilDie("Thread creation failed");
+  }
+
+  pthread_mutex_unlock(&D->sync_helper_mutex);
 }
 

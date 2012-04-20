@@ -136,6 +136,23 @@ void database_resume_service_thread(Database *D);
 
 
 /**
+ * @breif Vrací čas (v sekundách), kdy se periodicky provede fsync().
+ *
+ * Je-li tato funkce vypnuta vrací 0.0.
+ *
+ */
+double database_get_sync_period(Database *D);
+
+
+/**
+ * @brief Nastaví čas (v sekundách), kdy se periodicky provee fsync().
+ *
+ * Hodnota 0.0 vypne tuto funkci. Hodnoty menší 0.001 jsou zaokrouhleny na 0.
+ */
+void database_set_sync_period(Database *D, double period);
+
+
+/**
  * @brief Vytvoří novou databázi.
  *
  * Makro nad funkcí database_create(). Na rozdíl od ní nnebere jako první

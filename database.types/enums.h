@@ -141,6 +141,15 @@
 
 
 /**
+ * Perioda, kdy má být volán fsync().
+ * @see database_set_sync_period()
+ */
+#ifndef DB_SYNC_PERIOD
+#define DB_SYNC_PERIOD 5
+#endif
+
+
+/**
  * @brief Typ commitu.
  * Určuje zda se funkce tr_commit() (či makro trCommit()) vrátí
  * hned po zařazení transakce do fronty či až po jejím zapsání

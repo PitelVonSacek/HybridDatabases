@@ -32,6 +32,8 @@ Database *database_create (const DatabaseType *type, const char *file, unsigned 
   if (pthread_create(&D->service_thread, 0, (void*(*)(void*))service_thread, (void*)D))
     goto error;
 
+  database_set_sync_period(D, DB_SYNC_PERIOD);
+
   return D;
 
   error:

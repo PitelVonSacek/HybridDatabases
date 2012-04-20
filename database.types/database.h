@@ -130,6 +130,10 @@ typedef struct Database_ {
   pthread_mutex_t mutex; ///< Zámek chránící vkládání do výstupní fronty.
 #endif
 
+  pthread_t sync_helper_thread;
+  pthread_mutex_t sync_helper_mutex;
+  double sync_helper_period;
+
   pthread_t service_thread;   ///< Thread id servisního vlákna.
   sem_t service_thread_pause; ///< Semafor předávaný servisnímu vláknu ve volání
                               ///  DB_SERVICE__PAUSE.

@@ -12,6 +12,9 @@
 #define database_pause_service_thread(D) database_pause_service_thread(typeUncast(D))
 #define database_resume_service_thread(D) database_resume_service_thread(typeUncast(D))
 
+#define database_get_sync_period(D) database_get_sync_period(typeUncast(D))
+#define database_set_sync_period(D, p) database_set_sync_period(typeUncast(D), p)
+
 #define db_handler_create(D) db_handler_create(typeUncast(D))
 #define db_handler_free(H) db_handler_free(typeUncast(H))
 #define db_handler_init(D, H) db_handler_init(typeUncast(D), typeUncast(H))

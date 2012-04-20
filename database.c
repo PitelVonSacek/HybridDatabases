@@ -14,6 +14,9 @@
 #undef database_pause_service_thread
 #undef database_resume_service_thread
 
+#undef database_get_sync_period
+#undef database_set_sync_period
+
 #undef db_handler_create
 #undef db_handler_free
 #undef db_handler_init
@@ -164,6 +167,8 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type);
 static uint64_t get_time(Database *D);
 static void collect_garbage(Database *D);
 static void *service_thread(Database *D);
+
+static void *sync_thread(Database *D);
 
 
 // transaction.c

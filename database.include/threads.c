@@ -246,3 +246,22 @@ static void *service_thread(Database *D) {
   }
 }
 
+static void *sync_thread(Database *D) {
+  double period;
+  struct timespec x;
+
+  while (true) {
+    sendServiceMsg(D, {
+      .type = DB_SERVICE__SYNC_ME,
+      .lock = 0
+    });
+
+    period = atomic_read(&D->sync_helper_period);
+    x.tv_sec = (time_t)period;
+    x.tv_nsec = ((long)((period - x.tv_sec) * 1000) % 1000) * 1000 * 1000;
+    nanosleep(&x, 0);
+  }
+
+  return 0;
+}
+
