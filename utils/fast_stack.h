@@ -66,7 +66,13 @@ typedef struct {} IsFastStack;
       (__stack->ptr - __stack->begin); \
   })
 
-#define fstack_erase(stack) fstack_destroy(stack)
+#define fstack_erase(stack) \
+  do { \
+    typeof(&*(stack)) __stack = (stack); \
+    STATIC_ASSERT(types_equal(typeof(__stack->is_fast_stack), IsFastStack)); \
+    while (__stack->block_count) \
+      _fstack_shrink(utilCast(GenericFastStack, __stack), _fstack_offsets); \
+  } while (0)
 
 
 #define fstack_push(stack, item) \
@@ -142,8 +148,11 @@ typedef FastStack(void*) GenericFastStack;
 static __attribute__((unused))
 void _fstack_expand(GenericFastStack *stack,
                     ptrdiff_t offset_begin, ptrdiff_t offset_end) {
-  stack->block_count++; 
-  list_add_end(&stack->blocks, page_alloc()); 
+  stack->block_count++;
+
+  if (stack->block_count != 1 || list_empty(&stack->blocks))
+    list_add_end(&stack->blocks, page_alloc());
+
   stack->begin = (void**)(((char*)(stack->blocks.prev)) + offset_begin);
   stack->ptr = stack->begin; 
   stack->end = (void**)(((char*)(stack->blocks.prev)) + offset_end);
@@ -153,7 +162,9 @@ static __attribute__((unused))
 void _fstack_shrink(GenericFastStack *stack,
                     ptrdiff_t offset_begin, ptrdiff_t offset_end) {
   stack->block_count--;
-  page_free(list_remove(stack->blocks.prev));
+
+  if (stack->block_count) page_free(list_remove(stack->blocks.prev));
+
   stack->begin = (void**)(((char*)(stack->blocks.prev)) + offset_begin);
   stack->end = (void**)(((char*)(stack->blocks.prev)) + offset_end);
   stack->ptr = stack->end;
