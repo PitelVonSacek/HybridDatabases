@@ -2,6 +2,8 @@
 #define __NUM_DICTIONARY_H__
 
 #include "basic_utils.h"
+#include "slist.h"
+#include "../allocators/page_allocator.h"
 
 typedef struct {} IsNumDictionaryDummy;
 typedef uint64_t GenericKey;
@@ -11,9 +13,15 @@ typedef struct {
   size_t size, capacity, capacity_index /* index in capacity table */;
 
   struct NumDictionaryNode {
-    struct NumDictionaryNode *next;
+    union {
+      struct NumDictionaryNode *next;
+      struct SList slist;
+    };
     GenericKey generic_key;
   } **buckets;
+
+  struct SList pages;
+  struct SList free_nodes;
 } NumDictionary;
 
 #define NumDictionary(Key, Value) NumDictionary_(Key, Value, __COUNTER__)
@@ -24,7 +32,10 @@ typedef struct {
     size_t size, capacity, capacity_index; \
     \
     struct _dictionary_node__##n { \
-      struct _dictionary_node__##n *next; \
+      union { \
+        struct _dictionary_node__##n *next; \
+        struct SList slist; \
+      }; \
       union { \
         Key key; \
         GenericKey generic_key; \
@@ -32,13 +43,16 @@ typedef struct {
       Value value; \
     } **buckets; \
     \
+    struct SList pages; \
+    struct SList free_nodes; \
+    \
     struct { \
       char key_size_must_be_less_or_equal_to_size_t \
         [(sizeof(Key) <= sizeof(GenericKey)) ? 1 : -1]; \
     } __static_assert[0]; \
   }
 
-#define NumDictionaryInit { {}, 0, 0, 0, 0 }
+#define NumDictionaryInit { {}, 0, 0, 0, 0, { 0 }, { 0 } }
 
 #define _ndict_uncast(dict) \
   static_if( \
@@ -78,11 +92,13 @@ typedef struct {
 
 #define ndict_insert(dict, key_, value_) \
   ({ \
-    typeof((dict)->buckets[0]) __node = xmalloc(sizeof(*__node)); \
+    typeof(&*(dict)) __dict = (dict); \
+    typeof((dict)->buckets[0]) __node = slist_pop(&__dict->free_nodes) ?: \
+      _ndict_alloc_nodes(_ndict_uncast(__dict), sizeof(*__node)); \
     __node->generic_key = 0; \
     __node->key = (key_); \
     __node->value = (value_); \
-    ndict_generic_insert(_ndict_uncast(dict), \
+    ndict_generic_insert(_ndict_uncast(__dict), \
                          utilCast(struct NumDictionaryNode, __node)); \
   })
 
@@ -203,24 +219,19 @@ static void _ndict_resize(NumDictionary *dict, int cap_index_diff);
 
 Inline void ndict_generic_init(NumDictionary *dict) {
   *dict = (NumDictionary){
-    {}, 0, 0, 0, 0
+    {}, 0, 0, 0, 0, {0}, {0}
   };
 }
 
 Inline void ndict_generic_destroy(NumDictionary *dict) {
-  for (size_t i = 0; i < dict->capacity; i++) {
-    struct NumDictionaryNode *node, *next;
-    next = dict->buckets[i];
-    while (node = next) {
-      next = node->next;
-      free(node); 
-    }
-  } 
+  struct SList *page;
+  while (page = slist_pop(&dict->pages))
+    page_free(page);
 
   free(dict->buckets);
   
   *dict = (NumDictionary){
-    {}, 0, 0, 0, 0
+    {}, 0, 0, 0, 0, {0}, {0}
   };
 }
 
@@ -241,7 +252,7 @@ Inline struct NumDictionaryNode *ndict_generic_get_node(NumDictionary *dict,
 Inline bool ndict_generic_insert(NumDictionary *dict, struct NumDictionaryNode *node) {
   if (ndict_generic_get_node(dict, node->generic_key)) {
     _num_dict_debug("Insert: failed, %li already in dict", node->generic_key);
-    free(node);
+    slist_push(&dict->free_nodes, &node->slist);
     return false;
   }
 
@@ -271,7 +282,7 @@ Inline bool ndict_generic_remove(NumDictionary *dict, GenericKey key) {
     if (node_ptr[0]->generic_key == key) {
       struct NumDictionaryNode *tmp = node_ptr[0];
       node_ptr[0] = node_ptr[0]->next;
-      free(tmp);
+      slist_push(&dict->free_nodes, &tmp->slist);
       goto end;
     }
     node_ptr = &node_ptr[0]->next;
@@ -320,6 +331,26 @@ static void _ndict_resize(NumDictionary *dict, int cap_index_diff) {
   dict->buckets = buckets;
   dict->capacity_index += cap_index_diff;
   dict->capacity = new_cap;
+}
+
+static __attribute__((unused))
+void *_ndict_alloc_nodes(NumDictionary *dict, size_t node_size) {
+  struct {
+    union {
+      struct SList slist;
+      long long _padding[2];
+    };
+    char data[0];
+  } *page = page_alloc();
+
+  slist_push(&dict->pages, &page->slist);
+
+  const size_t items = (PAGE_ALLOCATOR_PAGE_SIZE - sizeof(*page)) / node_size;
+
+  for (int i = 0; i < items; i++)
+    slist_push(&dict->free_nodes, (struct SList*)(page->data + node_size * i));
+
+  return slist_pop(&dict->free_nodes);
 }
 
 #undef _num_dict_debug
