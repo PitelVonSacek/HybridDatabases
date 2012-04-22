@@ -132,11 +132,12 @@ typedef struct {} IsFastStack;
 // WARNING: fstack_for_each actualy contains two nested for cycles
 // so break DOES NOT work as expected, instead use goto
 #define fstack_for_each(var, stack) \
-  list_for_each_item(__block, &stack->blocks, typeof(stack->__block[0]), head) \
-    for (typeof(__block->data[0])* var = __block->data, \
-         *__last = ((__block->head.next == &stack->blocks) ? \
-           stack->ptr : var + fstack_block_size(stack) ); \
-         var < __last; var++)
+  if (!stack->block_count) {} else \
+    list_for_each_item(__block, &stack->blocks, typeof(stack->__block[0]), head) \
+      for (typeof(__block->data[0])* var = __block->data, \
+           *__last = ((__block->head.next == &stack->blocks) ? \
+             stack->ptr : var + fstack_block_size(stack) ); \
+           var < __last; var++)
 
 
 #define _fstack_offsets _fstack_offset_begin, _fstack_offset_end 

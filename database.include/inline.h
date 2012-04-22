@@ -48,7 +48,7 @@ static inline void tr_begin(Handler *H) {
       .read_set = H->read_set,
       .acquired_locks = istack_size(H->acquired_locks),
 #endif
-      .pos = &fstack_top(H->log),
+      .pos = fstack_empty(H->log) ? 0 : &fstack_top(H->log),
       .commit_type = H->commit_type
     };
 
