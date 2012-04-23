@@ -29,7 +29,7 @@ static void process_transaction_log(TransactionLog *log, Database *D,
 
   wFinish(1);
 
-  fstack_destroy(log);
+  fstack_erase(log);
 }
 
 // true means dump finished
@@ -134,7 +134,7 @@ static void *service_thread(Database *D) {
           util_fwrite(writer_ptr(job->W), writer_length(job->W), D->file);
         writer_discart(job->W);
 #else
-        process_transaction_log(job->content.log, D, W, job->end_time);
+        process_transaction_log(job->log, D, W, job->end_time);
         if (writer_length(W))
           util_fwrite(writer_ptr(W), writer_length(W), D->file);
         writer_discart(W);

@@ -53,6 +53,8 @@ static void output_list_init(void *ptr) {
 #endif
 #if SIMPLE_SERVICE_THREAD
   writer_init(O->W);
+#else
+  fstack_init(O->log);
 #endif
 }
 
@@ -63,6 +65,8 @@ static void output_list_destroy(void *ptr) {
 #endif
 #if SIMPLE_SERVICE_THREAD
   writer_destroy(O->W);
+#else
+  fstack_destroy(O->log);
 #endif
 }
 

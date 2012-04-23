@@ -3,6 +3,7 @@
 
 #include "basic_utils.h"
 #include "atomic.h"
+#include <time.h>
 
 struct SList {
   struct SList *next;
@@ -30,7 +31,14 @@ struct SList {
 #define slistGetFirst(var, list) \
   do { \
     var = atomic_swp(&(list)->next, (void*)-1); \
-  } while (var == (void*)-1)
+  } while (var == (void*)-1 && _slist_wait())
+
+static inline bool _slist_wait(void) {
+  // sleep for a while, so lock contention is lower
+  const struct timespec delay = { .tv_sec = 0, .tv_nsec = 1000 };
+  nanosleep(&delay, 0);
+  return true;
+}
 
 static inline void slist_push(struct SList *head, struct SList *item) {
   item->next = head->next;

@@ -82,12 +82,10 @@ struct OutputList {
   Writer W[1];
 #else
   uint64_t end_time;
+  TransactionLog log[1];
 #endif
 
   union {
-#if !SIMPLE_SERVICE_THREAD
-    TransactionLog log[1];
-#endif
     uint64_t *answer;
     Handler *handler;
   } content; ///< Anonymous member would be better but gcc < 4.6

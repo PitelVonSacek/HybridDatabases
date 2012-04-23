@@ -155,8 +155,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   O->type = ((commit_type == CT_SYNC) ? DB_SERVICE__SYNC_COMMIT: DB_SERVICE__COMMIT);
 
 #if !SIMPLE_SERVICE_THREAD
-  fstack_init(O->content.log);
-  fstack_swap(H->log, O->content.log);
+  fstack_swap(H->log, O->log);
 #endif
 
 #if FAST_COMMIT
@@ -169,7 +168,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 
   if (!tr_validate(H)) {
 # if !SIMPLE_SERVICE_THREAD
-    fstack_swap(H->log, O->content.log);
+    fstack_swap(H->log, O->log);
 # endif
     sem_post(&O->ready);
     _tr_abort_main(H);
@@ -182,8 +181,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
       pthread_mutex_unlock(&db->mutex);
 
 # if !SIMPLE_SERVICE_THREAD
-      fstack_swap(H->log, O->content.log);
-      fstack_destroy(O->content.log);
+      fstack_swap(H->log, O->log);
 # endif
       simple_allocator_free(&output_list_allocator, O);
       _tr_abort_main(H);
@@ -209,7 +207,6 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   sem_post(&O->ready);
 #endif
 
-  fstack_init(H->log);
   handler_cleanup(H);
 
   sem_wait((commit_type == CT_SYNC) ? H->write_finished : H->pending_transactions);
