@@ -80,17 +80,17 @@ void writer_discart(Writer *W) {
   W->begin = W->ptr = W->real_begin + 10;
 }
 
-void *writer_ptr(Writer *W) {
+void *writer_ptr(const Writer *W) {
   assert(W->begin == W->ptr);
   return W->real_begin;
 }
 
-size_t writer_length(Writer *W) {
+size_t writer_length(const Writer *W) {
   assert(W->begin == W->ptr);
   return (W->ptr - W->real_begin) - 10;
 }
 
-void writer_get_position(Writer *W, struct WriterPosition *pos) {
+void writer_get_position(const Writer *W, struct WriterPosition *pos) {
   *pos = (struct WriterPosition){
     .begin_offset = W->begin - W->real_begin,
     .ptr_offset = W->ptr - W->real_begin,

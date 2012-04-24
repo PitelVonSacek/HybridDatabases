@@ -144,8 +144,8 @@ static inline void write_number(Writer *W, uint64_t number);
 void writer_finish(Writer *W, bool checksum);
 void writer_discart(Writer *W);
 
-void *writer_ptr(Writer *W);
-size_t writer_length(Writer *W);
+void *writer_ptr(const Writer *W);
+size_t writer_length(const Writer *W);
 
 struct WriterPosition {
   size_t begin_offset;
@@ -153,7 +153,7 @@ struct WriterPosition {
   int depth;
 };
 
-void writer_get_position(Writer *W, struct WriterPosition *pos);
+void writer_get_position(const Writer *W, struct WriterPosition *pos);
 void writer_set_position(Writer *W, struct WriterPosition *pos);
 
 void writer_direct_write(Writer *W, const void *buffer, size_t length);
