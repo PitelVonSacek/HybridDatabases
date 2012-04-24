@@ -107,3 +107,12 @@ void writer_set_position(Writer *W, struct WriterPosition *pos) {
   W->depth = pos->depth;
 }
 
+void writer_direct_write(Writer *W, const void *buffer, size_t length) {
+  assert(W->depth == 0);
+  assert(W->begin == W->ptr);
+
+  _writer_ensure_space(length);
+  memcpy(W->ptr - 10, buffer, length);
+  W->ptr += length;
+}
+

@@ -156,6 +156,8 @@ struct WriterPosition {
 void writer_get_position(Writer *W, struct WriterPosition *pos);
 void writer_set_position(Writer *W, struct WriterPosition *pos);
 
+void writer_direct_write(Writer *W, const void *buffer, size_t length);
+
 #define __STORAGE_INLINE_INCLUDE_H__
 #include "storage.include/inline.h"
 
