@@ -147,6 +147,15 @@ void writer_discart(Writer *W);
 void *writer_ptr(Writer *W);
 size_t writer_length(Writer *W);
 
+struct WriterPosition {
+  size_t begin_offset;
+  size_t ptr_offset;
+  int depth;
+};
+
+void writer_get_position(Writer *W, struct WriterPosition *pos);
+void writer_set_position(Writer *W, struct WriterPosition *pos);
+
 #define __STORAGE_INLINE_INCLUDE_H__
 #include "storage.include/inline.h"
 

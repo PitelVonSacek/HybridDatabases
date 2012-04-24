@@ -90,3 +90,20 @@ size_t writer_length(Writer *W) {
   return (W->ptr - W->real_begin) - 10;
 }
 
+void writer_get_position(Writer *W, struct WriterPosition *pos) {
+  *pos = (struct WriterPosition){
+    .begin_offset = W->begin - W->real_begin,
+    .ptr_offset = W->ptr - W->real_begin,
+    .depth = W->depth
+  };
+}
+
+void writer_set_position(Writer *W, struct WriterPosition *pos) {
+  assert(pos->begin_offset <= pos->ptr_offset);
+  assert(W->real_begin + pos->ptr_offset <= W->ptr);
+
+  W->begin = W->real_begin + pos->begin_offset;
+  W->ptr = W->real_begin + pos->ptr_offset;
+  W->depth = pos->depth;
+}
+
