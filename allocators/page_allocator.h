@@ -4,9 +4,40 @@
 #include <sys/mman.h>
 #include <limits.h>
 
+#include "../database.types/enums.h"
+
 #include "../utils/basic_utils.h"
 #include "../utils/atomic.h"
 #include "../utils/slist.h"
+
+
+/**
+ * 1 pokud má být mmap() serializován pomocí mutexů
+ * (paralelní vykonámí mmapu může způsobit alokaci příliš mnoha paměti,
+ * takže se spustí gc)
+ */
+#ifndef PAGE_ALLOCATOR_SERIALIZE_MMAP
+#define PAGE_ALLOCATOR_SERIALIZE_MMAP 1
+#endif
+
+/**
+ * Maximum cachovaných stránek pro globální instanci PageAllocatoru
+ */
+#ifndef PAGE_ALLOCATOR_GC_THRESHOLD
+#define PAGE_ALLOCATOR_GC_THRESHOLD 2048 // 8 MB
+#endif
+
+/**
+ * Určuje po kolika se mají alokovat stránky od systému.
+ * Alokuje se vždy .gc_threshold / PAGE_ALLOCATOR_ALLOC_RATIO stránek.
+ */
+#ifndef PAGE_ALLOCATOR_ALLOC_RATIO
+#define PAGE_ALLOCATOR_ALLOC_RATIO 2
+#endif
+
+#if PAGE_ALLOCATOR_SERIALIZE_MMAP
+#include <pthread.h>
+#endif
 
 #define PAGE_ALLOCATOR_PAGE_SIZE ((size_t)4096)
 
@@ -19,6 +50,10 @@ struct PageAllocator {
 
   size_t free_pages_counter;
   struct SList free_pages;
+
+#if PAGE_ALLOCATOR_SERIALIZE_MMAP
+  pthread_mutex_t mutex;
+#endif
 };
 
 void page_allocator_init(struct PageAllocator *A, size_t gc_threshold);
