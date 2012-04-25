@@ -75,6 +75,8 @@ void database_close(Database *D) {
     }
   }
 
+  database_set_sync_period(D, 0.0);
+
   sem_post(D->counter);
 
   dbDebug(DB_INFO, "Waiting for service thread");
@@ -104,7 +106,6 @@ void database_close(Database *D) {
   sem_destroy(D->counter);
   pthread_mutex_destroy(D->dump_running);
 
-  database_set_sync_period(D, 0.0);
   pthread_mutex_destroy(&D->sync_helper_mutex);
   
 #if !LOCKLESS_COMMIT
