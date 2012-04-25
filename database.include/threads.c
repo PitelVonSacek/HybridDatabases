@@ -43,10 +43,6 @@ static inline void buffered_write(Writer *W, const void *buffer, size_t length, 
       writer_discart(W);
       util_fd_write(buffer, length, fd);
     } else {
-      if (length) writer_direct_write(W, buffer, length - diff);
-      buffer += length - diff;
-      length = diff;
-
       util_fd_write(writer_ptr(W), writer_length(W), fd);
       writer_discart(W);
 
@@ -278,6 +274,12 @@ static void *service_thread(Database *D) {
   }
 }
 
+static inline void double_to_timespec(double d, struct timespec *ts) {
+  ts->tv_sec = (time_t)d;
+  ts->tv_nsec = ((long)((d - ts->tv_sec) * 1000 * 1000 * 1000));
+  if (ts->tv_nsec > 999999999) ts->tv_nsec = 999999999;
+}
+
 static void *sync_thread(Database *D) {
   double period;
   struct timespec x;
@@ -289,8 +291,7 @@ static void *sync_thread(Database *D) {
     });
 
     period = atomic_read(&D->sync_helper_period);
-    x.tv_sec = (time_t)period;
-    x.tv_nsec = ((long)((period - x.tv_sec) * 1000) % 1000) * 1000 * 1000;
+    double_to_timespec(period, &x);
     nanosleep(&x, 0);
   }
 

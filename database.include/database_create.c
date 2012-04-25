@@ -265,6 +265,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
         writer_init(W);
         write_dump_end(W);      
         util_fd_write(writer_ptr(W), writer_length(W), D->file_desc);
+        writer_destroy(W);
       }
     else 
       Ensure((D->file_desc = open(buffer, O_WRONLY | O_APPEND,
