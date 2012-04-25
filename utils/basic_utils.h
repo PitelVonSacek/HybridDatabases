@@ -8,6 +8,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "static_if.h"
 #include "type_magic.h"
@@ -40,10 +42,10 @@
 
 
 // macro so utilDie reports something useful
-#define util_fwrite(ptr, length, file) \
+#define util_fd_write(ptr, length, file_desc) \
   do { \
     size_t __length = (length); \
-    if (fwrite((ptr), 1, __length, (file)) != __length) utilDie("Write failed"); \
+    if (write((file_desc), (ptr), __length) != __length) utilDie("Write failed"); \
   } while (0)
 
 

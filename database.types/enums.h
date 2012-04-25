@@ -150,6 +150,13 @@
 
 
 /**
+ * Velikost výstupního bufferu.
+ */
+#ifndef DB_WRITE_BUFFER_SIZE
+#define DB_WRITE_BUFFER_SIZE 4096
+#endif
+
+/**
  * @brief Typ commitu.
  * Určuje zda se funkce tr_commit() (či makro trCommit()) vrátí
  * hned po zařazení transakce do fronty či až po jejím zapsání

@@ -136,7 +136,7 @@ typedef struct Database_ {
   sem_t service_thread_pause; ///< Semafor předávaný servisnímu vláknu ve volání
                               ///  DB_SERVICE__PAUSE.
 
-  FILE *file; ///< Soubor do něhož probíhá zápis.
+  int file_desc; ///< Soubor do něhož probíhá zápis.
   sem_t counter[1]; ///< Počítadlo prvků ve výstupní frontě.
 
   pthread_mutex_t dump_running[1]; ///< Tento zámek je zamčen vždy, když probíhá dump.

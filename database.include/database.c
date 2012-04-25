@@ -53,7 +53,7 @@ static Database *database_alloc(const DatabaseType *type) {
   generic_allocator_init(D->tm_allocator,
     DB_GENERIC_ALLOCATOR_CACHE, (uint64_t(*)(void*))&get_time, D);
 
-  D->file = 0;
+  D->file_desc = -1;
   sem_init(D->counter, 0, 0);
   pthread_mutex_init(D->dump_running, 0);
   D->head = 0;
@@ -94,7 +94,7 @@ void database_close(Database *D) {
   D->type->destroy_indexes(D);
   destroy_node_types(D);
 
-  if (D->file) fclose(D->file);
+  if (D->file_desc != -1) utilEnsure(close(D->file_desc) == 0);
 
   free((void*)D->filename);
 
@@ -215,25 +215,26 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
   atomic_add(&D->dump.flags, -DB_DUMP__IO_THREAD_WAITS);
 #endif
 
-  if (D->file) { 
+  if (D->file_desc != -1) {
     // first close current file
     write_file_footer(W, magic_nr);
-    util_fwrite(writer_ptr(W), writer_length(W), D->file);
+    util_fd_write(writer_ptr(W), writer_length(W), D->file_desc);
 
-    fclose(D->file);
+    utilEnsure(close(D->file_desc) == 0);
 
     writer_discart(W);
   }
 
   D->current_file_index++;
 
-  FILE *new_file;
+  int new_file;
   {
     char *buffer = xmalloc(strlen(D->filename) + 30);
     sprintf(buffer, "%s.%i", D->filename, D->current_file_index);
     dbDebug(DB_INFO, "Opening new file '%s'", buffer);
 
-    if (!(new_file = fopen(buffer, "wb"))) {
+    if ((new_file = open(buffer, O_WRONLY | O_CREAT | O_EXCL,
+                         S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1) {
       dbDebug(DB_ERROR, "Opening file '%s' failed", buffer);
       writer_destroy(W);
       free(buffer);
@@ -245,12 +246,12 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
 
   write_file_header(W, D, magic_nr);
   if (dump_begin) write_dump_begin(W);
-  util_fwrite(writer_ptr(W), writer_length(W), new_file);
+  util_fd_write(writer_ptr(W), writer_length(W), new_file);
   writer_destroy(W);
 
-  fflush(new_file);
+  fsync(new_file);
 
-  D->file = new_file;
+  D->file_desc = new_file;
 
 #if LOCKLESS_COMMIT
   atomic_add(&D->dump.flags, DB_DUMP__RESUME_IO_THREAD);

@@ -151,7 +151,8 @@ static bool load_data(Database *D, IdToNode *nodes) {
   if (!D->filename || D->filename[0] == '\0') {
     dbDebug(I, "No input files specified, using /dev/null");
     D->flags |= DB_READ_ONLY;
-    if (!(D->file = fopen("/dev/null", "wb"))) {
+    if ((D->file_desc = open("/dev/null", O_WRONLY,
+                             S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) == -1) {
       dbDebug(E, "Failed to open /dev/null");
       return false;
     }
@@ -263,14 +264,16 @@ static bool load_data(Database *D, IdToNode *nodes) {
         Writer W[1];
         writer_init(W);
         write_dump_end(W);      
-        Ensure(fwrite(writer_ptr(W), 1, writer_length(W), D->file) == 
-               writer_length(W), writer_destroy(W), "Failed to write schema");
+        util_fd_write(writer_ptr(W), writer_length(W), D->file_desc);
       }
     else 
-      Ensure(D->file = fopen(buffer, "ab"),,
+      Ensure((D->file_desc = open(buffer, O_WRONLY | O_APPEND,
+                                  S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) != -1,,
              "Failed to open '%s' for append", buffer);
   } else {
-    Ensure(D->file = fopen("/dev/null", "wb"),, "Failed to open '/dev/null'");
+    Ensure((D->file_desc = open("/dev/null", O_WRONLY | O_APPEND,
+                                S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)) != -1,,
+           "Failed to open '/dev/null'");
   }
 
   if (0) {

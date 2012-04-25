@@ -32,6 +32,38 @@ static void process_transaction_log(TransactionLog *log, Database *D,
   fstack_erase(log);
 }
 
+static inline void buffered_write(Writer *W, const void *buffer, size_t length, int fd) {
+  long diff = (long)writer_length(W) + (long)length - (long)DB_WRITE_BUFFER_SIZE;
+
+  if (diff <= 0) {
+    if (length) writer_direct_write(W, buffer, length);
+  } else {
+    if (length > DB_WRITE_BUFFER_SIZE / 2) {
+      util_fd_write(writer_ptr(W), writer_length(W), fd);
+      writer_discart(W);
+      util_fd_write(buffer, length, fd);
+    } else {
+      if (length) writer_direct_write(W, buffer, length - diff);
+      buffer += length - diff;
+      length = diff;
+
+      util_fd_write(writer_ptr(W), writer_length(W), fd);
+      writer_discart(W);
+
+      if (length) writer_direct_write(W, buffer, length);
+    }
+  }
+}
+
+static inline void buffered_sync(Writer *W, int fd) {
+  if (writer_length(W)) {
+    util_fd_write(writer_ptr(W), writer_length(W), fd);
+    writer_discart(W);
+  }
+
+  fsync(fd);
+}
+
 // true means dump finished
 static bool do_dump(Database *D, Writer *W, NodeType **dump_type) {
   do {
@@ -69,8 +101,7 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type) {
 
         l_unlock(lock, 0, version);
 
-        util_fwrite(writer_ptr(W), writer_length(W), D->file);
-        writer_discart(W);
+        buffered_write(W, 0, 0, D->file_desc);
 
         node_allocator_dump_next(dump_type[0]->allocator);
       }
@@ -84,9 +115,7 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type) {
 
   dump_finish:
   write_dump_end(W);
-  util_fwrite(writer_ptr(W), writer_length(W), D->file);
-  writer_discart(W);
-  fflush(D->file);
+  buffered_sync(W, D->file_desc);
 
   dbDebug(DB_INFO, "Dump finished");
   pthread_mutex_unlock(D->dump_running);
@@ -130,22 +159,19 @@ static void *service_thread(Database *D) {
         sem_wait(&job->ready);
 #endif
 #if SIMPLE_SERVICE_THREAD
-        if (writer_length(job->W))
-          util_fwrite(writer_ptr(job->W), writer_length(job->W), D->file);
+        buffered_write(W, writer_ptr(job->W), writer_length(job->W), D->file_desc);
         writer_discart(job->W);
 #else
         process_transaction_log(job->log, D, W, job->end_time);
-        if (writer_length(W))
-          util_fwrite(writer_ptr(W), writer_length(W), D->file);
-        writer_discart(W);
+        buffered_write(W, 0, 0, D->file_desc);
 #endif
 
-        if (job->type == DB_SERVICE__SYNC_COMMIT) fflush(D->file);
+        if (job->type == DB_SERVICE__SYNC_COMMIT) buffered_sync(W, D->file_desc);
         if (job->lock) sem_post(job->lock);
         break;
 
       case DB_SERVICE__SYNC_ME:
-        fflush(D->file);
+        buffered_sync(W, D->file_desc);
         if (job->lock) sem_post(job->lock);
         break;
 
@@ -171,6 +197,8 @@ static void *service_thread(Database *D) {
     while (!do_dump(D, W, &dump_type)) ;
   }
 
+  buffered_sync(W, D->file_desc);
+
   writer_destroy(W);
 
   dbDebug(DB_INFO, "Service thread stopping");
@@ -180,6 +208,8 @@ static void *service_thread(Database *D) {
   unusual_type:
   switch (job->type) {
     case DB_SERVICE__CREATE_NEW_FILE:
+      buffered_sync(W, D->file_desc);
+
       if (dump_running) {
         dbDebug(O, "Cannot create new file because dump is running");
         *job->content.answer = DB_ERROR__DUMP_RUNNING;
@@ -195,6 +225,8 @@ static void *service_thread(Database *D) {
       goto resume;
 
     case DB_SERVICE__START_DUMP:
+      buffered_sync(W, D->file_desc);
+
       if (dump_running) {
         dbDebug(DB_OOPS, "Cannot start dump, dump already running");
         *job->content.answer = DB_ERROR__DUMP_RUNNING;
