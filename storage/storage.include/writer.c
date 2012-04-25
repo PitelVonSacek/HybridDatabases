@@ -114,5 +114,6 @@ void writer_direct_write(Writer *W, const void *buffer, size_t length) {
   _writer_ensure_space(length);
   memcpy(W->ptr - 10, buffer, length);
   W->ptr += length;
+  W->begin += length;
 }
 
