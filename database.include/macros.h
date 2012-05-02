@@ -74,7 +74,7 @@
   )
 
 
-#define trMemoryInternalRead_(H, ptr) (*(volatile typeof(ptr))(ptr))
+#define trMemoryInternalRead_(H, ptr) (*(ptr))
 #define trMemoryInternalWrite_(H, ptr_, val) \
   do { \
     struct LogItem __log_item = { \
@@ -84,7 +84,7 @@
       .size = sizeof(*(ptr_)) \
     }; \
     memcpy(__log_item.data_old, __log_item.ptr, sizeof(*(ptr_))); \
-    *(volatile typeof(&*(ptr_)))__log_item.ptr = (val); \
+    *(typeof(&*(ptr_)))__log_item.ptr = (val); \
     fstack_push(typeUncast(H)->log, __log_item); \
   } while (0)
 
