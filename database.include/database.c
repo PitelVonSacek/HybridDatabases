@@ -44,9 +44,7 @@ static Database *database_alloc(const DatabaseType *type) {
   pthread_mutex_init(&D->sync_helper_mutex, 0);
   D->sync_helper_period = 0;
 
-#if !LOCKLESS_COMMIT
   pthread_mutex_init(&D->mutex, 0);
-#endif
 
   vpage_allocator_init(D->vpage_allocator,
     DB_VPAGE_ALLOCATOR_CACHE, (uint64_t(*)(void*))&get_time, D);
@@ -108,9 +106,7 @@ void database_close(Database *D) {
 
   pthread_mutex_destroy(&D->sync_helper_mutex);
   
-#if !LOCKLESS_COMMIT
   pthread_mutex_destroy(&D->mutex);
-#endif
   sem_destroy(&D->service_thread_pause);
 
   free(D);
@@ -202,20 +198,6 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
   Writer W[1];
   writer_init(W);
 
-#if LOCKLESS_COMMIT
-  {
-    struct OutputList *out = node_alloc(D->allocator);
-    out->flags = DB_OUTPUT__DUMP_SIGNAL;
-    output_queue_push(D, out, 0);
-    util_signal_signal(D->io_signal);
-  }
-
-  utilSignalWaitUntil(D->dump.signal, 
-                      atomic_read(&D->dump.flags) & DB_DUMP__IO_THREAD_WAITS);
-
-  atomic_add(&D->dump.flags, -DB_DUMP__IO_THREAD_WAITS);
-#endif
-
   if (D->file_desc != -1) {
     // first close current file
     write_file_footer(W, magic_nr);
@@ -253,11 +235,6 @@ static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) 
   fsync(new_file);
 
   D->file_desc = new_file;
-
-#if LOCKLESS_COMMIT
-  atomic_add(&D->dump.flags, DB_DUMP__RESUME_IO_THREAD);
-  util_signal_signal(D->dump.signal);
-#endif
 
   return true;
 }

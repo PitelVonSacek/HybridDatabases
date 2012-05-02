@@ -111,19 +111,12 @@ void _tr_abort_main(Handler *H) {
 static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) {
   O->next = 0;
 
-#if LOCKLESS_COMMIT
-  while (!atomic_cmpswp(atomic_read(&db->tail), 0, O)) ; // WRONG FIXME
-  atomic_write(&db->tail, &O->next);
-
-  pthread_cond_broadcast(db->io_signal);
-#else
   if (!has_lock) pthread_mutex_lock(&D->mutex);
   *(D->tail) = O;
   D->tail = &O->next;
   if (!has_lock) pthread_mutex_unlock(&D->mutex);
 
   sem_post(D->counter);
-#endif
 }
 
 bool _tr_commit_main(Handler *H, enum CommitType commit_type) {

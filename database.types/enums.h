@@ -11,26 +11,6 @@
 
 
 /**
- * @brief Odstraní mutex používaný při commitu
- *
- * Pokud je 1, je při commitu transakce přidána do fronty
- * pomocí atomických operací místo užití zámku.
- *
- * Implikuje #FAST_COMMIT
- */
-#ifndef LOCKLESS_COMMIT
-#define LOCKLESS_COMMIT 0
-#endif
-
-#if LOCKLESS_COMMIT
-# if defined(FAST_COMMIT) && !FAST_COMMIT
-#   error "FAST_COMMIT is implied by LOCKLESS_COMMIT"
-# endif
-#define FAST_COMMIT 1
-#endif
-
-
-/**
  * @brief Vysune validaci readsetu mimo kritickou sekci.
  *
  * Za cenu vyšší mezivláknové komunikace vysune validaci
@@ -38,10 +18,6 @@
  * v kombinaci s #INPLACE_NODE_LOCKS a #INPLACE_INDEX_LOCKS,
  * jelikož v těchto případech není velikost readsetu omezena
  * konstantou.
- *
- * Je implikováno #LOCKLESS_COMMIT. (Protože při použití #LOCKLESS_COMMIT
- * neexistuje kritická sekce, ve které by mohla být validace readsetu
- * umístěna.)
  */
 #ifndef FAST_COMMIT
 #define FAST_COMMIT 0
