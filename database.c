@@ -41,11 +41,6 @@
 #undef tr_node_get_type
 
 
-
-#ifndef BD_OUTPUT_LIST_CACHE
-#define BD_OUTPUT_LIST_CACHE 32
-#endif
-
 static void output_list_init(void *ptr) {
   struct OutputList *O __attribute__((unused)) = ptr;
 #if SIMPLE_SERVICE_THREAD || FAST_COMMIT
@@ -71,7 +66,7 @@ static void output_list_destroy(void *ptr) {
 }
 
 static struct SimpleAllocator output_list_allocator = 
-  SimpleAllocatorInit(sizeof(struct OutputList), BD_OUTPUT_LIST_CACHE,
+  SimpleAllocatorInit(sizeof(struct OutputList), DB_OUTPUT_LIST_CACHE,
                       &output_list_init, &output_list_destroy);
 
 

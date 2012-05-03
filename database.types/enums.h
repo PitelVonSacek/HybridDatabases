@@ -132,6 +132,17 @@
 #define DB_WRITE_BUFFER_SIZE 4096
 #endif
 
+
+/**
+ * Maximalní počet objektů výstupní fronty, které alokátor cachuje.
+ *
+ * Tento alokátor je společný pro všechny databáze v systému.
+ */
+#ifndef DB_OUTPUT_LIST_CACHE
+#define DB_OUTPUT_LIST_CACHE 320
+#endif
+
+
 /**
  * @brief Typ commitu.
  * Určuje zda se funkce tr_commit() (či makro trCommit()) vrátí
