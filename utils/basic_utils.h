@@ -10,9 +10,23 @@
 #include <stdbool.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <sched.h>
 
 #include "static_if.h"
 #include "type_magic.h"
+
+#define unlikely(expr) __builtin_expect((expr), 0)
+#define likely(expr) __builtin_expect(!!(expr), 1)
+
+static __attribute__((optimize("O0"),unused))
+void busy_wait(int loops)  {
+  for (int i = 0; i < loops; i++) asm volatile ("" ::: "memory");
+}
+
+static inline void spin_or_yield(int try) {
+  if (likely(try < 4)) busy_wait(200 << try);
+  else sched_yield();
+}
 
 #define utilOffsetOf(type, member) __builtin_offsetof(type, member)
 
