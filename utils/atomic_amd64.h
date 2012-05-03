@@ -118,12 +118,12 @@ extern void __xadd_wrong_size(void);
 	{								\
 		volatile uint64_t *__ptr = (volatile uint64_t *)(ptr);		\
     if (sizeof(size_t) == 4) { /* compiled on 32bit system */ \
-      uint64_t __old2; \
+      typeof(__old) __old2; \
       asm volatile(lock "cmpxchg8b %1" \
 		     : "=A" (__old2), \
 		       "+m" (*__ptr) \
-		     : "b" ((uint32_t)__new), \
-		       "c" ((uint32_t)(__new >> 32)), \
+		     : "b" ((uint32_t)(uint64_t)__new), \
+		       "c" ((uint32_t)(((uint64_t)__new) >> 32)), \
 		       "0" (__old) \
 		     : "memory"); \
       __old = __old2; \

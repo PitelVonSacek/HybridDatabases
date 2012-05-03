@@ -76,15 +76,15 @@ typedef struct {} IsStack;
     (stack)->ptr[-1]; \
   })
 
-#define stack_pop(stack) (*({ \
+#define stack_pop(stack) ({ \
     typeof(&*(stack)) _stack_helper = (stack); ({ \
     STATIC_ASSERT(types_equal(typeof(_stack_helper->is_stack), IsStack)); \
     typeof(_stack_helper) _stack = _stack_helper; \
     if (stack_capacity(_stack) > 2 * stack_size(_stack) && \
         stack_capacity(_stack) > 100) \
       _stack_shrink(sizeof(*_stack->begin), utilCast(struct GenericStack, _stack)); \
-    --_stack->ptr; \
-  });}))
+    *--_stack->ptr; \
+  });})
 
 #define stack_destroy(stack) ({ Stack_free((stack)->begin); (void)0; })
 #define stack_free(stack) ({ \
