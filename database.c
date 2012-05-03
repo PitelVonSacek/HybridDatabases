@@ -84,7 +84,7 @@ __attribute__((constructor)) static void init_rand() {
     struct OutputList __tmp = __VA_ARGS__; \
     __out->type = __tmp.type; \
     __out->lock = __tmp.lock; \
-    __out->content = __tmp.content; \
+    __out->answer = __tmp.answer; \
     output_queue_push(D, __out, false); \
   } while (0)
 

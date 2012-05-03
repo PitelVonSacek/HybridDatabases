@@ -124,7 +124,7 @@ enum DbError database_dump (Database *D) {
   sendServiceMsg(D, {
     .type = DB_SERVICE__START_DUMP,
     .lock = &signal,
-    .content.answer = &ans
+    .answer = &ans
   });
 
   sem_wait(&signal);
@@ -165,7 +165,7 @@ enum DbError database_create_new_file (Database *D) {
   sendServiceMsg(D, {
     .type = DB_SERVICE__CREATE_NEW_FILE,
     .lock = &signal,
-    .content.answer = &ans
+    .answer = &ans
   });
 
   sem_wait(&signal);

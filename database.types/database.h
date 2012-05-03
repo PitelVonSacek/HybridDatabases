@@ -85,10 +85,7 @@ struct OutputList {
   TransactionLog log[1];
 #endif
 
-  union {
-    uint64_t *answer;
-  } content; ///< Anonymous member would be better but gcc < 4.6
-             ///  has bug #10676 that prevents using such fields in initializers.
+  uint64_t *answer;
 };
 
 #undef Database

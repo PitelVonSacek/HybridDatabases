@@ -212,12 +212,12 @@ static void *service_thread(Database *D) {
 
       if (dump_running) {
         dbDebug(O, "Cannot create new file because dump is running");
-        *job->content.answer = DB_ERROR__DUMP_RUNNING;
+        *job->answer = DB_ERROR__DUMP_RUNNING;
       } else if (!_database_new_file(D, false, _generate_magic_nr())) {
         dbDebug(O, "Cannot create new file");
-        *job->content.answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
+        *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
       } else {
-        *job->content.answer = DB_SUCCESS;
+        *job->answer = DB_SUCCESS;
         dbDebug(I, "New file created");
       }
 
@@ -229,12 +229,12 @@ static void *service_thread(Database *D) {
 
       if (dump_running) {
         dbDebug(DB_OOPS, "Cannot start dump, dump already running");
-        *job->content.answer = DB_ERROR__DUMP_RUNNING;
+        *job->answer = DB_ERROR__DUMP_RUNNING;
       } else if (!_database_new_file(D, true, _generate_magic_nr())) {
         dbDebug(DB_OOPS, "Dump failed, cannot create new file");
-        *job->content.answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
+        *job->answer = DB_ERROR__CANNOT_CREATE_NEW_FILE;
       } else {
-        *job->content.answer = DB_SUCCESS;
+        *job->answer = DB_SUCCESS;
 
         pthread_mutex_lock(D->dump_running);
         dbDebug(DB_INFO, "Dump started");
