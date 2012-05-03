@@ -35,12 +35,9 @@ Handler *db_handler_init(Database *D, Handler *H) {
   bit_array_init(&H->read_set);
 #endif
 
-  sendServiceMsg(D, {
-    .type = DB_SERVICE__HANDLER_REGISTER,
-    .lock = H->write_finished,
-    .content.handler = H
-  });
-  sem_wait(H->write_finished);
+  pthread_mutex_lock(D->handlers_mutex);
+  stack_push(D->handlers, H);
+  pthread_mutex_unlock(D->handlers_mutex);
 
   return H;
 }
@@ -48,12 +45,20 @@ Handler *db_handler_init(Database *D, Handler *H) {
 void db_handler_destroy(Handler *H) {
   if (H->start_time) _tr_abort_main(H);
 
-  sendServiceMsg(H->database, {
-    .type = DB_SERVICE__HANDLER_UNREGISTER,
-    .lock = H->write_finished,
-    .content.handler = H
-  });
-  sem_wait(H->write_finished);
+  Database *D = H->database;
+
+  pthread_mutex_lock(D->handlers_mutex);
+  stack_for_each(i, D->handlers) if (*i == H) {
+    *i = stack_top(D->handlers);
+    stack_pop(D->handlers);
+    /* *i = stack_pop(handlers) is WRONG cause pop can shrink stack */
+    goto unlock;
+  }
+
+  dbDebug(E, "Destroying handler, but handler was NOT registered");
+
+  unlock:
+  pthread_mutex_unlock(D->handlers_mutex);
 
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
   stack_destroy(&H->read_set);

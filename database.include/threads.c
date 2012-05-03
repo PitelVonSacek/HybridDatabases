@@ -121,10 +121,14 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type) {
 static uint64_t get_time(Database *D) {
   uint64_t current_time = ~(uint64_t)0;
 
+  pthread_mutex_lock(D->handlers_mutex);
+
   stack_for_each(H, D->handlers) {
     uint64_t t = atomic_read(&H[0]->start_time);
     if (t && t < current_time) current_time = t;
   }
+
+  pthread_mutex_unlock(D->handlers_mutex);
 
   return current_time;
 }
@@ -253,22 +257,6 @@ static void *service_thread(Database *D) {
       sem_wait(job->lock);
       dbDebug(I, "Service thread resumed");
       goto resume;
-
-    case DB_SERVICE__HANDLER_REGISTER:
-      stack_push(D->handlers, job->content.handler);
-      sem_post(job->lock);
-      goto resume;
-
-    case DB_SERVICE__HANDLER_UNREGISTER:
-      stack_for_each(i, D->handlers) if (*i == job->content.handler) {
-        *i = stack_top(D->handlers);
-        (void)stack_pop(D->handlers);
-        /* *i = stack_pop(handlers) is WRONG cause pop can shrink stack */
-
-        sem_post(job->lock);
-        goto resume;
-      }
-      utilDie();
 
     default: utilDie();
   }

@@ -87,7 +87,6 @@ struct OutputList {
 
   union {
     uint64_t *answer;
-    Handler *handler;
   } content; ///< Anonymous member would be better but gcc < 4.6
              ///  has bug #10676 that prevents using such fields in initializers.
 };
@@ -123,6 +122,7 @@ typedef struct Database_ {
   Handler* __dummy_handler[0]; ///< Nutné pro získání typové informace při výrobě
                                ///  handleru pomocí dbHandlderCreate().
   Stack(Handler*) handlers[1]; ///< Seznam všech handlerů.
+  pthread_mutex_t handlers_mutex[1];
 
   pthread_mutex_t mutex; ///< Zámek chránící vkládání do výstupní fronty.
 

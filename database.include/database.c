@@ -37,6 +37,7 @@ static Database *database_alloc(const DatabaseType *type) {
 
   init_locks(D);
 
+  pthread_mutex_init(D->handlers_mutex, 0);
   stack_init(D->handlers);
 
   sem_init(&D->service_thread_pause, 0, 0);
@@ -82,6 +83,7 @@ void database_close(Database *D) {
   dbDebug(DB_INFO, "Waiting done");
 
   stack_destroy(D->handlers);
+  pthread_mutex_destroy(D->handlers_mutex);
 
   NodeType *type = &D->node_types[0];
   for (; type - D->node_types < D->node_types_count; type++)
