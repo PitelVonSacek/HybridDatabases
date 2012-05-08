@@ -101,14 +101,15 @@
     _readSetAddObj(H, __obj); \
     typeof(trMemoryInternalRead_(H, &(__obj attr))) __ret = \
       trMemoryInternalRead_(H, &(__obj attr)); \
-    if (!l_check(&_objGetLock(H->database, __obj), H, typeUncast(H)->start_time)) trFail; \
+    if (unlikely(!l_check(&_objGetLock(H->database, __obj), H, \
+        typeUncast(H)->start_time))) trFail; \
     __ret; \
   })
 
 #define trMemoryWrite_(H, obj, attr, value) \
   do { \
     typeof(&*(obj)) __obj = (obj); \
-    if (!util_lock(typeUncast(H), &_objGetLock(H->database, __obj))) trFail; \
+    if (unlikely(!util_lock(typeUncast(H), &_objGetLock(H->database, __obj)))) trFail; \
     trMemoryInternalWrite_(H, &(__obj attr), value); \
   } while (0)
 
@@ -159,27 +160,29 @@
     _readSetAddNode(H, __node); \
     typeof(trInternalRead_(H, __node, AttrName)) __ret = \
       trInternalRead_(H, __node, AttrName); \
-    if (!l_check(&_nodeGetLock(H->database, __node), H, typeUncast(H)->start_time)) trFail; \
+    if (unlikely(!l_check(&_nodeGetLock(H->database, __node), H, \
+        typeUncast(H)->start_time))) trFail; \
     __ret; \
   })
 
 #define trWrite_(H, node, AttrName, value) \
   do { \
     typeof(node) __node = (node); \
-    if (!util_lock(typeUncast(H), &_nodeGetLock(H->database, __node)) || \
-        !trInternalWrite_(H, __node, AttrName, value))  trFail; \
+    if (unlikely(!util_lock(typeUncast(H), &_nodeGetLock(H->database, __node)) || \
+                 !trInternalWrite_(H, __node, AttrName, value)))  trFail; \
   } while (0)
 
 
 #define trUpdateIndexies_(H, node) \
   do { \
-    if (!tr_node_update_indexes(typeUncast(H), node)) trFail; \
+    if (unlikely(!tr_node_update_indexes(typeUncast(H), node))) trFail; \
   } while (0)
 
 
 #define trCheck_(H, node) \
   do { \
-    if (!l_check(&_nodeGetLock(H->database, node), H, typeUncast(H)->start_time)) \
+    if (unlikely(!l_check(&_nodeGetLock(H->database, node), H, \
+        typeUncast(H)->start_time))) \
       trFail; \
   } while (0)
 
@@ -188,13 +191,13 @@
   ({ \
     Node *__node = tr_node_create(typeUncast(H), \
                                   &H->my_database->node_types.Type##_desc); \
-    if (!__node) trFail; \
+    if (unlikely(!__node)) trFail; \
     (Type*)__node; \
   })
 
 #define trNodeDelete_(H, node) \
   do { \
-    if (!tr_node_delete(typeUncast(H), node)) trFail; \
+    if (unlikely(!tr_node_delete(typeUncast(H), node))) trFail; \
   } while (0)
 
 
@@ -202,9 +205,9 @@
 #define trIndex_(H, index, method, ...) \
   ({ \
     typeof(H->my_database->indexes.index.functions.method##_return_t[0]) __return; \
-    if (!H->my_database->indexes.index.functions.method( \
+    if (unlikely(!H->my_database->indexes.index.functions.method( \
            &H->my_database->indexes.index.context, \
-           typeUncast(H), &__return, ## __VA_ARGS__)) trFail; \
+           typeUncast(H), &__return, ## __VA_ARGS__))) trFail; \
     __return; \
   })
 
@@ -231,7 +234,7 @@ void _tr_retry_wait(int loop);
 
 #define trCommit_(H, type, ...) \
       } while (0); \
-      if (!tr_commit(H, type)) { \
+      if (unlikely(!tr_commit(H, type))) { \
         if (0) { \
           tr_failed: __attribute__((unused)); \
           if (!tr_is_main(H)) { \
