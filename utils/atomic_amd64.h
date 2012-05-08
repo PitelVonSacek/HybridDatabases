@@ -5,7 +5,7 @@
  *
  * Relevant files: arch/x86/asm/{atomic,cmpxchg}.h
  *
- * ?? In original files have no explicit license, so they're under GPL ??
+ * Licensed under GLP2.
  */
 
 #ifndef __ATOMIC_AMD64_H__
