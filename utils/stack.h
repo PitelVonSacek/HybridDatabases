@@ -11,6 +11,7 @@ typedef struct {} IsStack;
 #define Stack_free(x)       free(x)
 #define Stack_realloc(x, s) xrealloc(x, s)
 
+#define STACK_MIN_SIZE 17
 
 #define Stack(Type) struct { \
     typeof(Type) *begin, *ptr, *end; \
@@ -81,7 +82,7 @@ typedef struct {} IsStack;
     STATIC_ASSERT(types_equal(typeof(_stack_helper->is_stack), IsStack)); \
     typeof(_stack_helper) _stack = _stack_helper; \
     if (stack_capacity(_stack) > 2 * stack_size(_stack) && \
-        stack_capacity(_stack) > 100) \
+        stack_capacity(_stack) > 2 * STACK_MIN_SIZE) \
       _stack_shrink(sizeof(*_stack->begin), utilCast(struct GenericStack, _stack)); \
     *--_stack->ptr; \
   });})
@@ -113,9 +114,10 @@ typedef struct {} IsStack;
 
 struct GenericStack { unsigned char *begin, *ptr, *end; IsStack is_stack; };
 
+
 static __attribute__((unused))
 void _stack_expand(size_t elem_size, struct GenericStack* stack) {
-  size_t new_cap = stack_capacity(stack) * 2 + 20 * elem_size;
+  size_t new_cap = stack_capacity(stack) * 2 + STACK_MIN_SIZE * elem_size;
   unsigned char *new_stack = Stack_realloc(stack->begin, new_cap);
   stack->ptr = new_stack + (stack->ptr - stack->begin);
   stack->end = new_stack + new_cap;
