@@ -37,6 +37,16 @@
 
 
 /**
+ * @brief Přesune dealokaci objektů mimo zpracování transakčního logu.
+ *
+ * Pokud není zapnuto #SIMPLE_SERVICE_THREAD je tato volba ignorována.
+ */
+#ifndef DB_DEFER_DEALLOC
+#define DB_DEFER_DEALLOC 1
+#endif
+
+
+/**
  * @brief Zámky uzlů jsou umístěny v nich místo v centrální tabulce.
  */
 #ifndef INPLACE_NODE_LOCKS

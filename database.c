@@ -48,6 +48,9 @@ static void output_list_init(void *ptr) {
 #endif
 #if SIMPLE_SERVICE_THREAD
   writer_init(O->W);
+# if DB_DEFER_DEALLOC
+  stack_init(O->garbage);
+# endif
 #else
   fstack_init(O->log);
 #endif
@@ -60,6 +63,9 @@ static void output_list_destroy(void *ptr) {
 #endif
 #if SIMPLE_SERVICE_THREAD
   writer_destroy(O->W);
+# if DB_DEFER_DEALLOC
+  stack_destroy(O->garbage);
+# endif
 #else
   fstack_destroy(O->log);
 #endif
@@ -159,7 +165,11 @@ static bool read_node_modify(Reader *R, Database *D, IdToNode *nodes);
 
 // threads.c
 static void process_transaction_log(TransactionLog *log, Database *D,
-                                    Writer *W, size_t end_time);
+                                    Writer *W, size_t end_time
+#if SIMPLE_SERVICE_THREAD && DB_DEFER_DEALLOC
+                                    , GarbageStack *garbage_stack
+#endif
+                                    );
 
 static bool do_dump(Database *D, Writer *W, NodeType **dump_type);
 

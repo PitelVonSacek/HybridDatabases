@@ -153,7 +153,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
 
 #if FAST_COMMIT
   end_time = atomic_add_and_fetch(&db->time, 2);
-# if !SIMPLE_SERVICE_THREAD
+# if !SIMPLE_SERVICE_THREAD || DB_DEFER_DEALLOC
   O->end_time = end_time;
 # endif
 
@@ -182,7 +182,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
     }
 
     end_time = atomic_add_and_fetch(&db->time, 2);
-# if !SIMPLE_SERVICE_THREAD
+# if !SIMPLE_SERVICE_THREAD || DB_DEFER_DEALLOC
     O->end_time = end_time;
 # endif
 
@@ -190,11 +190,15 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   } pthread_mutex_unlock(&db->mutex);
 #endif
 
-#if SIMPLE_SERVICE_THREAD
+#if SIMPLE_SERVICE_THREAD && !DB_DEFER_DEALLOC
   process_transaction_log(H->log, db, O->W, end_time);
 #endif
 
   _tr_unlock(H, end_time);
+
+#if SIMPLE_SERVICE_THREAD && DB_DEFER_DEALLOC
+  process_transaction_log(H->log, db, O->W, end_time, O->garbage);
+#endif
 
 #if SIMPLE_SERVICE_THREAD || FAST_COMMIT
   sem_post(&O->ready);

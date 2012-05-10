@@ -68,6 +68,10 @@ struct {
 
 */
 
+#if SIMPLE_SERVICE_THREAD && DB_DEFER_DEALLOC
+typedef Stack(void*) GarbageStack;
+#endif
+
 struct OutputList {
   struct OutputList *next;
 
@@ -80,6 +84,10 @@ struct OutputList {
 #endif
 #if SIMPLE_SERVICE_THREAD
   Writer W[1];
+# if DB_DEFER_DEALLOC
+  GarbageStack garbage[1];
+  uint64_t end_time;
+# endif
 #else
   uint64_t end_time;
   TransactionLog log[1];

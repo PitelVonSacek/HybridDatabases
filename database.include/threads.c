@@ -1,5 +1,9 @@
 static void process_transaction_log(TransactionLog *log, Database *D,
-                                    Writer *W, size_t end_time) {
+                                    Writer *W, size_t end_time
+#if SIMPLE_SERVICE_THREAD && DB_DEFER_DEALLOC
+                                    , GarbageStack *garbage_stack
+#endif
+                                    ) {
   wArray {
     fstack_for_each(item, log) {
       Node *node = item->ptr;
@@ -14,6 +18,19 @@ static void process_transaction_log(TransactionLog *log, Database *D,
           write_node_alloc(W, node_get_type(node), node->id);
           break;
 
+#if SIMPLE_SERVICE_THREAD && DB_DEFER_DEALLOC
+        case LI_TYPE_NODE_DELETE:
+          write_node_delete(W, node->id);
+          stack_push(garbage_stack, node);
+          break;
+
+        case LI_TYPE_MEMORY_DELETE: {
+          size_t tmp = (size_t)node;
+          tmp |= 1;
+          stack_push(garbage_stack, (void*)tmp);
+          break;
+        }
+#else
         case LI_TYPE_NODE_DELETE:
           write_node_delete(W, node->id);
 
@@ -23,6 +40,8 @@ static void process_transaction_log(TransactionLog *log, Database *D,
 
         case LI_TYPE_MEMORY_DELETE:
           generic_allocator_free(D->tm_allocator, node, end_time);
+          break;
+#endif
       }
     }
   } wArrayEnd;
@@ -31,6 +50,22 @@ static void process_transaction_log(TransactionLog *log, Database *D,
 
   fstack_erase(log);
 }
+
+#if SIMPLE_SERVICE_THREAD && DB_DEFER_DEALLOC
+static void free_garbage(GarbageStack *garbage_stack, Database *D, uint64_t end_time) {
+  stack_for_each(item, garbage_stack) {
+    size_t i = (size_t)*item;
+    if (i & 1) generic_allocator_free(D->tm_allocator, (void*)(i ^ 1), end_time);
+    else {
+      Node *node = *item;
+      node_get_type(node)->destroy(D->tm_allocator, node, end_time);
+      node_allocator_free(node_get_type(node)->allocator, node, end_time);
+    }
+  }
+
+  stack_erase(garbage_stack);
+}
+#endif
 
 static inline void buffered_write(Writer *W, const void *buffer, size_t length, int fd) {
   long diff = (long)writer_length(W) + (long)length - (long)DB_WRITE_BUFFER_SIZE;
@@ -161,6 +196,9 @@ static void *service_thread(Database *D) {
 #if SIMPLE_SERVICE_THREAD
         buffered_write(W, writer_ptr(job->W), writer_length(job->W), D->file_desc);
         writer_discart(job->W);
+# if DB_DEFER_DEALLOC
+        free_garbage(job->garbage, D, job->end_time);
+# endif
 #else
         process_transaction_log(job->log, D, W, job->end_time);
         buffered_write(W, 0, 0, D->file_desc);
