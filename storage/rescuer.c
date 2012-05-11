@@ -62,7 +62,10 @@ int main() {
 
   while (rMayBegin) {
     if (!process_element(R, W)) goto end;
-    fwrite(writer_ptr(W), 1, writer_length(W), stdout);
+    if (fwrite(writer_ptr(W), 1, writer_length(W), stdout) != writer_length(W)) {
+      fprintf(stderr, "Error writing to stdout\n");
+      goto end;
+    }
     writer_discart(W);
   }
  
