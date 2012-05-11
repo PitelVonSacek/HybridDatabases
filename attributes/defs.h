@@ -74,6 +74,19 @@ Implementation {
 
 #include "../database.h"
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define ATTRIBUTE_GENERIC_LOAD \
+  memcpy(&attr->value, rRawString(sizeof(attr->value)), sizeof(attr->value))
+#define ATTRIBUTE_GENERIC_STORE \
+  memcpy(wRawString(sizeof(*value)), value, sizeof(*value))
+#else
+#error "FIXME Integer byte-order is NOT litte-endian"
+#endif
+
+#if __FLOAT_WORD_ORDER__ != __ORDER_LITTLE_ENDIAN__
+#error "FIXME float word oreder is NOT little-endian"
+#endif
+
 }
 
 ####################
@@ -81,23 +94,23 @@ Implementation {
 ####################
 
 AttributeType Int8 : int8_t {
-  Load  { attr->value = *(int8_t*)rRawString(sizeof(int8_t)) }
-  Store { *(int8_t*)wRawString(sizeof(int8_t)) = *value }
+  Load  { ATTRIBUTE_GENERIC_LOAD }
+  Store { ATTRIBUTE_GENERIC_STORE }
 }
 
 AttributeType Int16 : int16_t {
-  Load  { attr->value = *(int16_t*)rRawString(sizeof(int16_t)) }
-  Store { *(int16_t*)wRawString(sizeof(int16_t)) = *value }
+  Load  { ATTRIBUTE_GENERIC_LOAD }
+  Store { ATTRIBUTE_GENERIC_STORE }
 }
 
 AttributeType Int32 : int32_t {
-  Load  { attr->value = *(int32_t*)rRawString(sizeof(int32_t)) }
-  Store { *(int32_t*)wRawString(sizeof(int32_t)) = *value }
+  Load  { ATTRIBUTE_GENERIC_LOAD }
+  Store { ATTRIBUTE_GENERIC_STORE }
 }
 
 AttributeType Int64 : int64_t {
-  Load  { attr->value = *(int64_t*)rRawString(sizeof(int64_t)) }
-  Store { *(int64_t*)wRawString(sizeof(int64_t)) = *value }
+  Load  { ATTRIBUTE_GENERIC_LOAD }
+  Store { ATTRIBUTE_GENERIC_STORE }
 }
 
 
@@ -131,18 +144,18 @@ AttributeType UInt64 : uint64_t {
 ####################
 
 AttributeType Float : float {
-  Load  { attr->value = *(float*)rRawString(sizeof(float)) }
-  Store { *(float*)wRawString(sizeof(float)) = *value }
+  Load  { ATTRIBUTE_GENERIC_LOAD }
+  Store { ATTRIBUTE_GENERIC_STORE }
 }
 
 AttributeType Double : double {
-  Load  { attr->value = *(double*)rRawString(sizeof(double)) }
-  Store { *(double*)wRawString(sizeof(int32_t)) = *value }
+  Load  { ATTRIBUTE_GENERIC_LOAD }
+  Store { ATTRIBUTE_GENERIC_STORE }
 }
 
 AttributeType LDouble : long double {
-  Load  { attr->value = *(long double*)rRawString(sizeof(long double)) }
-  Store { *(long double*)wRawString(sizeof(long double)) = *value }
+  Load  { ATTRIBUTE_GENERIC_LOAD }
+  Store { ATTRIBUTE_GENERIC_STORE }
 }
 
 
