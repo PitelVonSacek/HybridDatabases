@@ -75,7 +75,7 @@ static bool read_dump_end(Reader *R) {
 // FIXME
 #define Ensure(expr) do { if (!(expr)) readFailed; } while (0)
 
-static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes, 
+static int read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
                               NodeType **type, Node **node_) {
   size_t node_type_nr = rNumber;
   Ensure(node_type_nr < D->node_types_count);
@@ -86,7 +86,7 @@ static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
   *(uint64_t*)&node->id = rNumber;
   node->ref_count = 0;
 
-  assert(!ndict_get_node(nodes, node->id));
+  if (ndict_get_node(nodes, node->id)) return -1;
   
   if (node->id > D->node_id_counter) D->node_id_counter = node->id;
 
@@ -95,13 +95,13 @@ static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
   *type = node_type;
   *node_ = node;
 
-  return true;
+  return 1;
 }
 
 static bool read_node_load(Reader *R, Database *D, IdToNode *nodes) {
   NodeType *type;
   Node *node;
-  return read_node_prepare(R, D, nodes, &type, &node) &&
+  return (read_node_prepare(R, D, nodes, &type, &node) == 1) &&
          (type->init(node), true) &&
          type->load(R, D->tm_allocator, node);
 }
@@ -109,8 +109,17 @@ static bool read_node_load(Reader *R, Database *D, IdToNode *nodes) {
 static bool read_node_create(Reader *R, Database *D, IdToNode *nodes) {
   NodeType *type;
   Node *node;
-  return read_node_prepare(R, D, nodes, &type, &node) && 
-         (type->init(node), true);
+
+  switch (read_node_prepare(R, D, nodes, &type, &node)) {
+    case -1:
+      dbDebug(I, "Create request but node exits");
+      return true;
+    case 1:
+      type->init(node);
+      return true;
+    default:
+      return false;
+  }
 }
 
 static bool read_node_delete(Reader *R, Database *D, IdToNode *nodes) {

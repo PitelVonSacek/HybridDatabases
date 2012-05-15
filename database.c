@@ -154,7 +154,8 @@ static bool read_file_footer(Reader *R, uint64_t *magic);
 static bool read_dump_begin(Reader *R);
 static bool read_dump_end(Reader *R);
 
-static bool read_node_prepare(Reader *R, Database *D, IdToNode *nodes, 
+// -1 means node already exists
+static int  read_node_prepare(Reader *R, Database *D, IdToNode *nodes,
                               NodeType **type, Node **node_);
 static bool read_node_load(Reader *R, Database *D, IdToNode *nodes);
 static bool read_node_create(Reader *R, Database *D, IdToNode *nodes);
