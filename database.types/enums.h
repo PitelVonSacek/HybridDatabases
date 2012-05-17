@@ -11,6 +11,18 @@
 
 
 /**
+ * @brief Přesune většinu práce pryč ze servisního vlákna.
+ *
+ * Přesune zpracování transakčního logu ze servisního vlákna
+ * do vlákna, které provádí commit. To zvýší výkon při práci
+ * z více vláken.
+ */
+#ifndef SIMPLE_SERVICE_THREAD
+#define SIMPLE_SERVICE_THREAD 1
+#endif
+
+
+/**
  * @brief Vysune validaci readsetu mimo kritickou sekci.
  *
  * Za cenu vyšší mezivláknové komunikace vysune validaci
@@ -20,19 +32,7 @@
  * konstantou.
  */
 #ifndef FAST_COMMIT
-#define FAST_COMMIT 0
-#endif
-
-
-/**
- * @brief Přesune většinu práce pryč ze servisního vlákna.
- *
- * Přesune zpracování transakčního logu ze servisního vlákna
- * do vlákna, které provádí commit. To zvýší výkon při práci
- * z více vláken.
- */
-#ifndef SIMPLE_SERVICE_THREAD
-#define SIMPLE_SERVICE_THREAD 0
+#define FAST_COMMIT SIMPLE_SERVICE_THREAD
 #endif
 
 
