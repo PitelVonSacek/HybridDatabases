@@ -20,6 +20,7 @@ void writer_init(Writer* W) {
 
 void writer_destroy(Writer *W) {
   free(W->real_begin);
+  W->real_begin = ~(size_t)0;
 }
 
 void _writer_get_space(Writer *W, size_t size) {
@@ -77,7 +78,7 @@ void writer_finish(Writer *W, bool checksum) {
 }
 
 void writer_discart(Writer *W) {
-  W->begin = W->ptr = W->real_begin + 10;
+  W->begin = (W->ptr = W->real_begin + 10);
 }
 
 void *writer_ptr(const Writer *W) {

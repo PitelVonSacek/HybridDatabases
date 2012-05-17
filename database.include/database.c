@@ -82,9 +82,6 @@ void database_close(Database *D) {
   pthread_join(D->service_thread, 0);
   dbDebug(DB_INFO, "Waiting done");
 
-  stack_destroy(D->handlers);
-  pthread_mutex_destroy(D->handlers_mutex);
-
   NodeType *type = &D->node_types[0];
   for (; type - D->node_types < D->node_types_count; type++)
     node_for_each(node, type) {
@@ -110,6 +107,9 @@ void database_close(Database *D) {
   
   pthread_mutex_destroy(&D->mutex);
   sem_destroy(&D->service_thread_pause);
+
+  stack_destroy(D->handlers);
+  pthread_mutex_destroy(D->handlers_mutex);
 
   free(D);
 }

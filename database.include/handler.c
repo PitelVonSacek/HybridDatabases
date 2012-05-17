@@ -66,7 +66,10 @@ void db_handler_destroy(Handler *H) {
 #else
   bit_array_destroy(&H->read_set);
 #endif
-  
+
+  for (int i = 0; i < BD_MAX_PENDING_TRANSACTIONS_PER_HANDLER; i++)
+    sem_wait(H->pending_transactions);
+
   sem_destroy(H->write_finished);
   sem_destroy(H->pending_transactions);
 

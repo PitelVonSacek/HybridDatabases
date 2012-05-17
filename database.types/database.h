@@ -73,7 +73,10 @@ typedef Stack(void*) GarbageStack;
 #endif
 
 struct OutputList {
-  struct OutputList *next;
+  union {
+    struct OutputList *next;
+    struct SList __next;
+  };
 
   enum DbService type;
 
