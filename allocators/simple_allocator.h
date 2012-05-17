@@ -42,6 +42,7 @@ static void _simple_allocator_gc(struct SimpleAllocator *A) {
     void *obj = slist_atomic_pop(&A->free_objs);
 
     if (!obj) return;
+    else atomic_dec(&A->free_objs_count);
 
     A->destroy(obj);
     free(obj);
