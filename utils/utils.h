@@ -1,6 +1,11 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
+/**
+ * @file
+ * @brief Užitečnosti závislé na konfiguraci databáze.
+ */
+
 #include <semaphore.h>
 #include <pthread.h>
 
@@ -9,12 +14,15 @@
 
 
 #include "../database.types/enums.h"
+/// Hashovací funkce pro převod ukazatelů na zámky v globální tabulce.
 static inline unsigned hash_ptr(const void *ptr) {
-  return (((size_t)ptr) * 780119) % DB_LOCKS; // find betterr prime :-)
+  return (((size_t)ptr) * 780119) % DB_LOCKS; // find better prime :-)
 }
 
 #include "../database.types/handler.h"
 #include "../database.types/database.h"
+/// Helper pro získání zámku. Je-li zámek zamknut, poznamenáho, aby byl
+/// při ukončení transakce opět odemknut.
 static inline bool util_lock(Handler *H, Lock *lock) {
   switch (l_lock(lock, H, H->start_time)) {
     case 0: return false; 
