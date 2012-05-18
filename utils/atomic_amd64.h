@@ -1,15 +1,17 @@
-/*
- * Implements atomic operations for amd64 platform.
- *
- * Based on implementation of atomics in Linux kernel.
- *
- * Relevant files: arch/x86/asm/{atomic,cmpxchg}.h
- *
- * Licensed under GLP2.
- */
-
 #ifndef __ATOMIC_AMD64_H__
 #define __ATOMIC_AMD64_H__
+/**
+ * @file
+ * @brief Implementace atomických operací na platformě amd64.
+ *
+ * Tento soubor obsahuje modifikovanou verzí atomických operací užitých
+ * v Linuxu.
+ *
+ * Původní soubory: arch/x86/asm/{atomic,cmpxchg}.h
+ *
+ * Originální soubory jsou licencované pod GPL verze 2.
+ */
+
 
 /*
  * Non-existant functions to indicate usage errors at link time
@@ -38,7 +40,7 @@ extern void __xadd_wrong_size(void);
 	{								\
 		volatile uint8_t *__ptr = (volatile uint8_t *)(ptr);		\
 		asm volatile("xchgb %0,%1"				\
-			     : "=q" (__x), "+m" (*__ptr)		\
+			     : "=r" (__x), "+m" (*__ptr)		\
 			     : "0" (__x)				\
 			     : "memory");				\
 		break;							\
@@ -117,17 +119,7 @@ extern void __xadd_wrong_size(void);
 	case __X86_CASE_Q:						\
 	{								\
 		volatile uint64_t *__ptr = (volatile uint64_t *)(ptr);		\
-    if (sizeof(size_t) == 4) { /* compiled on 32bit system */ \
-      typeof(__old) __old2; \
-      asm volatile(lock "cmpxchg8b %1" \
-		     : "=A" (__old2), \
-		       "+m" (*__ptr) \
-		     : "b" ((uint32_t)(uint64_t)__new), \
-		       "c" ((uint32_t)(((uint64_t)__new) >> 32)), \
-		       "0" (__old) \
-		     : "memory"); \
-      __old = __old2; \
-    } else asm volatile(lock "cmpxchgq %2,%1"			\
+    asm volatile(lock "cmpxchgq %2,%1"			\
 			     : "=a" (__ret), "+m" (*__ptr)		\
 			     : "r" (__new), "0" (__old)			\
 			     : "memory");				\
