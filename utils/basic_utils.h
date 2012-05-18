@@ -51,9 +51,6 @@ static inline void spin_or_yield(int try) {
     &_type_cast_helper->new_; \
   })
 
-#define util_read(ptr, dest, size, atomic) __UTIL_READ_UNIMPLEMENTED__
-#define util_write(ptr, src, size, atomic) memcpy(ptr, src, size)
-
 
 // macro so utilDie reports something useful
 #define util_fd_write(ptr, length, file_desc) \

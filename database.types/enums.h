@@ -184,10 +184,6 @@ enum {
   LI_TYPE_RAW,                 ///< Zápis do transakční paměti.
   LI_TYPE_NODE_MODIFY,         ///< Změna hodnoty atributu nějakého uzlu.
 
-  LI_TYPE_ATOMIC_RAW,          ///< Atomický zápis do transakční paměti. Nepoužíváno.
-  LI_TYPE_ATOMIC_NODE_MODIFY,  ///< Atomická změna hodnoty atributu nějakého uzlu.
-                               ///  Nepoužíváno.
-
   LI_TYPE_NODE_ALLOC,          ///< Vytvoření uzlu.
   LI_TYPE_NODE_DELETE,         ///< Smazání uzlu.
   LI_TYPE_MEMORY_ALLOC,        ///< Alokace transakční paměti.

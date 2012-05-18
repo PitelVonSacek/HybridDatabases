@@ -9,7 +9,6 @@ static void process_transaction_log(TransactionLog *log, Database *D,
       Node *node = item->ptr;
       switch (item->type) {
         case LI_TYPE_NODE_MODIFY:
-        case LI_TYPE_ATOMIC_NODE_MODIFY:
           write_node_modify(W, node->id, item->index,
                             item->attr_type, item->data_new);
           break;

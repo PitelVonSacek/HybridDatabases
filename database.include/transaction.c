@@ -50,13 +50,7 @@ static void log_undo_item(Handler *H, struct LogItem *item, uint64_t end_time) {
   switch (item->type) {
     case LI_TYPE_RAW:
     case LI_TYPE_NODE_MODIFY:
-      util_write(util_apply_offset(item->ptr, item->offset), item->data_old,
-                 item->size, 0);
-      break;
-    case LI_TYPE_ATOMIC_RAW:
-    case LI_TYPE_ATOMIC_NODE_MODIFY:
-      util_write(util_apply_offset(item->ptr, item->offset), item->data_old,
-                 item->size, 1);
+      memcpy(util_apply_offset(item->ptr, item->offset), item->data_old, item->size);
       break;
 
     case LI_TYPE_NODE_ALLOC: {
