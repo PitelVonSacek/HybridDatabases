@@ -1,23 +1,53 @@
 #ifndef __LOCK_H__
 #define __LOCK_H__
 
+/**
+ * @file
+ * @brief Implementace neblokujících verzovaných zámků.
+ */
+
 #include <stdint.h>
 
 #include "atomic.h"
 
-#ifdef LOCK_DEBUG
+// Debugování zámků defaultně vypnuto.
+#ifndef LOCK_DEBUG
+#define LOCK_DEBUG 0
+#endif
+
+#if LOCK_DEBUG
 #include <stdio.h>
 #define lockDebug(...) fprintf(stderr, __VA_ARGS__)
 #else
-#define lockDebug(...)
+#define lockDebug(...) (void)0
 #endif
 
+
+/**
+ * @brief Neblokující verzovaný zámek.
+ *
+ * Je-li zámek odemčený, obsahuje lichou hodnotu, která označuje
+ * jeho současnou verzi. Je-li zamčený obsahuje ukazatel na toho,
+ * kdo ho zamkl.
+ *
+ * Vyžaduje, aby ukazatele, které jsou předávány jako vlastník zámku
+ * byly zarovnané alespoň na 2 bajty.
+ */
 typedef struct { uint64_t value; } Lock;
 
 
+/// Inicializuje zámek.
 static inline void l_init(Lock* l) { l->value = 1; }
 
-// little hack for dump_thread, it needs to know old value of lock
+
+/**
+ * Zamkne zámek a vrátí jeho původní verzi.
+ * Při selhání vrací 0.
+ *
+ * Pouze pro použití při vypisování databáze. (Vlákno vypisující databázi
+ * potřebuje uzel zamknout, aby ho nikdo nemodifikoval, ale jelikož
+ * ho samo nezmění může mu při odemknutí nechat starou verzi.)
+ */
 static inline uint64_t l_lock_(Lock* l, void* ptr, uint64_t version) {
   uint64_t v;
 
@@ -32,11 +62,14 @@ static inline uint64_t l_lock_(Lock* l, void* ptr, uint64_t version) {
   }
 }
 
-/*
- * return value:
- *  0 - fail
- *  1 - success
- *  2 - success, lock was already locked by us
+
+/**
+ * Uzamkne zámek.
+ *
+ * Návratové hodnoty:
+ *   0 ... selhání, zámek vlastní někdo jiný nebo má verzi vyšší než naše.
+ *   1 ... úspěch, zamkli jsme zámek
+ *   2 ... úspěch, zámek jsem již vlastnili
  */
 static inline int l_lock  (Lock* l, void* ptr, uint64_t version) {
   uint64_t v;
@@ -52,10 +85,18 @@ static inline int l_lock  (Lock* l, void* ptr, uint64_t version) {
   }
 }
 
+/// Odemkne zámek.
 static inline int l_unlock(Lock* l, void* ptr, uint64_t version) {
   return atomic_cmpswp(&l->value, (uint64_t)ptr, version);
 }
 
+
+/**
+ * Zkontroluje, zda z dat střežených zámkem můžeme číst.
+ *
+ * Tedy je-li zámek odemčen a má verzi nejvýše rovnou naší
+ * nebo ho vlastníme.
+ */
 static inline bool l_check (const Lock* l, void* ptr, uint64_t version) {
   uint64_t v = atomic_read(&l->value);
   bool ret =  (v & 1) ? (v <= version) : (v == (uint64_t)ptr);
