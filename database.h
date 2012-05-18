@@ -17,7 +17,7 @@
 #include "database.types/attributes.h"
 #include "database.types/database.h"
 #include "database.types/enums.h"
-#include "database.types/handler.h"
+#include "database.types/handle.h"
 #include "database.types/index.h"
 #include "database.types/node.h"
 #include "database.types/node_type.h"
@@ -171,48 +171,48 @@ void database_set_sync_period(Database *D, double period);
 
 
 /*************************
- *   Handler functions   *
+ *   Handle functions   *
  *************************/
 
-/** @{ @name Handler */
+/** @{ @name Handle */
 
 /**
- * @brief Vytvoří nový handler pro databázi D.
+ * @brief Vytvoří nový handle pro databázi D.
  * @param D Databáze.
- * @returns Handler pro databázi D.
+ * @returns Handle pro databázi D.
  */
-Handler *db_handler_create(Database *D);
+Handle *db_handle_create(Database *D);
 
 /**
- * @brief Uvolní handler vytvořený pomocí do_handler_create().
- * @param H Handler.
+ * @brief Uvolní handle vytvořený pomocí do_handle_create().
+ * @param H Handle.
  */
-void db_handler_free(Handler *H);
+void db_handle_free(Handle *H);
 
 
 /**
- * @brief Inicializuje handler H jako handler pro databázi D.
+ * @brief Inicializuje handle H jako handle pro databázi D.
  * @param D Databáze.
- * @param H Handler.
+ * @param H Handle.
  * @returns H
  */
-Handler *db_handler_init(Database *D, Handler *H);
+Handle *db_handle_init(Database *D, Handle *H);
 
 /**
- * @brief Uvolní handler vyjma struktury H samotné.
- * @param H Handler.
+ * @brief Uvolní handle vyjma struktury H samotné.
+ * @param H Handle.
  */
-void db_handler_destroy(Handler *H);
+void db_handle_destroy(Handle *H);
 
 
 /**
- * @brief Makro kolem funkce db_handler_create(), které
+ * @brief Makro kolem funkce db_handle_create(), které
  *        má správný náratový typ.
  * @param D Databáze.
- * @returns Handler pro databázi D. Návratový typ závisí na typu databáze.
+ * @returns Handle pro databázi D. Návratový typ závisí na typu databáze.
  */
-#define dbHandlerCreate(D)
-#undef dbHandlerCreate
+#define dbHandleCreate(D)
+#undef dbHandleCreate
 
 /** @} */
 
@@ -226,37 +226,37 @@ void db_handler_destroy(Handler *H);
 
 /**
  * @brief Započne transakci.
- * @param H Handler.
+ * @param H Handle.
  */
-static inline void tr_begin(Handler *H);
+static inline void tr_begin(Handle *H);
 
 /**
  * @brief Zruší aktuální transakci.
- * @param H Handler.
+ * @param H Handle.
  */
-static inline void tr_abort(Handler *H);
+static inline void tr_abort(Handle *H);
 
 /**
  * @brief Pokusí se provést commit aktuální transakce.
- * @param H Handler.
+ * @param H Handle.
  * @param commit_type Typ commitu.
  * @returns true pokud se commit zdařil, false pokud došlo ke kolizi
  *          a následnému rollbacku.
  */
-static inline bool tr_commit(Handler *H, enum CommitType commit_type);
+static inline bool tr_commit(Handle *H, enum CommitType commit_type);
 
 /**
  * @brief Zruší aktuální transakci i všechny transakce v nichž je vnořená.
- * @param H Handler.
+ * @param H Handle.
  */
-static inline void tr_hard_abort(Handler *H);
+static inline void tr_hard_abort(Handle *H);
 
 
 /**
  * @brief Zjistí, zda jsou současná transakce vnořena v jiné.
  * @returns true pokud je současná transakce hlavní (ted není vnořená).
  */
-static inline bool tr_is_main(Handler *H);
+static inline bool tr_is_main(Handle *H);
 
 
 /**
@@ -264,7 +264,7 @@ static inline bool tr_is_main(Handler *H);
  *        jinou transakcí změněna.
  * @returns true pokud data nebyla změněna.
  */
-static inline bool tr_validate(Handler *H);
+static inline bool tr_validate(Handle *H);
 
 
 /**
@@ -275,9 +275,9 @@ static inline bool tr_validate(Handler *H);
  * zavolá #trAbort) transakce sama restartuje. Restart se provede po náhodné
  * prodlevě, přičemž tato prodleva s každým dalším pokusem roste.
  *
- * Stejně jako jiná makra tvaru tr*, předpokládá existenci handleru
+ * Stejně jako jiná makra tvaru tr*, předpokládá existenci handleu
  * jménem H, pokud je potřeba použít handlr jiného jména, lze
- * za název makra připojit _ a handler předat jako první parametr.
+ * za název makra připojit _ a handle předat jako první parametr.
  *
  */
 #define trBegin
@@ -319,16 +319,16 @@ static inline bool tr_validate(Handler *H);
 /**
  * @brief Vytvoří nový uzel.
  *
- * Pokud daný typ uzlu není součástí databáze, k níž patří handler @a H,
+ * Pokud daný typ uzlu není součástí databáze, k níž patří handle @a H,
  * je chování této funkce nedefinované.
  *
- * @param H        Handler, určje transakci v jejímž rámci se má uzel vytvořit.
+ * @param H        Handle, určje transakci v jejímž rámci se má uzel vytvořit.
  * @param type     Deskriptor typu uzlu.
  *
  * @returns Nový uzel, nebo 0 pokud vytvoření uzlu selže (z důvodu kolize
  *          s jinou transakcí).
  */
-Node *tr_node_create(Handler *H, NodeType *type);
+Node *tr_node_create(Handle *H, NodeType *type);
 
 /**
  * @brief Pokusí se smazat uzel.
@@ -336,12 +336,12 @@ Node *tr_node_create(Handler *H, NodeType *type);
  * Smazání uzlu může selhat jak z důvodu kolize s jinou transakcí,
  * tak proto, že na uzel odkazují jiné uzly.
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param node     Uzel, který má být smazán.
  *
  * @returns true pokud se uzel povedlo smazat, jinak false.
  */
-bool tr_node_delete(Handler *H, Node *node);
+bool tr_node_delete(Handle *H, Node *node);
 
 
 /**
@@ -358,7 +358,7 @@ bool tr_node_delete(Handler *H, Node *node);
  * @returns true v případě úspěchu. Vrátí-li false je třeba restartovat
  *          transakci.
  */
-bool tr_node_read(Handler *H, Node *node, int attr, void *buffer);
+bool tr_node_read(Handle *H, Node *node, int attr, void *buffer);
 
 /**
  * @brief Zapíše hodnotu do atributu.
@@ -369,7 +369,7 @@ bool tr_node_read(Handler *H, Node *node, int attr, void *buffer);
  * @warning Na modifikovaný uzel je před commit nutné zavolat funkci
  * tr_node_update_indexes(), jinak budou indexy v nekonzistentním stavu.
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param node     Uzel jehož atribut se bude měnit.
  * @param attr     Index modifikovaného atributu.
  * @param value Hodnota, kderá se do atributu zapíše.
@@ -377,29 +377,29 @@ bool tr_node_read(Handler *H, Node *node, int attr, void *buffer);
  * @returns true v případě úspěchu. Vrátí-li false je třeba restartovat
  *          transakci.
  */
-bool tr_node_write(Handler *H, Node *node, int attr, const void *value);
+bool tr_node_write(Handle *H, Node *node, int attr, const void *value);
 
 
 /**
  * @brief Upraví indexy s ohledem na modifikaci uzlu node.
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param node     Modifikovaný uzel.
  *
  * @returns true v případě úspěchu. Vrátí-li false je třeba restartovat
  *          transakci.
  */
-static inline bool tr_node_update_indexes(Handler *H, Node *node);
+static inline bool tr_node_update_indexes(Handle *H, Node *node);
 
 /**
  * @brief Ověří zda uzel nebyl modifikován jinou transakcí.
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param node     Uzel.
  *
  * @returns true pokud nebyl modifikován.
  */
-static inline bool tr_node_check(Handler *H, Node *node);
+static inline bool tr_node_check(Handle *H, Node *node);
 
 
 /**
@@ -431,7 +431,7 @@ static inline bool tr_node_check(Handler *H, Node *node);
  *
  * Pokud se čtení nezdaří, provede makro #trFail. @see trRead()
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param node     Uzel.
  * @param AttrName Jméno atributu.
  *
@@ -456,7 +456,7 @@ static inline bool tr_node_check(Handler *H, Node *node);
  *
  * Pokud se čtení nezdaří, provede makro #trFail. @see trUncheckedRead()
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param node     Uzel.
  * @param AttrName Jméno atributu.
  *
@@ -478,7 +478,7 @@ static inline bool tr_node_check(Handler *H, Node *node);
  *
  * Pokud se zápis nezdaří, provede makro #trFail. @see trWrite()
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param node     Uzel.
  * @param AttrName Jméno atributu.
  * @param value    Nová hodnota.
@@ -495,7 +495,7 @@ static inline bool tr_node_check(Handler *H, Node *node);
  *
  * Pokud se aktualizace nezdaří, provede makro #trFail. @see trUpdateIndexes()
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param node     Uzel, který byl modifikován.
  */
 #define trUpdateIndexes_(H, node)
@@ -510,7 +510,7 @@ static inline bool tr_node_check(Handler *H, Node *node);
  *
  * Byl-li modifikován provede makro #trFail. @see trCheck()
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param node     Uzel.
  */
 #define trCheck_(H, node)
@@ -527,7 +527,7 @@ static inline bool tr_node_check(Handler *H, Node *node);
  *
  * @see trNodeCreate() @see tr_node_create()
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param NodeType Typ vytvářeného uzlu.
  *
  * @returns Vytvořený uzel.
@@ -546,7 +546,7 @@ static inline bool tr_node_check(Handler *H, Node *node);
  *
  * @see trNodeDelete() @see tr_node_delete()
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param node     Mazaný uzel.
  *
  * @returns Vytvořený uzel.
@@ -564,7 +564,7 @@ static inline bool tr_node_check(Handler *H, Node *node);
  * Dojde-li v průběhu volání ke kolizi transakce, provede makro #trFail.
  * @see trIndex()
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param index    Jméno indexu.
  * @param Method   Metoda indexu, která se má provést.
  * @param ...      Další parametry pro metodu indexu.
@@ -594,7 +594,7 @@ static inline bool tr_node_check(Handler *H, Node *node);
  *
  * Pokud se čtení nezdaří, provede makro #trFail. @see trMemoryRead()
  *
- * @param H        Handler.
+ * @param H        Handle.
  * @param object   Ukazatel.
  * @param Attr     Designátor nad ukazatelem @a object obsahující právě jednu
  *                 dereferenci.

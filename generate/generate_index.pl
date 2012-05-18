@@ -12,7 +12,7 @@ sub index_interface {
     my $methods = join "\n", map {
       my ($name, $args, $ret, $body) = @{$_};
       $args &&= ", $args";
-      "  bool (*$name)(const ${t}_context_t *context, Handler *H, $ret *value $args);\n".
+      "  bool (*$name)(const ${t}_context_t *context, Handle *H, $ret *value $args);\n".
       "  $ret ${name}_return_t[0];"
     } @{$i{methods}};
 
@@ -31,9 +31,9 @@ typedef struct {
 
 typedef struct {
   ${t}_context_t context;
-  bool (*callback)(void *context, Handler *H, enum CallbackEvent event, Node *node);
+  bool (*callback)(void *context, Handle *H, enum CallbackEvent event, Node *node);
   ${t}_functions functions;
-} ${t}_handler_t;
+} ${t}_handle_t;
 
 extern const ${t}_desc_t ${t}_desc;
 
@@ -83,7 +83,7 @@ EOF
     my $update_ptr = ${$i{update}}[1];
     if (${$i{update}}[0] eq 'b') {
       $update = <<EOF;
-bool ${t}_ctx_update(${t}_context_t *context, Handler *H, 
+bool ${t}_ctx_update(${t}_context_t *context, Handle *H, 
         enum CallbackEvent event, Node *node) {
 $update_ptr;
   return true;
@@ -91,14 +91,14 @@ $update_ptr;
   return false;
 }
 EOF
-      $update_ptr = "(bool(*)(void*,Handler*,enum CallbackEvent,Node*))&${t}_ctx_update";
+      $update_ptr = "(bool(*)(void*,Handle*,enum CallbackEvent,Node*))&${t}_ctx_update";
     }
 
     my $methods = join "", map {
       my ($name, $args, $ret, $body) = @{$_};
       $args &&= ", $args";
       <<EOF;
-static bool ${t}_method_$name(const ${t}_context_t *context, Handler *H, 
+static bool ${t}_method_$name(const ${t}_context_t *context, Handle *H, 
         $ret *value $args) {
   $body;
 

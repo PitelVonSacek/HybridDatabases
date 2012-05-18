@@ -93,7 +93,7 @@
 
 /**
  * Maximální počet nevyřízených transakcí, které mohou náležet
- * jednomu handleru.
+ * jednomu handlu.
  */
 #ifndef BD_MAX_PENDING_TRANSACTIONS_PER_HANDLER
 #define BD_MAX_PENDING_TRANSACTIONS_PER_HANDLER 128

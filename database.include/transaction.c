@@ -1,5 +1,5 @@
 // unlocks all locks held by H
-static void _tr_unlock(Handler* H, uint64_t ver) {
+static void _tr_unlock(Handle* H, uint64_t ver) {
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
   while (!stack_empty(H->acquired_locks))
     l_unlock(stack_pop(H->acquired_locks), H, ver);
@@ -28,7 +28,7 @@ void _tr_retry_wait(int loop) {
   nanosleep(&timeout, 0);
 }
 
-static void handler_cleanup(Handler *H) {
+static void handle_cleanup(Handle *H) {
   atomic_write(&H->start_time, 0);
 
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
@@ -46,7 +46,7 @@ static void handler_cleanup(Handler *H) {
   H->commit_type = CT_ASYNC;
 }
 
-static void log_undo_item(Handler *H, struct LogItem *item, uint64_t end_time) {
+static void log_undo_item(Handle *H, struct LogItem *item, uint64_t end_time) {
   switch (item->type) {
     case LI_TYPE_RAW:
     case LI_TYPE_NODE_MODIFY:
@@ -70,7 +70,7 @@ static void log_undo_item(Handler *H, struct LogItem *item, uint64_t end_time) {
   }
 }
 
-void _tr_handler_rollback(Handler *H, struct Transaction *tr) {
+void _tr_handle_rollback(Handle *H, struct Transaction *tr) {
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
   H->read_set.ptr = H->read_set.begin + tr->read_set;
 #else
@@ -90,16 +90,16 @@ void _tr_handler_rollback(Handler *H, struct Transaction *tr) {
   H->commit_type = tr->commit_type;
 }
 
-void _tr_abort_main(Handler *H) {
+void _tr_abort_main(Handle *H) {
   struct Transaction empty_transaction;
   memset(&empty_transaction, 0, sizeof(empty_transaction));
 
-  _tr_handler_rollback(H, &empty_transaction);
+  _tr_handle_rollback(H, &empty_transaction);
 
   uint64_t end_time = atomic_add_and_fetch(&H->database->time, 2);
   _tr_unlock(H, end_time);
   
-  handler_cleanup(H);
+  handle_cleanup(H);
 }
 
 static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) {
@@ -113,7 +113,7 @@ static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) 
   sem_post(D->counter);
 }
 
-bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
+bool _tr_commit_main(Handle *H, enum CommitType commit_type) {
   Database * const db = H->database;
   uint64_t end_time;
 
@@ -123,7 +123,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
     uint64_t end_time = atomic_add_and_fetch(&H->database->time, 2);
     _tr_unlock(H, end_time);
     // read-only transaction
-    handler_cleanup(H);
+    handle_cleanup(H);
 
     if (commit_type == CT_SYNC) {
       sendServiceMsg(H->database, { 
@@ -198,7 +198,7 @@ bool _tr_commit_main(Handler *H, enum CommitType commit_type) {
   sem_post(&O->ready);
 #endif
 
-  handler_cleanup(H);
+  handle_cleanup(H);
 
   sem_wait((commit_type == CT_SYNC) ? H->write_finished : H->pending_transactions);
 

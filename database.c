@@ -34,10 +34,10 @@
 #undef database_get_sync_period
 #undef database_set_sync_period
 
-#undef db_handler_create
-#undef db_handler_free
-#undef db_handler_init
-#undef db_handler_destroy
+#undef db_handle_create
+#undef db_handle_free
+#undef db_handle_init
+#undef db_handle_destroy
 
 #undef tr_begin
 #undef tr_abort
@@ -183,18 +183,18 @@ static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
                      IdToNode *nodes, bool first_file);
 
 
-// handler.c
-// Handler *db_handler_create(Database *D);
-// void db_handler_free (Handler *H);
-// Handler *db_handler_init(Database *D, Handler *H);
-// void db_handler_destroy(Handler *H);
+// handle.c
+// Handle *db_handle_create(Database *D);
+// void db_handle_free (Handle *H);
+// Handle *db_handle_init(Database *D, Handle *H);
+// void db_handle_destroy(Handle *H);
 
 
 // node.c
-// Node *tr_node_create (Handler *H, NodeType *type);
-// bool tr_node_delete (Handler *H, Node *node);
-// bool tr_node_read (Handler *H, Node *node, int attr, void *buffer);
-// bool tr_node_write (Handler *H, Node *node, int attr, const void *value);
+// Node *tr_node_create (Handle *H, NodeType *type);
+// bool tr_node_delete (Handle *H, Node *node);
+// bool tr_node_read (Handle *H, Node *node, int attr, void *buffer);
+// bool tr_node_write (Handle *H, Node *node, int attr, const void *value);
 // int tr_attr_count(NodeType *type);
 // const char *tr_attr_get_name(NodeType *type, int index);
 // int tr_attr_get_index(NodeType *type, const char *attr);
@@ -239,12 +239,12 @@ static void *sync_thread(Database *D);
 
 // transaction.c
 // void _tr_retry_wait(int loop);
-// void _tr_handler_rollback(Handler *H, struct Transaction *tr);
-// void _tr_abort_main(Handler *H);
-// bool _tr_commit_main(Handler *H, enum CommitType commit_type);
-static void _tr_unlock(Handler* H, uint64_t ver);
-static void handler_cleanup(Handler *H);
-static void log_undo_item(Handler *H, struct LogItem *item, uint64_t end_time);
+// void _tr_handle_rollback(Handle *H, struct Transaction *tr);
+// void _tr_abort_main(Handle *H);
+// bool _tr_commit_main(Handle *H, enum CommitType commit_type);
+static void _tr_unlock(Handle* H, uint64_t ver);
+static void handle_cleanup(Handle *H);
+static void log_undo_item(Handle *H, struct LogItem *item, uint64_t end_time);
 static void output_queue_push(Database *D, struct OutputList *O, bool has_lock);
 
 
@@ -267,7 +267,7 @@ static void write_node_modify(Writer *W, uint64_t node_id, unsigned attr,
 
 #include "database.include/database.c"
 #include "database.include/database_create.c"
-#include "database.include/handler.c"
+#include "database.include/handle.c"
 #include "database.include/node.c"
 #include "database.include/read.c"
 #include "database.include/threads.c"

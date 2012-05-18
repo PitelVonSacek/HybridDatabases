@@ -14,7 +14,7 @@ sub database_interface {
     } @{ $i{node_types} };
 
     my $indexes = join "\n", map {
-      sprintf "    %s_handler_t %s;", ${$_}[1], ${$_}[0]
+      sprintf "    %s_handle_t %s;", ${$_}[1], ${$_}[0]
     } @{ $i{index_types} };
 
     print <<EOF;
@@ -29,8 +29,8 @@ extern const DatabaseType ${t}_desc;
 typedef union {
   Database *database;
   struct ${t}_ *my_database;
-  Handler __ancestor;
-} ${t}_handler_t;
+  Handle __ancestor;
+} ${t}_handle_t;
 
 typedef struct ${t}_ {
   Database __ancestor;
@@ -43,7 +43,7 @@ $node_types
 $indexes
   } indexes;
 
-  ${t}_handler_t __dummy_handler[0];
+  ${t}_handle_t __dummy_handle[0];
 } $t;
 
 EOF
@@ -112,7 +112,7 @@ sub database_implementation {
       } grep { ${$_}[2] eq $nt } @{ $i{index_types} };
 
       sprintf <<EOF, $t, $nt, $t;
-static bool %s_update_indexes_%s(Handler *H, 
+static bool %s_update_indexes_%s(Handle *H, 
         enum CallbackEvent event, Node *node) {
   %s *D __attribute__((unused)) = (void*)H->database;
   if (

@@ -157,7 +157,7 @@ static inline void attribute_destroy_${$a}{name}(
   ${$a}{destroy};
 }
 
-static inline bool attribute_write_${$a}{name}(Handler *H, 
+static inline bool attribute_write_${$a}{name}(Handle *H, 
         ${$a}{name}_t * restrict attr, const ${$a}{name}_value_t * restrict value) {
   ${$a}{write};
   return true;
@@ -200,7 +200,7 @@ EOF
   print "    default: assert(0);\n  }\n}\n\n";
 
   # write
-  print "bool attribute_write(int type, Handler *H,\n".
+  print "bool attribute_write(int type, Handle *H,\n".
         "                     void * restrict attr, const void * restrict value) {\n".
         "  switch (type) {\n";
   for_each "attribute_write_%s(H, attr, value)";

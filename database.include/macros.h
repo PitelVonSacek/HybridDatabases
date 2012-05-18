@@ -265,6 +265,6 @@ void _tr_retry_wait(int loop);
 
 #define dbCreate(Type, ...) ((Type*)database_create(&Type##_desc, __VA_ARGS__))
 
-#define dbHandlerCreate(D) \
-  ((typeof(D->__dummy_handler[0])*)db_handler_create(D))
+#define dbHandleCreate(D) \
+  ((typeof(D->__dummy_handle[0])*)db_handle_create(D))
 

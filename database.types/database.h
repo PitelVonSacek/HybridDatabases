@@ -17,11 +17,11 @@
 #include "attributes.h"
 #include "node.h"
 #include "node_type.h"
-#include "handler.h"
+#include "handle.h"
 #include "index.h"
 
-struct Handler_;
-typedef bool(*UpdateIndexes)(Handler*, enum CallbackEvent, Node*);
+struct Handle_;
+typedef bool(*UpdateIndexes)(Handle*, enum CallbackEvent, Node*);
 
 struct Database_;
 #define Database struct Database_
@@ -127,10 +127,10 @@ typedef struct Database_ {
   Lock locks[DB_LOCKS]; ///< Globální pole zámků
 #endif
 
-  Handler* __dummy_handler[0]; ///< Nutné pro získání typové informace při výrobě
-                               ///  handleru pomocí dbHandlderCreate().
-  Stack(Handler*) handlers[1]; ///< Seznam všech handlerů.
-  pthread_mutex_t handlers_mutex[1];
+  Handle* __dummy_handle[0]; ///< Nutné pro získání typové informace při výrobě
+                               ///  handleu pomocí dbHandlderCreate().
+  Stack(Handle*) handles[1]; ///< Seznam všech handleů.
+  pthread_mutex_t handles_mutex[1];
 
   pthread_mutex_t mutex; ///< Zámek chránící vkládání do výstupní fronty.
 
@@ -172,8 +172,8 @@ typedef struct {
   } node_types;
 
   struct {
-    Index1_handler_t index1;
-    Index1_handler_t index2;
+    Index1_handle_t index1;
+    Index1_handle_t index2;
     ...
   } indexes;
 

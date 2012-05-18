@@ -37,8 +37,8 @@ static Database *database_alloc(const DatabaseType *type) {
 
   init_locks(D);
 
-  pthread_mutex_init(D->handlers_mutex, 0);
-  stack_init(D->handlers);
+  pthread_mutex_init(D->handles_mutex, 0);
+  stack_init(D->handles);
 
   sem_init(&D->service_thread_pause, 0, 0);
 
@@ -66,11 +66,11 @@ static Database *database_alloc(const DatabaseType *type) {
 
 
 void database_close(Database *D) {
-  if (!stack_empty(D->handlers)) {
-    dbDebug(DB_WARNING, "Destroying database, but some Handlers still exist");
-    stack_for_each(H, D->handlers) {
-      if (H[0]->allocated) db_handler_free(*H);
-      else db_handler_destroy(*H);
+  if (!stack_empty(D->handles)) {
+    dbDebug(DB_WARNING, "Destroying database, but some Handles still exist");
+    stack_for_each(H, D->handles) {
+      if (H[0]->allocated) db_handle_free(*H);
+      else db_handle_destroy(*H);
     }
   }
 
@@ -108,8 +108,8 @@ void database_close(Database *D) {
   pthread_mutex_destroy(&D->mutex);
   sem_destroy(&D->service_thread_pause);
 
-  stack_destroy(D->handlers);
-  pthread_mutex_destroy(D->handlers_mutex);
+  stack_destroy(D->handles);
+  pthread_mutex_destroy(D->handles_mutex);
 
   free(D);
 }

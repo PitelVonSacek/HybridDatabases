@@ -6,12 +6,12 @@
 #include "../utils/basic_utils.h"
 #include "node.h"
 #include "node_type.h"
-#include "handler.h"
+#include "handle.h"
 #include "../allocators/generic_allocator.h"
 
 typedef struct {
   const char* name;
-  bool (*callback)(void *context, Handler *H, enum CallbackEvent event, Node *node);
+  bool (*callback)(void *context, Handle *H, enum CallbackEvent event, Node *node);
 
   size_t context_size;
   size_t node_context_size;
@@ -30,8 +30,8 @@ typedef struct {} IndexLock;
   Real index:
 
 typedef struct {
-  ReturnType1 function_one(void *context, Handler *, Args...);
-  ReturnType2 function_two(void *context, Handler *, Args...);
+  ReturnType1 function_one(void *context, Handle *, Args...);
+  ReturnType2 function_two(void *context, Handle *, Args...);
   ...
 
 } MyIndex_functions;
@@ -44,10 +44,10 @@ typedef struct {
 typedef struct {
   MyIndex_context_t context;
 
-  int (*callback)(void *context, Handler *H, enum CallbackEvent event, Node *node);
+  int (*callback)(void *context, Handle *H, enum CallbackEvent event, Node *node);
 
   MyIndex_functions functions;
-} MyIndex_handler_t;
+} MyIndex_handle_t;
 
 extern const MyIndex_desc_t MyIndex_desc;
 

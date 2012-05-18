@@ -94,7 +94,7 @@ static void fix_pointers(Database *D, IdToNode *nodes) {
 
 
 static void fill_indexes(Database *D) {
-  Handler H[1] = {{
+  Handle H[1] = {{
     .database = D,
     .start_time = 1,
     .commit_type = CT_ASYNC,

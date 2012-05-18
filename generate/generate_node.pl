@@ -102,7 +102,7 @@ EOF
     print "}\n\n";
  
     # destroy_pointers
-    print "static bool ${node_type}_destroy_pointers(Handler *H, $node_type *node) {\n" .
+    print "static bool ${node_type}_destroy_pointers(Handle *H, $node_type *node) {\n" .
           "  Node *zero __attribute__((unused)) = 0;\n" .
           "  if (\n";
  
@@ -128,7 +128,7 @@ const NodeType ${node_type}_desc = {
   .store = (void(*)(Writer*, Node*))&${node_type}_store,
 
   .init_pointers = (void(*)(IdToNode*, Node*))&${node_type}_init_pointers,
-  .destroy_pointers = (bool(*)(Handler*, Node*))&${node_type}_destroy_pointers,
+  .destroy_pointers = (bool(*)(Handle*, Node*))&${node_type}_destroy_pointers,
 
   .init = (void(*)(Node*))&${node_type}_init,
   .destroy = (void(*)(struct GenericAllocator*, Node*, uint64_t))&${node_type}_destroy,

@@ -44,7 +44,7 @@ struct RawString {
 #include "../allocators/generic_allocator.h"
 #include "../storage/storage.h"
 
-struct Handler_;
+struct Handle_;
 
 /// @returns Velikost daného typu atributu.
 static inline size_t attribute_size(int type);
@@ -53,7 +53,7 @@ static inline void attribute_init(int type, void *attr);
 static inline void attribute_destroy(int type, struct GenericAllocator *allocator,
                                      uint64_t end_time, void *attr);
 
-static inline bool attribute_write(int type, struct Handler_ *H,
+static inline bool attribute_write(int type, struct Handle_ *H,
                                    void * restrict attr, const void * restrict value);
 
 static inline void attribute_store(int type, Writer *W, const void *value);
@@ -69,7 +69,7 @@ Implementation {
 #include "../storage/storage.h"
 
 #include "../database.types/attributes.h"
-#include "../database.types/handler.h"
+#include "../database.types/handle.h"
 #include "../database.types/node.h"
 
 #include "../database.h"

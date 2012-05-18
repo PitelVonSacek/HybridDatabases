@@ -155,14 +155,14 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type) {
 static uint64_t get_time(Database *D) {
   uint64_t current_time = ~(uint64_t)0;
 
-  pthread_mutex_lock(D->handlers_mutex);
+  pthread_mutex_lock(D->handles_mutex);
 
-  stack_for_each(H, D->handlers) {
+  stack_for_each(H, D->handles) {
     uint64_t t = atomic_read(&H[0]->start_time);
     if (t && t < current_time) current_time = t;
   }
 
-  pthread_mutex_unlock(D->handlers_mutex);
+  pthread_mutex_unlock(D->handles_mutex);
 
   return current_time;
 }

@@ -1,17 +1,17 @@
-Handler *db_handler_create(Database *D) {
-  Handler *H = xmalloc(sizeof(Handler));
-  db_handler_init(D, H);
+Handle *db_handle_create(Database *D) {
+  Handle *H = xmalloc(sizeof(Handle));
+  db_handle_init(D, H);
   H->allocated = true;
   return H;
 }
 
-void db_handler_free (Handler *H) {
-  db_handler_destroy(H);
+void db_handle_free (Handle *H) {
+  db_handle_destroy(H);
   free(H);
 }
 
-Handler *db_handler_init(Database *D, Handler *H) {
-  *H = (Handler){  
+Handle *db_handle_init(Database *D, Handle *H) {
+  *H = (Handle){  
     .database = D,
     .start_time = 0,
     .allocated = false,
@@ -35,30 +35,30 @@ Handler *db_handler_init(Database *D, Handler *H) {
   bit_array_init(&H->read_set);
 #endif
 
-  pthread_mutex_lock(D->handlers_mutex);
-  stack_push(D->handlers, H);
-  pthread_mutex_unlock(D->handlers_mutex);
+  pthread_mutex_lock(D->handles_mutex);
+  stack_push(D->handles, H);
+  pthread_mutex_unlock(D->handles_mutex);
 
   return H;
 }
 
-void db_handler_destroy(Handler *H) {
+void db_handle_destroy(Handle *H) {
   if (H->start_time) _tr_abort_main(H);
 
   Database *D = H->database;
 
-  pthread_mutex_lock(D->handlers_mutex);
-  stack_for_each(i, D->handlers) if (*i == H) {
-    *i = stack_top(D->handlers);
-    stack_pop(D->handlers);
-    /* *i = stack_pop(handlers) is WRONG cause pop can shrink stack */
+  pthread_mutex_lock(D->handles_mutex);
+  stack_for_each(i, D->handles) if (*i == H) {
+    *i = stack_top(D->handles);
+    stack_pop(D->handles);
+    /* *i = stack_pop(handles) is WRONG cause pop can shrink stack */
     goto unlock;
   }
 
-  dbDebug(E, "Destroying handler, but handler was NOT registered");
+  dbDebug(E, "Destroying handle, but handle was NOT registered");
 
   unlock:
-  pthread_mutex_unlock(D->handlers_mutex);
+  pthread_mutex_unlock(D->handles_mutex);
 
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
   stack_destroy(&H->read_set);

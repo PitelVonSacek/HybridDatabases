@@ -44,8 +44,8 @@ typedef FastStack(struct LogItem) TransactionLog;
 
 struct Database_;
 
-typedef struct Handler_ {
-  struct Database_ *database; ///< Odkaz na databázi, ke které handler patří.
+typedef struct Handle_ {
+  struct Database_ *database; ///< Odkaz na databázi, ke které handle patří.
 
   uint64_t start_time; ///< Čas zahájení současné transakce nebo 0 pokud žádná neprohíbá.
 
@@ -59,7 +59,7 @@ typedef struct Handler_ {
 
   TransactionLog log[1]; ///< Transakční log.
 
-  bool allocated; ///< @c true pokud tento handler byl alokován pomocí db_handler_create().
+  bool allocated; ///< @c true pokud tento handle byl alokován pomocí db_handle_create().
   enum CommitType commit_type;
 
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
@@ -75,16 +75,16 @@ typedef struct Handler_ {
   sem_t pending_transactions[1];
 
   DummyAncestor __ancestor; // required for type magic
-} Handler;
+} Handle;
 
 /*
-  Database type specific handler:
+  Database type specific handle:
 
 typedef union {
   Database *database;
   MyDatabase *my_database;
-  Handler __ancestor;
-} MyDatabase_handler_t;
+  Handle __ancestor;
+} MyDatabase_handle_t;
 
 */
 

@@ -27,8 +27,8 @@ struct NodeAttribute {
   int offset;         ///< Offset atributu od začátku uzlu.
 };
 
-#define Handler struct Handler_
-struct Handler_;
+#define Handle struct Handle_
+struct Handle_;
 
 
 /**
@@ -53,14 +53,14 @@ typedef struct NodeType_ {
   void (*init_pointers)(IdToNode*, Node*);
 
   // changes all pointers in node to 0, required for deleting node
-  bool (*destroy_pointers)(Handler*, Node*);
+  bool (*destroy_pointers)(Handle*, Node*);
 
   void (*init)(Node*);
   void (*destroy)(struct GenericAllocator*, Node*, uint64_t end_time);
 
   struct NodeAllocator allocator[1];
 
-  bool (*update_indexes)(Handler*, enum CallbackEvent, Node*);
+  bool (*update_indexes)(Handle*, enum CallbackEvent, Node*);
 
   int size;
   int extra_space;
@@ -69,7 +69,7 @@ typedef struct NodeType_ {
   int attributes_count;
   const struct NodeAttribute *attributes;
 } NodeType;
-#undef Handler
+#undef Handle
 
 /**
  * @brief Vrátí deskriptor daného uzlu.

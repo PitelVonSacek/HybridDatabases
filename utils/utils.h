@@ -19,11 +19,11 @@ static inline unsigned hash_ptr(const void *ptr) {
   return (((size_t)ptr) * 780119) % DB_LOCKS; // find better prime :-)
 }
 
-#include "../database.types/handler.h"
+#include "../database.types/handle.h"
 #include "../database.types/database.h"
 /// Helper pro získání zámku. Je-li zámek zamknut, poznamenáho, aby byl
 /// při ukončení transakce opět odemknut.
-static inline bool util_lock(Handler *H, Lock *lock) {
+static inline bool util_lock(Handle *H, Lock *lock) {
   switch (l_lock(lock, H, H->start_time)) {
     case 0: return false; 
     case 1:

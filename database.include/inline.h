@@ -2,15 +2,15 @@ static inline enum DbFlags database_get_flags(Database *D) {
   return D->flags;
 }
 
-void _tr_abort_main(Handler*);
-bool _tr_commit_main(Handler*, enum CommitType);
-void _tr_handler_rollback(Handler *H, struct Transaction *tr);
+void _tr_abort_main(Handle*);
+bool _tr_commit_main(Handle*, enum CommitType);
+void _tr_handle_rollback(Handle *H, struct Transaction *tr);
 
-static inline void *_tr_memory_alloc_no_release(Handler *H, size_t size) {
+static inline void *_tr_memory_alloc_no_release(Handle *H, size_t size) {
   return generic_allocator_alloc(H->database->tm_allocator, size);
 }
 
-static inline void *_tr_memory_alloc(Handler *H, size_t size) {
+static inline void *_tr_memory_alloc(Handle *H, size_t size) {
   struct LogItem item = {
     .type = LI_TYPE_MEMORY_ALLOC,
     .ptr = generic_allocator_alloc(H->database->tm_allocator, size)
@@ -21,7 +21,7 @@ static inline void *_tr_memory_alloc(Handler *H, size_t size) {
   return item.ptr;
 }
 
-static inline void _tr_memory_free(Handler *H, void *ptr) {
+static inline void _tr_memory_free(Handle *H, void *ptr) {
   struct LogItem item = {
     .type = LI_TYPE_MEMORY_DELETE,
     .ptr = ptr
@@ -30,15 +30,15 @@ static inline void _tr_memory_free(Handler *H, void *ptr) {
   fstack_push(H->log, item);
 }
 
-static inline void tr_hard_abort(Handler *H) {
+static inline void tr_hard_abort(Handle *H) {
   _tr_abort_main(H);
 }
 
-static inline bool tr_is_main(Handler *H) {
+static inline bool tr_is_main(Handle *H) {
   return fstack_empty(H->transactions);
 }
 
-static inline void tr_begin(Handler *H) {
+static inline void tr_begin(Handle *H) {
   if (H->start_time) { // create nested transaction
     struct Transaction nt = {
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
@@ -58,15 +58,15 @@ static inline void tr_begin(Handler *H) {
   }
 }
 
-static inline void tr_abort(Handler *H) {
+static inline void tr_abort(Handle *H) {
   if (fstack_empty(H->transactions)) _tr_abort_main(H);
   else {  
-    _tr_handler_rollback(H, &fstack_top(H->transactions));
+    _tr_handle_rollback(H, &fstack_top(H->transactions));
     fstack_pop(H->transactions);
   }
 }
 
-static inline bool tr_commit(Handler *H, enum CommitType commit_type) {
+static inline bool tr_commit(Handle *H, enum CommitType commit_type) {
   if (fstack_empty(H->transactions)) return _tr_commit_main(H, commit_type);
   
   // commit nested transaction
@@ -84,7 +84,7 @@ static inline bool tr_commit(Handler *H, enum CommitType commit_type) {
   return true;
 }
 
-static inline bool tr_validate(Handler *H) {
+static inline bool tr_validate(Handle *H) {
   const uint64_t start_time = H->start_time;
 
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
@@ -101,21 +101,21 @@ static inline bool tr_validate(Handler *H) {
   return true;
 }
 
-static inline bool tr_node_update_indexes(Handler *H, Node *node) {
+static inline bool tr_node_update_indexes(Handle *H, Node *node) {
   return node_get_type(node)->update_indexes(H, CBE_NODE_MODIFIED, node);
 }
 
-static inline bool tr_node_check(Handler *H, Node *node) {
+static inline bool tr_node_check(Handle *H, Node *node) {
   return l_check(&_nodeGetLock(H->database, node), H, H->start_time);
 }
 
-static inline bool _node_ref_count_increase(Handler *H, Node *node) {
+static inline bool _node_ref_count_increase(Handle *H, Node *node) {
   if (!util_lock(H, &_nodeGetLock(H->database, node))) return false;
   trMemoryInternalWrite_(H, &node->ref_count, node->ref_count + 1);
   return true;
 }
 
-static inline bool _node_ref_count_decrease(Handler *H, Node *node) {
+static inline bool _node_ref_count_decrease(Handle *H, Node *node) {
   if (!util_lock(H, &_nodeGetLock(H->database, node))) return false;
   assert(node->ref_count > 0);
   trMemoryInternalWrite_(H, &node->ref_count, node->ref_count - 1);
