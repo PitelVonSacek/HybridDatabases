@@ -1,10 +1,27 @@
+/**
+ * @file
+ * @brief Hlavní zdrojový soubor.
+ *
+ * Do toho souboru jsou vloženy všechny soubory database.include/?*.c.
+ * Důvody proč tyto nejsou překládány samostatně jsou následující:
+ *  - možnost označit více funkcí jako static, takže zbytečně
+ *    nejsou vidět z uživatelského kódu
+ *  - možnost lepší optimalizace při překladu
+ *  - mám tendenci psát velmi krátké soubory, takže ani když jsou poskládány
+ *    dohromady, není výsledek příliš velký
+ *  - s jedním výsledným souborem je snazší manipulace
+ *
+ */
+
 #include "database.h"
 #include <stdlib.h>
 #include <time.h>
 #include <dirent.h>
 #include "allocators/simple_allocator.h"
 
-// undef macros defined in type_magic.h so underlaying functions can be implemented
+/*
+ * Zrušíme makra obalující databázové funkce, jinak tyto funkce není možné definovat
+ */
 #undef database_close
 #undef database_dump
 #undef database_wait_for_dump
@@ -40,7 +57,7 @@
 
 #undef tr_node_get_type
 
-
+/// viz #output_list_allocator
 static void output_list_init(void *ptr) {
   struct OutputList *O __attribute__((unused)) = ptr;
 #if SIMPLE_SERVICE_THREAD || FAST_COMMIT
@@ -56,6 +73,7 @@ static void output_list_init(void *ptr) {
 #endif
 }
 
+/// viz #output_list_allocator
 static void output_list_destroy(void *ptr) {
   struct OutputList *O __attribute__((unused)) = ptr;
 #if SIMPLE_SERVICE_THREAD || FAST_COMMIT
@@ -71,19 +89,44 @@ static void output_list_destroy(void *ptr) {
 #endif
 }
 
+/**
+ * @brief Globální alokátor pro objekty typu <em>struct OutputList</em>.
+ *
+ * Cachované objekty udržuje ve zkonstruovaném stavu.
+ * Konstruktor output_list_init(), destrutor output_list_destroy().
+ *
+ * Na konci programu je zničen funkcí static_allocators_destroy().
+ *
+ */
 static struct SimpleAllocator output_list_allocator = 
   SimpleAllocatorInit(sizeof(struct OutputList), DB_OUTPUT_LIST_CACHE,
                       &output_list_init, &output_list_destroy);
 
-
+/// viz #output_list_allocator
 __attribute__((destructor)) static void static_allocators_destroy() {
   simple_allocator_destroy(&output_list_allocator);
 }
 
+/**
+ * @brief Inicializuje genretátor náhodných čísel.
+ *
+ * Ten je používán v makru trCommit() při restartu transakce.
+ */
 __attribute__((constructor)) static void init_rand() {
   srand(time(0));
 }
 
+
+/**
+ * @brief Makro pro posílání zpráv servisnímu vláknu.
+ *
+ * Užíváno pro všechny zprávy kromě DB_SERVICE__(SYNC_)COMMIT
+ *
+ * Příklad použití:
+ * <em>
+ * sendServiceMsg(D, { .type = DB_SERVICE__SYNC_ME, .lock = &semaphore });
+ * </em>
+ */
 #define sendServiceMsg(D, ...) \
   do { \
     struct OutputList *__out = simple_allocator_alloc(&output_list_allocator); \
@@ -95,12 +138,25 @@ __attribute__((constructor)) static void init_rand() {
   } while (0)
 
 
+/**
+ * @brief Makro pro iteraci přes všechny uzly daného typu.
+ *
+ * Koliduje se znovuvypsáním databáze.
+ * @param node_type ukazatel na objekt typu NodeType
+ */
 #define node_for_each(var, node_type) \
   for (Node *var = (node_allocator_dump_init(node_type->allocator), (void*)0); \
        var = node_type->allocator->dump_ptr;  \
        node_allocator_dump_next(node_type->allocator))
 
 
+/*
+ * Seznam (téměř) všech funkcí definovaných v database.include/ rozčlěněný podle
+ * souborů.
+ *
+ * Ne static funkce jsou uvedeny v komentářích, protože byly deklarovány již
+ * v database.h.
+ */
 
 // database.c
 // void database_close(Database *D);
