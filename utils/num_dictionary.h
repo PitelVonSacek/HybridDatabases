@@ -1,6 +1,25 @@
 #ifndef __NUM_DICTIONARY_H__
 #define __NUM_DICTIONARY_H__
 
+/**
+ * @file
+ * @brief Slovník, který má jako klíč celé číslo.
+ *
+ * Implementace datové struktury slovník pomocí hashe se spárovanými
+ * řetězci. Hodnotou může být libovolný typ, klíčem cokoli, co
+ * se vejde do 8 bajtů a relace rovnosti na daném typu odpovídá porovnání
+ * bit po bitu.
+ *
+ * Pro větší efektivitu alokujeme prvky jednotlivých řetězců pomocí
+ * PageAllocatoru. Při mazání z hashe jednotlivé stánky neuvolňujeme,
+ * protože si nikde neznamenáme, nakolik je daná stránka obsazená
+ * (takže nepoznáme, kdy je prázdná). To nevadí, protože v hybridní databázi
+ * používáme slovník jen na jednom místě a tam z něj nemažeme.
+ *
+ * Většinu práce vykonávají funkce definované nad typem NumDictionary
+ * a makra slouží pouze k překladu typů.
+ */
+
 #include "basic_utils.h"
 #include "slist.h"
 #include "../allocators/page_allocator.h"
@@ -24,6 +43,7 @@ typedef struct {
   struct SList free_nodes;
 } NumDictionary;
 
+/// Vygeneruje typ slovníku s příslušným typem klíčů a hodnot.
 #define NumDictionary(Key, Value) NumDictionary_(Key, Value, __COUNTER__)
 #define NumDictionary_(K, V, n) NumDictionary__(K, V, n)
 #define NumDictionary__(Key, Value, n) \
@@ -54,6 +74,7 @@ typedef struct {
 
 #define NumDictionaryInit { {}, 0, 0, 0, 0, { 0 }, { 0 } }
 
+/// @internal Bezpečně přetypuje NumDictionary() na NumDctionary.
 #define _ndict_uncast(dict) \
   static_if( \
     types_equal(typeof((dict)->__dummy), IsNumDictionaryDummy), \
@@ -61,6 +82,7 @@ typedef struct {
     (void)0 \
   )
 
+/// @internal Zkonvertuje klíč na uint64_t hodnotu.
 #define _ndict_key_uncast(dict, key_) \
   ({ \
     union { \
@@ -72,12 +94,20 @@ typedef struct {
     __tmp.generic_key; \
   })
 
+
+/// Inicializuje slovník.
 #define ndict_init(dict) ndict_generic_init(_ndict_uncast(dict))
+
+/// Uvolní prostředky používané slovníkem.
 #define ndict_destroy(dict) ndict_generic_destroy(_ndict_uncast(dict))
 
 
+/// Vrátí @c true, pokud slovník obsahuje daný klíč.
 #define ndict_contains(dict, key) (!!ndict_get_node(dict, key))
 
+
+/// Vrátí hodnotu pro daný klíč.
+/// @warning Pokud klíč není ve slovníku, vybuchne vám počítač.
 #define ndict_at(dict, key)\
   ({ \
     const typeof((dict)->buckets[0]) __node = \
@@ -86,10 +116,16 @@ typedef struct {
     __node->value; \
   })
 
+
+/// Vrátí uzel slovníku s daným klíčem. Pokud neexistuje, vrátí NULL.
 #define ndict_get_node(dict, key) \
   ((typeof((dict)->buckets[0]))ndict_generic_get_node(_ndict_uncast(dict), \
     _ndict_key_uncast(dict, key)))
 
+
+/// Vloží dvojici klíč-hodnota do slovníku.
+/// Pokud slovník klíč již obsahuje, neudělá nic.
+/// @returns @c true pokud uspěje.
 #define ndict_insert(dict, key_, value_) \
   ({ \
     typeof(&*(dict)) __dict = (dict); \
@@ -102,11 +138,20 @@ typedef struct {
                          utilCast(struct NumDictionaryNode, __node)); \
   })
 
+
+/// Odebere klíč ze slovníku.
+/// @returns @c true pokud něco smaže.
 #define ndict_remove(dict, key) \
   ndict_generic_remove(_ndict_uncast(dict), \
                        _ndict_key_uncast(dict, key)) \
 
 
+/**
+ * Cyklus přes všechny prvky slovníku. Má ukončovací závorku #ndictForEnd.
+ *
+ * @c break a @c continue v něm nefungují. Místo nich použijte
+ * #ndictContinue a #ndictBreak.
+ */
 #define ndictFor(var, dict) ndictFor_(dict, var, __COUNTER__)
 #define ndictFor_(...) ndictFor__(__VA_ARGS__)
 #define ndictFor__(dict, var, $) do { \
@@ -117,6 +162,7 @@ typedef struct {
     for (typeof(*_dict##$->buckets) var = _dict##$->buckets[_dict_it]; \
         var; var = var->next) { \
 
+/// Ukončovací závrka k ndictFor
 #define ndictForEnd \
       _ndict_continue_label: __attribute__((unused)); \
     } \
@@ -128,20 +174,24 @@ typedef struct {
 
 #define Inline static inline
 
+/// @internal Inicializuje slovník.
 Inline void ndict_generic_init(NumDictionary *dict);
+/// @internal Uvolní prostředky.
 Inline void ndict_generic_destroy(NumDictionary *dict);
 
+/// @internal Najde uzel s daným klíčem.
 Inline struct NumDictionaryNode *ndict_generic_get_node(NumDictionary *dict, 
                                                         GenericKey key);
 
-// fails if key already exists
+/// @internal Vloží uzel do slovníku. Selže pokud daný klíč existuje.
 Inline bool ndict_generic_insert(NumDictionary *dict, struct NumDictionaryNode*);
-// fails if key is not in dictionary
+/// @internal Smaže uzel s daným klíčem. Selže, pokud neexistuje.
 Inline bool ndict_generic_remove(NumDictionary *dict, GenericKey key);
 
 
 // Implementation
 
+/// @internal Seznam velikostí jakých bude slovník nabývat. Vše prvočísla.
 static const size_t _ndict_capacities[] = {
   0, 
   29,
@@ -211,10 +261,12 @@ static const size_t _ndict_capacities[] = {
 #define _num_dict_debug(...)
 #endif
 
+/// @internal Hashovací funkce požívaná slovníkem.
 Inline size_t _ndict_hash(size_t capacity, GenericKey key) {
   return (key * 2971215073) % capacity;
 }
 
+/// @internal Zvětší či zmenší slovník.
 static void _ndict_resize(NumDictionary *dict, int cap_index_diff);
 
 Inline void ndict_generic_init(NumDictionary *dict) {
@@ -333,6 +385,7 @@ static void _ndict_resize(NumDictionary *dict, int cap_index_diff) {
   dict->capacity = new_cap;
 }
 
+/// @internal Alokuje stránku a rozřeže ji na uzly.
 static __attribute__((unused))
 void *_ndict_alloc_nodes(NumDictionary *dict, size_t node_size) {
   struct {
