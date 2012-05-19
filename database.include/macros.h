@@ -67,7 +67,7 @@
       ), \
       ({ \
         Node *__node = (node); \
-        (node_get_type(__node)->name == Type##_desc.name) ? \
+        (__node && (node_get_type(__node)->name == Type##_desc.name)) ? \
           ((Type*)__node) : (Type*)0; \
       }) \
     ) \
