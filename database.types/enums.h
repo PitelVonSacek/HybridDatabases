@@ -7,6 +7,15 @@
 /**
  * @file
  * Definice konstant a výčtových datových typů.
+ * Tento soubor také obsahuje konfigurační volby databáze.
+ *
+ * Chcete-li změnit hodnoty konfiguračních voleb, zapište je
+ * do souboru config.h v nadřazeném adresáři.
+ *
+ * Má-li mít konfigurační volba pravdivostní hodnotu, je považována za
+ * vypnutou, je-li definována na 0, za pravdivou jinak.
+ * Není-li příslušné makro definováno, bude nastaveno na výchozí hodnotu
+ * uvedenou v tomto souboru.
  */
 
 
@@ -59,7 +68,7 @@
  *
  * Je-li tato volba zapnuta, měly by všechny indexy obsahovat položku
  * @c lock type @c IndexLock. (Je-li tato volba vypnuta, je @c IndexLock
- * definován jako prázná struktura, takže nezabírá žádné místo.)
+ * definován jako prázdná struktura, takže nezabírá žádné místo.)
  */
 #ifndef INPLACE_INDEX_LOCKS
 #define INPLACE_INDEX_LOCKS 1
@@ -72,7 +81,7 @@
  * Transakční paměť využívá sdílených zámků a toto
  * makro nastavuje jejich počet. Hodnota
  * by měla být prvočíslo, jinak hrozí, že některé
- * zámky nebou využívany. @see hash_ptr()
+ * zámky nebudou využívány. @see hash_ptr()
  *
  * Nepoužito pokud #INPLACE_NODE_LOCKS && #INPLACE_INDEX_LOCKS
  */
@@ -144,7 +153,7 @@
 
 
 /**
- * Maximalní počet objektů výstupní fronty, které alokátor cachuje.
+ * Maximální počet objektů výstupní fronty, které alokátor cachuje.
  *
  * Tento alokátor je společný pro všechny databáze v systému.
  */
@@ -161,7 +170,7 @@
  */
 enum CommitType {
   CT_SYNC = 1,        ///< Vrátí se až po zapsání na disk.
-  CT_ASYNC = 0,       ///< Vrátí se hned, pokud vnořená transakce nebyla synchonní.
+  CT_ASYNC = 0,       ///< Vrátí se hned, pokud vnořená transakce nebyla synchronní.
   CT_FORCE_ASYNC = -1 ///< Vždy se vrátí ihned bez ohledu na vnořené transakce.
 };
 
@@ -172,8 +181,8 @@ enum CommitType {
 enum CallbackEvent {
   CBE_NODE_CREATED,  ///< Uzel byl vytvořen.
   CBE_NODE_MODIFIED, ///< Uzel byl modifikován.
-  CBE_NODE_DELETED,  ///< Uzel byl smázán. (V době volání jště existuje i s obsahem.)
-  CBE_NODE_LOADED    ///< Uzel byl načten z disku, volá se při načítní databáze.
+  CBE_NODE_DELETED,  ///< Uzel byl smazán. (V době volání ještě existuje i s obsahem.)
+  CBE_NODE_LOADED    ///< Uzel byl načten z disku, volá se při načítání databáze.
 };
 
 
@@ -209,7 +218,7 @@ enum DbError {
 enum DbFlags {
   DB_READ_ONLY = 1, ///< Databáze je otevřena pouze pro čtení,
                     ///   zápis probíhá do /dev/null.
-  DB_CREATE = 2     ///< Pokud databáze nexistuje, bude vytvořena
+  DB_CREATE = 2     ///< Pokud databáze neexistuje, bude vytvořena
 };
 
 
