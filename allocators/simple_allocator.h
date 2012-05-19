@@ -63,7 +63,7 @@ static inline void *simple_allocator_alloc(struct SimpleAllocator *A) {
 
 static inline void simple_allocator_free(struct SimpleAllocator *A, void *obj) {
   atomic_inc(&A->free_objs_count);
-  slist_atomic_push(&A->free_objs, (struct SList*)obj);
+  slist_atomic_push(&A->free_objs, obj);
   if (atomic_read(&A->free_objs_count) > A->gc_threshold)
     _simple_allocator_gc(A);
 }

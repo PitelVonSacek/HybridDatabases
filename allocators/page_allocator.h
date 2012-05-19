@@ -103,7 +103,7 @@ static inline void *page_allocator_alloc(struct PageAllocator *A) {
 
 static inline void page_allocator_free(struct PageAllocator *A, void *page) {
   atomic_inc(&A->free_pages_counter);
-  slist_atomic_push(&A->free_pages, (struct SList*)page);
+  slist_atomic_push(&A->free_pages, page);
 
   if (atomic_read(&A->free_pages_counter) > atomic_read(&A->gc_threshold))
     _page_allocator_collect_garbage(A);

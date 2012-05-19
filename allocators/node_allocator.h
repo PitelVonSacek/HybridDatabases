@@ -84,7 +84,7 @@ static inline void node_allocator_free(struct NodeAllocator *A,
   } else {
     if (slist_empty(&block->free_nodes))
       list_add_end(&A->blocks, list_remove(&block->head));
-    slist_push(&block->free_nodes, (struct SList*)node);
+    slist_push(&block->free_nodes, &node->slist);
   }
   pthread_mutex_unlock(&A->mutex);
 
