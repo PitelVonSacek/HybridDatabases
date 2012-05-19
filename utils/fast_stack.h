@@ -117,10 +117,10 @@ typedef struct {} IsFastStack;
 
 /// Přečte prvek z vrcholu zásobníku.
 #define fstack_top(stack) \
-  ({ \
+  (*({ \
     STATIC_ASSERT(types_equal(typeof((stack)->is_fast_stack), IsFastStack)); \
-    (stack)->ptr[-1]; \
-  })
+    (stack)->ptr - 1; \
+  }))
 
 /// Odstraní prvek z vrcholu zásobníku.
 #define fstack_pop(stack) \
