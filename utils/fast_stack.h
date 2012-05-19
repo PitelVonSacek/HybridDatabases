@@ -1,6 +1,24 @@
 #ifndef __FAST_STACK_H__
 #define __FAST_STACK_H__
 
+/**
+ * @file
+ * @brief Rychlá implementace zásobníku.
+ *
+ * Implementace zásobníku, která alokuje paměť po blocích
+ * (přesněji po stránkách), takže nedochází k realokaci.
+ * K alokaci paměti užívá PageAllocator.
+ *
+ * Bloky drží ve spojáku @c blocks. Každý blok má jako
+ * hlavičku List, pak následují data.
+ *
+ * Ukazatele @c begin, @c ptr a @c end ukazují na odpovídající
+ * místa posledního bloku.
+ *
+ * Je-li zásobník vyprázdněn, ponechává si jeden blok paměti
+ * alokovaný (protože přechod mezi jedním a nula prvky je velmi častý).
+ */
+
 #include <stddef.h>
 
 #include "../allocators/page_allocator.h"
@@ -8,6 +26,7 @@
 
 typedef struct {} IsFastStack;
 
+/// Definuje typ zásobníku obsahující prvky typu @c Type.
 #define FastStack(Type) \
   struct { \
     size_t block_count; \
@@ -25,6 +44,8 @@ typedef struct {} IsFastStack;
     } _non_empty_block_assert[0]; \
   }
 
+
+/// Inicializuje zásobník.
 #define fstack_init(stack) \
   ({ \
     typeof(&*(stack)) __stack = (stack); \
@@ -40,6 +61,7 @@ typedef struct {} IsFastStack;
     __stack; \
   })
 
+/// Uvolní paměť používanou zásobníkem.
 #define fstack_destroy(stack) \
   ({ \
     typeof(&*(stack)) __stack_ = (stack); \
@@ -49,15 +71,20 @@ typedef struct {} IsFastStack;
     fstack_init(__stack_); \
   })
 
+
+/// Počet prvků v jednom bloku.
 #define fstack_block_size(stack) \
   (sizeof((stack)->__block->data)/sizeof((stack)->__block->data[0]))
 
+
+/// Vrátí @c true, je-li zásobník prázdný.
 #define fstack_empty(stack) \
   ({ \
     STATIC_ASSERT(types_equal(typeof((stack)->is_fast_stack), IsFastStack)); \
     (!((stack)->block_count)); \
   })
 
+/// Počet prvků v zásobníku.
 #define fstack_size(stack) \
   ({ \
     typeof(&*(stack)) __stack = (stack); \
@@ -66,6 +93,8 @@ typedef struct {} IsFastStack;
       (__stack->ptr - __stack->begin); \
   })
 
+
+/// Vymaže všechny prvky.
 #define fstack_erase(stack) \
   do { \
     typeof(&*(stack)) __stack = (stack); \
@@ -75,6 +104,7 @@ typedef struct {} IsFastStack;
   } while (0)
 
 
+/// Vloží prvek na vrchol zásobníku.
 #define fstack_push(stack, item) \
   ({ \
     typeof(&*(stack)) __stack = (stack); \
@@ -85,23 +115,24 @@ typedef struct {} IsFastStack;
     (void)0; \
   })
 
+/// Přečte prvek z vrcholu zásobníku.
 #define fstack_top(stack) \
-  (*({ \
-    STATIC_ASSERT(types_equal(typeof((stack)->is_fast_stack), IsFastStack)); \
-    (stack)->ptr - 1; \
-  }))
-
-#define fstack_pop(stack) \
   ({ \
+    STATIC_ASSERT(types_equal(typeof((stack)->is_fast_stack), IsFastStack)); \
+    (stack)->ptr[-1]; \
+  })
+
+/// Odstraní prvek z vrcholu zásobníku.
+#define fstack_pop(stack) \
+  do { \
     typeof(&*(stack)) __stack = (stack); \
     STATIC_ASSERT(types_equal(typeof(__stack->is_fast_stack), IsFastStack)); \
     if (--__stack->ptr == __stack->begin) \
       _fstack_shrink(utilCast(GenericFastStack, __stack), _fstack_offsets); \
-    (void)0; \
-  })
+  } while (0)
 
 
-// must fix block pointers :-(
+/// Prohodí dva zásobníky.
 #define fstack_swap(s1, s2) \
   ({ \
     typeof(&*(s1)) __stack1 = (s1); \
@@ -129,8 +160,8 @@ typedef struct {} IsFastStack;
   })
 
 
-// WARNING: fstack_for_each actualy contains two nested for cycles
-// so break DOES NOT work as expected, instead use goto
+/// Cyklus přes všechny prvky zásobníku odspodu.
+/// @warning Nefungují v něm @c continue a @c break.
 #define fstack_for_each(var, stack) \
   if (!stack->block_count) {} else \
     list_for_each_item(__block, &stack->blocks, typeof(stack->__block[0]), head) \
@@ -140,12 +171,17 @@ typedef struct {} IsFastStack;
            var < __last; var++)
 
 
+////////////////////////////////////////////////////////////////////////////////
+
+// Implementační detaily
+
 #define _fstack_offsets _fstack_offset_begin, _fstack_offset_end 
 #define _fstack_offset_begin  offsetof(typeof(__stack->__block[0]), data[0])
 #define _fstack_offset_end  offsetof(typeof(__stack->__block[0]), data[fstack_block_size(__stack)])
 
 typedef FastStack(void*) GenericFastStack;
 
+// Přidá do zásobníku blok paměti.
 static __attribute__((unused))
 void _fstack_expand(GenericFastStack *stack,
                     ptrdiff_t offset_begin, ptrdiff_t offset_end) {
@@ -159,6 +195,7 @@ void _fstack_expand(GenericFastStack *stack,
   stack->end = (void**)(((char*)(stack->blocks.prev)) + offset_end);
 }
 
+// Odebere ze zásobníku blok paměti.
 static __attribute__((unused))
 void _fstack_shrink(GenericFastStack *stack,
                     ptrdiff_t offset_begin, ptrdiff_t offset_end) {
