@@ -403,6 +403,44 @@ static inline bool tr_node_check(Handle *H, Node *node);
 
 
 /**
+ * @brief Alokuje transakční paměť.
+ *
+ * Pouze pro použití v indexech.
+ *
+ * Funkce pro alokaci paměti v rámci indexů.
+ * Pro uvolnění použijte funkci tr_memory_free().
+ *
+ * Pokud potřebujete alokovat paměť v @c Init metodě
+ * indexu použijte tr_memory_early_alloc(),
+ * pro uvolnění paměti v metodě @c Destroy použijte
+ * tr_memory_late_free(). Obě mají jako první parametr
+ * #GenericAllocator. Ten je parametrem jak metody @c Init,
+ * tak @c Destroy. V obou případech pod jménem @c allocator.
+ *
+ */
+static inline void *tr_memory_alloc(Handle *H, size_t size);
+
+
+/**
+ * @brief Uvolní transakční paměť.
+ * @see tr_memory_alloc()
+ */
+static inline void tr_memory_free(Handle *H, void *ptr);
+
+
+/**
+ * @brief Alokuje transakční paměť při inicializaci indexu.
+ * @see tr_memory_alloc()
+ */
+static inline void *tr_memory_early_alloc(struct GenericAllocator *A, size_t size);
+
+/**
+ * @brief Uvolní transakční paměť při prušení indexu.
+ * @see tr_memory_alloc()
+ */
+static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
+
+/**
  * @brief Přetypuje node na typ @a Type
  *
  * @param Type     Node nebo jeho podtřída.

@@ -27,6 +27,15 @@ static inline void tr_memory_free(Handle *H, void *ptr) {
   fstack_push(H->log, item);
 }
 
+static inline void *tr_memory_early_alloc(struct GenericAllocator *A, size_t size) {
+  return generic_allocator_alloc(A, size);
+}
+
+static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr) {
+  generic_allocator_free(A, ptr, 0);
+}
+
+
 static inline void tr_hard_abort(Handle *H) {
   _tr_abort_main(H);
 }
