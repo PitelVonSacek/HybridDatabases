@@ -38,7 +38,7 @@ sub parse {
   1;
 }
 
-$Parse::RecDescent::skip = "(\\s|;|#[^\n]*\n)*";
+$Parse::RecDescent::skip = "(\\s|;|(#|//)[^\n]*\n)*";
 
 my $grammar = q{
   { my @c = (); my %c = (); my $fnc; my $fnc_t; my $signature  }
@@ -55,8 +55,8 @@ my $grammar = q{
   node_attribute: 'Attribute' name ':' type
     { [ $item{name}, $item{type} ] }
 
-  database_type: 'DatabaseType' name '(' identifier ')' '{' (node|index)(s?) '}'
-    { $c{version} = $item{identifier};
+  database_type: 'DatabaseType' name '(' version ')' '{' (node|index)(s?) '}'
+    { $c{version} = $item{version};
       $::database_types{$item{name}} = { %c }; %c = () }
   node:  'NodeType'  name 
     { push @{$c{node_types}}, $item{name} }
@@ -80,6 +80,7 @@ my $grammar = q{
   type: identifier   { $item[1] }
   c_type: /(union|struct)\\s*{[^\}]*}|(\\w+\\s*\\**)+/ { $item[1] }
   identifier: /\\w+/ { $item[1] }
+  version: /(\\w|\\.)+/ { $item[1] }
 };
 
 $parser = new Parse::RecDescent($grammar) or die "Error\n";
