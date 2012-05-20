@@ -2,8 +2,9 @@
  * @file
  * @brief Funkce pro základní práci s typem Database vyjma načítání ze souboru.
  *
- * Funkce tykají se načítání ze souboru jsou v  database_create.c.
+ * Funkce tykají se načítání ze souboru jsou v database_create.c.
  *
+ *//*
  * Implementované fukce:
  *
  * void database_close(Database *D);

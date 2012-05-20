@@ -1,4 +1,22 @@
-Node *tr_node_create (Handle *H, NodeType *type) {
+/**
+ * @file
+ * @brief Funkce pro práci s uzly.
+ *
+ *//*
+ * Implementované funkce:
+ * Node *tr_node_create (Handle *H, NodeType *type);
+ * bool tr_node_delete (Handle *H, Node *node);
+ * bool tr_node_read (Handle *H, Node *node, int attr, void *buffer);
+ * bool tr_node_write (Handle *H, Node *node, int attr, const void *value);
+ * int tr_attr_count(NodeType *type);
+ * const char *tr_attr_get_name(NodeType *type, int index);
+ * int tr_attr_get_index(NodeType *type, const char *attr);
+ * const NodeType *tr_node_get_type (Node *node);
+ * const int tr_attr_get_type(NodeType *type, int index);
+ * static __attribute__((unused)) void node_offset_check();
+ */
+
+Node *tr_node_create(Handle *H, NodeType *type) {
   NodeType *types = H->database->node_types;
   size_t types_count = H->database->node_types_count;
   ptrdiff_t diff = type - types;
@@ -43,7 +61,7 @@ Node *tr_node_create (Handle *H, NodeType *type) {
 }
 
 // fails if node is referenced by other nodes
-bool tr_node_delete (Handle *H, Node *node) {
+bool tr_node_delete(Handle *H, Node *node) {
   if (!util_lock(H, &_nodeGetLock(H->database, node))) return false;
 
   if (node->ref_count) return false;
@@ -63,7 +81,7 @@ bool tr_node_delete (Handle *H, Node *node) {
   return true;
 }
 
-bool tr_node_read (Handle *H, Node *node, int attr, void *buffer) {
+bool tr_node_read(Handle *H, Node *node, int attr, void *buffer) {
   assert(attr >= node_get_type(node)->attributes_count || attr < 0);
 
   struct NodeAttribute a = node_get_type(node)->attributes[attr];
@@ -75,7 +93,7 @@ bool tr_node_read (Handle *H, Node *node, int attr, void *buffer) {
   return tr_node_check(H, node);
 }
 
-bool tr_node_write (Handle *H, Node *node, int attr, const void *value) {
+bool tr_node_write(Handle *H, Node *node, int attr, const void *value) {
   assert(attr >= node_get_type(node)->attributes_count || attr < 0);
   
   struct NodeAttribute a = node_get_type(node)->attributes[attr];
@@ -120,7 +138,7 @@ int tr_attr_get_index(NodeType *type, const char *attr) {
 }
 
 
-const NodeType *tr_node_get_type (Node *node) {
+const NodeType *tr_node_get_type(Node *node) {
   return node_get_type(node);
 }
 
@@ -129,6 +147,7 @@ const int tr_attr_get_type(NodeType *type, int index) {
   return type->attributes[index].type;  
 }
 
+/// Compile time kontrola předpokladů o velikostech objektů.
 static __attribute__((unused)) void node_offset_check() {
   STATIC_ASSERT(sizeof(struct SList) == sizeof(((Node*)0)->id));
   STATIC_ASSERT(sizeof(struct NodeAllocatorBlock ) % __alignof__(Node) == 0);

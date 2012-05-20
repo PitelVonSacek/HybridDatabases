@@ -1,3 +1,15 @@
+/**
+ * @file
+ * @brief Funkce pro vytváření a ničení handlů.
+ *
+ *//*
+ * Implmentované funkce:
+ * Handle *db_handle_create(Database *D);
+ * void db_handle_free (Handle *H);
+ * Handle *db_handle_init(Database *D, Handle *H);
+ * void db_handle_destroy(Handle *H);
+ */
+
 Handle *db_handle_create(Database *D) {
   Handle *H = xmalloc(sizeof(Handle));
   db_handle_init(D, H);

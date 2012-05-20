@@ -2,6 +2,7 @@
  * @file
  * @brief Načítání databáze z disku.
  *
+ *//*
  * Implementované funkce:
  *
  * Database *database_create (const DatabaseType *type, const char *file, unsigned flags);

@@ -1,3 +1,27 @@
+/**
+ * @file
+ * @brief Funkce pro zápis na disk.
+ *
+ * Jediné funkce, která zapisuje na disk a není v tomto souboru, jsou
+ * do_dump() v databse.include/thread.c a
+ * _database_new_file() v database.include/database.c.
+ *
+ *//*
+ * Implementované funkce:
+ * static void write_schema(Writer *W, Database *D);
+ * static void write_file_header(Writer *W, Database *D, uint64_t magic);
+ * static void write_file_footer(Writer *W, uint64_t magic);
+ * static void write_dump_begin(Writer *W);
+ * static void write_dump_end(Writer *W);
+ * 
+ * static void write_node_store(Writer *W, Node* node);
+ * static void write_node_alloc(Writer *W, NodeType *type, uint64_t id);
+ * static void write_node_delete(Writer *W, uint64_t id);
+ * static void write_node_modify(Writer *W, uint64_t node_id, unsigned attr,
+ *                               unsigned attr_type, const void *value);
+ */
+
+/// Zapíše schéma databáze.
 static void write_schema(Writer *W, Database *D) {
   const DatabaseType *type = D->type;
 
@@ -21,7 +45,7 @@ static void write_schema(Writer *W, Database *D) {
   wFinish(true);
 }
 
-
+/// Zapíše hlavičku datového souboru.
 static void write_file_header(Writer *W, Database *D, uint64_t magic_nr) {
   wArray {
     wString("HybridDatabase Data File");
@@ -42,16 +66,19 @@ static void write_file_footer(Writer *W, uint64_t magic) {
   wFinish(false);
 }
 
+/// Zapíše značku "začátek výpisu databáze".
 static void write_dump_begin(Writer *W) {
   wString("DUMP BEGIN");
   wFinish(0);
 }
 
+/// Zapíše snačku "konec výpisu databáze".
 static void write_dump_end(Writer *W) {
   wString("DUMP END");
   wFinish(0);
 }
 
+/// Zapíše obsah uzly -- požívano při výpisu databáze.
 static void write_node_store(Writer *W, Node *node) {
   wArray {
     wNumber(node_get_type(node)->id);
@@ -60,6 +87,7 @@ static void write_node_store(Writer *W, Node *node) {
   } wArrayEnd;
 }
 
+/// Zapíše vytvoření uzlu.
 static void write_node_alloc(Writer *W, NodeType *type, uint64_t id) {
   wArray {
     wNumber(CBE_NODE_CREATED);
@@ -68,6 +96,7 @@ static void write_node_alloc(Writer *W, NodeType *type, uint64_t id) {
   } wArrayEnd;
 }
 
+/// Zapíše smazání uzlu.
 static void write_node_delete(Writer *W, uint64_t id) {
   wArray {
     wNumber(CBE_NODE_DELETED);
@@ -75,6 +104,7 @@ static void write_node_delete(Writer *W, uint64_t id) {
   } wArrayEnd;
 }
 
+/// Zapíše změnu atributu uzlu.
 static void write_node_modify(Writer *W, uint64_t node_id, unsigned attr, 
                               unsigned attr_type, const void *value) {
   wArray {

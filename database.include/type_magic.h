@@ -1,6 +1,10 @@
 #ifndef __DATABASE_INCLUDE__TYPE_MAGIC_H__
 #define __DATABASE_INCLUDE__TYPE_MAGIC_H__
 
+/*
+ * Obaly funkcí, aby jako parametry přijímaly i podtřídy.
+ */
+
 #define database_get_flags(D) database_get_flags(typeUncast(D))
 
 #define database_close(D) database_close(typeUncast(D))
