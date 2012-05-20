@@ -120,16 +120,17 @@ typedef struct Database_ {
 
 
   uint64_t time; ///< Globální hodiny
-  uint64_t node_id_counter; ///< Nejvyšší id přidělěné nějakému uzlu,
-                            ///  novému uzlu bude přidělěno id @c node_id_counter + 1.
+  /// Nejvyšší id přidělěné nějakému uzlu, ovému uzlu bude přidělěno 
+  /// id <em>node_id_counter + 1</em>.
+  uint64_t node_id_counter;
 
 #if !INPLACE_NODE_LOCKS || !INPLACE_INDEX_LOCKS
-  Lock locks[DB_LOCKS]; ///< Globální pole zámků
+  Lock locks[DB_LOCKS]; ///< Globální tabulka zámků
 #endif
 
   Handle* __dummy_handle[0]; ///< Nutné pro získání typové informace při výrobě
                                ///  handleu pomocí dbHandlderCreate().
-  Stack(Handle*) handles[1]; ///< Seznam všech handleů.
+  Stack(Handle*) handles[1]; ///< Seznam všech handlů.
   pthread_mutex_t handles_mutex[1];
 
   pthread_mutex_t mutex; ///< Zámek chránící vkládání do výstupní fronty.
@@ -142,10 +143,10 @@ typedef struct Database_ {
   sem_t service_thread_pause; ///< Semafor předávaný servisnímu vláknu ve volání
                               ///  DB_SERVICE__PAUSE.
 
-  int file_desc; ///< Soubor do něhož probíhá zápis.
+  int file_desc; ///< Deskriptor souboru do něhož probíhá zápis.
   sem_t counter[1]; ///< Počítadlo prvků ve výstupní frontě.
 
-  pthread_mutex_t dump_running[1]; ///< Tento zámek je zamčen vždy, když probíhá dump.
+  pthread_mutex_t dump_running[1]; ///< Tento zámek je zamčen vždy, když probíhá výpis.
 
   struct OutputList *head, **tail; ///< Výstupní fronta. Skrze ni se předávají
                                    ///  požadavky servisnímu vláknu.

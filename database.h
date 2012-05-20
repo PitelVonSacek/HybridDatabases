@@ -10,7 +10,7 @@
  *
  * Všechny zde uvedené funkce (není-li uvedeno jinak) jsou v souboru
  * database.include/type_magic.h obaleny makry tak, aby kromě typů, se kterými
- * jsou zde delkarovány, braly za parametry i jejich podtřídy.
+ * jsou zde deklarovány, braly za parametry i jejich podtřídy.
  *
  */
 
@@ -37,12 +37,12 @@
  * Tato funkce není polymorfní jako ostatní, ale existuje zde
  * makro dbCreate().
  *
- * @param type   Desriptor typu databáze.
+ * @param type   Deskriptor typu databáze.
  * @param file   Cesta k souboru obsahujícímu databázi bez koncovky.
  *               (Schéma se tedy bude jmenovat @a file.schema a datové
  *               soubory @a file.N pro N = 1, 2, ...)
  * @param flags  Konfigurace databáze
- * @returns Vvpřípadě úspěchu vrací instanci Database. Pokud se při načítání
+ * @returns V případě úspěchu vrací instanci Database. Pokud se při načítání
  *          databáze vyskytly chyby, které nebyly fatální, může nastavit
  *          příznak DB_READ_ONLY. V případě fatální chyby vrací 0.
  */
@@ -66,12 +66,12 @@ static inline enum DbFlags database_get_flags(Database *D);
 
 
 /**
- * @brief Znovuzapíše databázi na disk.
+ * @brief Vypíše databázi na disk.
  *
  * Založí nový datový soubor a do něj začne zapisovat obsah databáze.
  * Zápis probíhá s servisním vláknu, funkce se vrátí v okamžiku,
  * kdy je nový soubor založen. Probíhající transakce jsou zapisovány
- * do nového souboru. Ve chvíli, kdy je znovuvypsání databáze dokončeno,
+ * do nového souboru. Ve chvíli, kdy je vypsání databáze dokončeno,
  * je možné smazat starší datové soubory bez ztráty dat.
  *
  * @param D Databáze.
@@ -145,7 +145,7 @@ double database_get_sync_period(Database *D);
 
 
 /**
- * @brief Nastaví čas (v sekundách), kdy se periodicky provee fsync().
+ * @brief Nastaví čas (v sekundách), kdy se periodicky provede fsync().
  *
  * Hodnota 0.0 vypne tuto funkci. Hodnoty menší 0.001 jsou zaokrouhleny na 0.
  */
@@ -155,8 +155,8 @@ void database_set_sync_period(Database *D, double period);
 /**
  * @brief Vytvoří novou databázi.
  *
- * Makro nad funkcí database_create(). Na rozdíl od ní nnebere jako první
- * paramatr deskkriptor vytvářené databáze ale její typ.
+ * Makro nad funkcí database_create(). Na rozdíl od ní nebere jako první
+ * parametr deskriptor vytvářené databáze ale její typ.
  *
  * @param Type  Typ vytvářené databáze.
  * @param file  Název souboru obsahujícího databázi (bez přípony)
@@ -207,7 +207,7 @@ void db_handle_destroy(Handle *H);
 
 /**
  * @brief Makro kolem funkce db_handle_create(), které
- *        má správný náratový typ.
+ *        má správný návratový typ.
  * @param D Databáze.
  * @returns Handle pro databázi D. Návratový typ závisí na typu databáze.
  */
@@ -254,13 +254,13 @@ static inline void tr_hard_abort(Handle *H);
 
 /**
  * @brief Zjistí, zda jsou současná transakce vnořena v jiné.
- * @returns true pokud je současná transakce hlavní (ted není vnořená).
+ * @returns true pokud je současná transakce hlavní (tedy není vnořená).
  */
 static inline bool tr_is_main(Handle *H);
 
 
 /**
- * @brief Zkotroluje zda data přečtená současnou transakcí nebyla
+ * @brief Zkontroluje zda data přečtená současnou transakcí nebyla
  *        jinou transakcí změněna.
  * @returns true pokud data nebyla změněna.
  */
@@ -275,8 +275,8 @@ static inline bool tr_validate(Handle *H);
  * zavolá #trAbort) transakce sama restartuje. Restart se provede po náhodné
  * prodlevě, přičemž tato prodleva s každým dalším pokusem roste.
  *
- * Stejně jako jiná makra tvaru tr*, předpokládá existenci handleu
- * jménem H, pokud je potřeba použít handlr jiného jména, lze
+ * Stejně jako jiná makra tvaru tr*, předpokládá existenci handlu
+ * jménem H, pokud je potřeba použít handle jiného jména, lze
  * za název makra připojit _ a handle předat jako první parametr.
  *
  */
@@ -284,7 +284,7 @@ static inline bool tr_validate(Handle *H);
 #undef trBegin
 
 /**
- * @brief Pokusí se provést commit transakce zahajené pomocí #trBegin.
+ * @brief Pokusí se provést commit transakce zahájené pomocí #trBegin.
  *
  * Funguje jako uzavírací závorka pro #trBegin.
  *
@@ -292,7 +292,7 @@ static inline bool tr_validate(Handle *H);
  * @param nested_restart_action Nepovinný parametr. Kousek kódu, který
  *   se provede pokud tato transakce selže a zároveň je vnořena v jiné
  *   transakci (a tedy je třeba toto selhání propagovat). Jelikož
- *   implementace nepoužívá vyjímky a neexistuje tedy obecná cesta, jak
+ *   implementace nepoužívá výjimky a neexistuje tedy obecná cesta, jak
  *   propagovat selhání, je defaultní akcí vypsání chyby a zabití aplikace.
  */
 #define trCommit(commit_type, nested_restart_action)
@@ -322,7 +322,7 @@ static inline bool tr_validate(Handle *H);
  * Pokud daný typ uzlu není součástí databáze, k níž patří handle @a H,
  * je chování této funkce nedefinované.
  *
- * @param H        Handle, určje transakci v jejímž rámci se má uzel vytvořit.
+ * @param H        Handle, určuje transakci v jejímž rámci se má uzel vytvořit.
  * @param type     Deskriptor typu uzlu.
  *
  * @returns Nový uzel, nebo 0 pokud vytvoření uzlu selže (z důvodu kolize
@@ -350,7 +350,7 @@ bool tr_node_delete(Handle *H, Node *node);
  * Oproti makrům pomalá a nemá typovou informaci. Pokud je to možné
  * požijte makro trRead().
  *
- * @param H        Hanler.
+ * @param H        Handle.
  * @param node     Uzel jehož atribut se bude číst.
  * @param attr     Index atributu.
  * @param buffer   Buffer, kam bude zapsána hodnota atributu.
@@ -372,7 +372,7 @@ bool tr_node_read(Handle *H, Node *node, int attr, void *buffer);
  * @param H        Handle.
  * @param node     Uzel jehož atribut se bude měnit.
  * @param attr     Index modifikovaného atributu.
- * @param value Hodnota, kderá se do atributu zapíše.
+ * @param value Hodnota, která se do atributu zapíše.
  *
  * @returns true v případě úspěchu. Vrátí-li false je třeba restartovat
  *          transakci.
@@ -381,7 +381,7 @@ bool tr_node_write(Handle *H, Node *node, int attr, const void *value);
 
 
 /**
- * @brief Upraví indexy s ohledem na modifikaci uzlu node.
+ * @brief Upraví indexy s ohledem na modifikaci uzlu @a node.
  *
  * @param H        Handle.
  * @param node     Modifikovaný uzel.
@@ -434,11 +434,13 @@ static inline void tr_memory_free(Handle *H, void *ptr);
  */
 static inline void *tr_memory_early_alloc(struct GenericAllocator *A, size_t size);
 
+
 /**
  * @brief Uvolní transakční paměť při prušení indexu.
  * @see tr_memory_alloc()
  */
 static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
+
 
 /**
  * @brief Přetypuje node na typ @a Type
@@ -457,7 +459,7 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
  * @brief Pomocné makro. Je vykonáno jinými tr* makry, pokud ta potřebují
  *        propagovat neúspěch transakce.
  *
- * Defaultní hodota je goto tr_failed, ale uživatelský kód si ho může
+ * Defaultní hodnota je goto tr_failed, ale uživatelský kód si ho může
  * předefinovat jak potřebuje.
  */
 #define trFail goto tr_failed
@@ -488,7 +490,7 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
  *
  * Je rychlejší než trRead_(), ale nekontroluje zda je načtená hodnota validní.
  * Protože načítání hodnoty není nutně atomické, může být načtená hodnota
- * různé od jakékoli hodnoty, která kdy byla do daného atribtu zapsána.
+ * různé od jakékoli hodnoty, která kdy byla do daného atributu zapsána.
  * Speciálně je-li načtená hodnota ukazatel, je třeba ji ověřit před
  * dereferencováním.
  *
@@ -607,7 +609,7 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
  * @param Method   Metoda indexu, která se má provést.
  * @param ...      Další parametry pro metodu indexu.
  *
- * @returns Návratová hodnota (i její typ) závisí na konrétní metodě
+ * @returns Návratová hodnota (i její typ) závisí na konkrétní metodě
  *          daného indexu.
  */
 #define trIndex_(H, index, Method, ...)
@@ -625,7 +627,7 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
  * chovaní. Taktéž jeho použití na jinou paměť než kontext odpovídajícího
  * indexu a paměť alokovanou pomocí tr_memory_alloc().
  *
- * Rozělení na objekt a atribut místo přímého čtení hodnoty poiteru
+ * Rozdělení na objekt a atribut místo přímého čtení hodnoty ukazatele
  * je nutné pro lepší zamykání. Zamyká se vždy dle hodnoty @a object
  * bez ohledu na @a Attr. (Z toho plyne, že přístup k jedněm datům
  * pomocí různých ukazatelů @a object je chyba.)
@@ -685,7 +687,7 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
 /** @{ @name Atributy */
 
 /**
- * @brief Zjistí počet attributů.
+ * @brief Zjistí počet atributů.
  * @param node_type Deskriptor typu uzlu.
  * @returns Počet atributů uzlů typu @a node_type.
  */
