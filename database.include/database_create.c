@@ -1,18 +1,27 @@
+/**
+ * @file
+ * @brief Načítání databáze z disku.
+ *
+ * Implementované funkce:
+ *
+ * Database *database_create (const DatabaseType *type, const char *file, unsigned flags);
+ * static int get_db_files(struct dirent*** files, const char* dir, const char* db_name_);
+ * static void fix_pointers(Database *D, IdToNode *nodes);
+ * static void fill_indexes(Database *D);
+ * static bool load_data(Database *D, IdToNode *nodes);
+ * static int load_file(Database *D, Reader *R, uint64_t *magic_nr,
+ *                      IdToNode *nodes, bool first_file);
+ */
+
 #include <dirent.h>
 #include <libgen.h>
-
-static int get_db_files(struct dirent*** files, const char* dir, const char* db_name);
-static int load_file(Database *D, Reader *R, uint64_t *magic_nr, 
-                     IdToNode *nodes, bool first_file);
-static bool load_data(Database *D, IdToNode *nodes);
-static void fix_pointers(Database *D, IdToNode *nodes);
-static void fill_indexes(Database *D);
 
 enum {
   LOAD_SUCCESS,
   LOAD_UNFINISHED_FILE,
   LOAD_CORRUPTED_FILE
 };
+
 
 Database *database_create (const DatabaseType *type, const char *file, unsigned flags) {
   Database *D = database_alloc(type);
@@ -42,6 +51,7 @@ Database *database_create (const DatabaseType *type, const char *file, unsigned 
 }
 
 
+/// Získá seznam existujících datových souborů.
 static int get_db_files(struct dirent*** files, const char* dir, const char* db_name_) {
   static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
   static const char * db_name = 0;
@@ -54,6 +64,7 @@ static int get_db_files(struct dirent*** files, const char* dir, const char* db_
   db_name = db_name_;
   db_name_len = strlen(db_name);
 
+  // Formálně vnořené funkce, ale obejdou se bez trampolíny.
   int db_files_sort(const struct dirent **a, const struct dirent **b) {
     for (int i = 0; db_name[i]; i++) if (db_name[i] != a[0]->d_name[i]) return 0;
     for (int i = 0; db_name[i]; i++) if (db_name[i] != b[0]->d_name[i]) return 0;
@@ -78,12 +89,13 @@ static int get_db_files(struct dirent*** files, const char* dir, const char* db_
     }
   }
 
-  int ret = scandir (dir, files, db_files_select, db_files_sort /*versionsort*/);
+  int ret = scandir (dir, files, db_files_select, db_files_sort);
   pthread_mutex_unlock(&mutex);
   return ret;
 }
 
 
+/// Projde databázi a opraví atributy typu Pointer z id uzlů na pointery.
 static void fix_pointers(Database *D, IdToNode *nodes) {
   ndictFor(var, nodes) {
     Node *node = var->value;
@@ -93,6 +105,7 @@ static void fix_pointers(Database *D, IdToNode *nodes) {
 }
 
 
+/// Vygeneruje indexy pomocí události CBE_NODE_LOADED.
 static void fill_indexes(Database *D) {
   Handle H[1] = {{
     .database = D,
@@ -147,6 +160,8 @@ static void fill_indexes(Database *D) {
     } \
     do_always; \
   } while (0)
+
+/// Načte všechna data z disku.
 static bool load_data(Database *D, IdToNode *nodes) {
   if (!D->filename || D->filename[0] == '\0') {
     dbDebug(I, "No input files specified, using /dev/null");
@@ -175,7 +190,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
         "Bad database name '%s' (complete path was '%s')", file, D->filename);
 
 
-  // load file list
+  // Získáme seznam datových souborů.
   sprintf(buffer, "%s.", file);
 
   dbDebug(I, "Getting file list...");
@@ -184,7 +199,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
   for (int i = 0; i < files_count; i++) dbDebug(I, "  '%s'", files[i]->d_name);
 
 
-  //  verify schema
+  //  Zkontrolujeme schéma databáze.
   sprintf(buffer, "%s/%s.schema", dir, file);
   if (!(F = fopen(buffer, "rb"))) {
     if (!files_count) {
@@ -205,6 +220,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
   file_reader_init(R, F, true);
   Ensure(read_schema(R, D), reader_destroy(R), "Database schema corrupted");
 
+  // Ověříme, že v posloupnosti datových souborů nejsou díry.
   if (files_count) {
     sprintf(buffer, "%s.", file);
     size_t l = strlen(buffer);
@@ -219,6 +235,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
   uint64_t magic_nr = 0;
   bool create_new_file = true;
 
+  // Načteme soubory.
   for (int i = 0; i < files_count; i++) {
     sprintf(buffer, "%s/%s", dir, files[i]->d_name);
     Ensure(F = fopen(buffer, "rb"),, "Opening file '%s' failed", buffer);
@@ -256,6 +273,7 @@ static bool load_data(Database *D, IdToNode *nodes) {
   }
   end:
 
+  // Otevřeme poslední soubor pro zápis
   if (!(D->flags & DB_READ_ONLY)) {
     if (create_new_file) 
       Ensure(_database_new_file(D, !files_count, magic_nr),, 
@@ -299,6 +317,8 @@ static bool load_data(Database *D, IdToNode *nodes) {
     } \
   } while (0)
 
+/// Načte data z jednoho souboru.
+/// @returns konstantu LOAD_*
 static int load_file(Database *D, Reader *R, uint64_t *magic_nr, 
                      IdToNode *nodes, bool first_file) {
   uint64_t new_magic_nr = 0;

@@ -156,6 +156,9 @@ __attribute__((constructor)) static void init_rand() {
  *
  * Ne static funkce jsou uvedeny v komentářích, protože byly deklarovány již
  * v database.h.
+ *
+ * Statické funkce jsou dokumentovány v příslušných souborech,
+ * zbylé v database.h.
  */
 
 // database.c

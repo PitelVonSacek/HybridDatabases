@@ -1,3 +1,26 @@
+/**
+ * @file
+ * @brief Funkce pro základní práci s typem Database vyjma načítání ze souboru.
+ *
+ * Funkce tykají se načítání ze souboru jsou v  database_create.c.
+ *
+ * Implementované fukce:
+ *
+ * void database_close(Database *D);
+ * enum DbError database_dump (Database *D);
+ * void database_collect_garbage(Database* D);
+ * void database_pause_service_thread(Database* D);
+ * void database_resume_service_thread(Database* D);
+ * enum DbError database_create_new_file (Database *D);
+ * static void init_locks(Database *D);
+ * static void init_node_types(Database *D);
+ * static void destroy_node_types(Database *D);
+ * static Database *database_alloc(const DatabaseType *type);
+ * static uint64_t _generate_magic_nr();
+ * static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr);
+ */
+
+/// Inicializuje globální tabulku zámků
 static void init_locks(Database *D) {
 #if !INPLACE_NODE_LOCKS || !INPLACE_INDEX_LOCKS
   for (int i = 0; i < DB_LOCKS; i++)
@@ -5,6 +28,12 @@ static void init_locks(Database *D) {
 #endif
 }
 
+/**
+ * Inicializuje deskriptory typů uzlů.
+ *
+ * Zkopíruje globální deskriptor a doplní do něj funkci na aktualizaci
+ * indexů, jeho id v rámci databáze a inicializuje alokátor.
+ */
 static void init_node_types(Database *D) {
   const DatabaseType *type = D->type;
   
@@ -19,11 +48,19 @@ static void init_node_types(Database *D) {
   }
 }
 
+/**
+ * Destruktor deskriptorů uzlů.
+ *
+ * Uvolní alokátory, čímž smaže všechny uzly.
+ * Jejich destruktory už musí být provedeny.
+ */
 static void destroy_node_types(Database *D) {
   for (int i = 0; i < D->node_types_count; i++) 
     node_allocator_destroy(D->node_types[i].allocator);
 }
 
+
+/// Alokuje a provede základní inicializaci databáze.
 static Database *database_alloc(const DatabaseType *type) {
   Database *D = xmalloc(type->size);
 
@@ -175,6 +212,7 @@ enum DbError database_create_new_file (Database *D) {
 }
 
 
+/// Vygeneruje magické číslo.
 static uint64_t _generate_magic_nr() {
   uint64_t magic_nr;
 
@@ -188,6 +226,7 @@ static uint64_t _generate_magic_nr() {
 }
 
 
+/// Vytvoří nový datový soubor.
 static bool _database_new_file(Database *D, bool dump_begin, uint64_t magic_nr) {
   dbDebug(DB_INFO, "Creating new file (dump begin = %s, magic_nr = %Li)", 
           (dump_begin ? "true" : "false"), (unsigned long long)magic_nr);
