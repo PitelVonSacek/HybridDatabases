@@ -168,10 +168,10 @@ AttributeType String : const char* {
 
   Write {
     if (&attr->value != value) {
-      _tr_memory_free(H, (void*)attr->value);
+      tr_memory_free(H, (void*)attr->value);
       if (*value) {
         size_t len = strlen(*value) + 1;
-        char *tmp = _tr_memory_alloc(H, len);
+        char *tmp = tr_memory_alloc(H, len);
         memcpy(tmp, *value, len);
         attr->value = tmp;
       } else attr->value = 0;
@@ -200,9 +200,9 @@ AttributeType RawString : const struct RawString* {
 
   Write {
     if (&attr->value != value) {
-      _tr_memory_free(H, (void*)attr->value);
+      tr_memory_free(H, (void*)attr->value);
       if (*value) {
-        struct RawString *tmp = _tr_memory_alloc(H,
+        struct RawString *tmp = tr_memory_alloc(H,
             sizeof(struct RawString) + value[0]->length);
         memcpy(tmp, value, sizeof(struct RawString) + value[0]->length);
         attr->value = tmp;

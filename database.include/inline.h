@@ -6,11 +6,8 @@ void _tr_abort_main(Handle*);
 bool _tr_commit_main(Handle*, enum CommitType);
 void _tr_handle_rollback(Handle *H, struct Transaction *tr);
 
-static inline void *_tr_memory_alloc_no_release(Handle *H, size_t size) {
-  return generic_allocator_alloc(H->database->tm_allocator, size);
-}
 
-static inline void *_tr_memory_alloc(Handle *H, size_t size) {
+static inline void *tr_memory_alloc(Handle *H, size_t size) {
   struct LogItem item = {
     .type = LI_TYPE_MEMORY_ALLOC,
     .ptr = generic_allocator_alloc(H->database->tm_allocator, size)
@@ -21,7 +18,7 @@ static inline void *_tr_memory_alloc(Handle *H, size_t size) {
   return item.ptr;
 }
 
-static inline void _tr_memory_free(Handle *H, void *ptr) {
+static inline void tr_memory_free(Handle *H, void *ptr) {
   struct LogItem item = {
     .type = LI_TYPE_MEMORY_DELETE,
     .ptr = ptr
