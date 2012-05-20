@@ -531,7 +531,7 @@ SHOW_FILES             = YES
 # Namespaces page.  This will remove the Namespaces entry from the Quick Index 
 # and from the Folder Tree View (if specified). The default is YES.
 
-SHOW_NAMESPACES        = YES
+SHOW_NAMESPACES        = NO
 
 # The FILE_VERSION_FILTER tag can be used to specify a program or script that 
 # doxygen should invoke to get the current version for each file (typically from 
@@ -571,7 +571,7 @@ WARNINGS               = YES
 # for undocumented members. If EXTRACT_ALL is set to YES then this flag will 
 # automatically be disabled.
 
-WARN_IF_UNDOCUMENTED   = YES
+WARN_IF_UNDOCUMENTED   = NO
 
 # If WARN_IF_DOC_ERROR is set to YES, doxygen will generate warnings for 
 # potential errors in the documentation, such as not documenting some 
@@ -782,7 +782,7 @@ INLINE_SOURCES         = NO
 # doxygen to hide any special comment blocks from generated source code 
 # fragments. Normal C and C++ comments will always remain visible.
 
-STRIP_CODE_COMMENTS    = YES
+STRIP_CODE_COMMENTS    = NO
 
 # If the REFERENCED_BY_RELATION tag is set to YES 
 # then for each documented function all documented 
