@@ -1,4 +1,7 @@
-#define trFail goto tr_failed
+/**
+ * @file
+ * @brief Definice maker popsaných v database.h.
+ */
 
 #if INPLACE_NODE_LOCKS
 # define _nodeGetLock(D, node) (typeUncast(node)->lock)
@@ -215,6 +218,7 @@
  * Transaction macros *
  **********************/
 
+/// Implementuje čekání před restartem transakce. @a loop udává kolikátý restart probíhá.
 void _tr_retry_wait(int loop);
 
 #define trBegin trBegin_(H)

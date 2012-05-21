@@ -262,7 +262,7 @@ static inline void write_number(Writer *W, uint64_t number);
 /// Zapíše řetězec délky @a length. Vrací ukazatel na buffer, kam zapsat obsah.
 #define wRawString(length)
 #undef wRawString
-/// Zapíše řetězec @s string. (@a string musí být ukončen '\0', tento znak se nezapisuje.)
+/// Zapíše řetězec @a string. (@a string musí být ukončen '\0', tento znak se nezapisuje.)
 #define wString(string)
 #undef wString
 

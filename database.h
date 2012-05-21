@@ -314,7 +314,7 @@ static inline bool tr_validate(Handle *H);
  *     Node functions    *
  *************************/
 
-/** @addtogroup Uzly *//** @{ */
+/** @{ @name Uzly a indexy */
 
 /**
  * @brief Vytvoří nový uzel.
@@ -413,10 +413,9 @@ static inline bool tr_node_check(Handle *H, Node *node);
  * Pokud potřebujete alokovat paměť v @c Init metodě
  * indexu použijte tr_memory_early_alloc(),
  * pro uvolnění paměti v metodě @c Destroy použijte
- * tr_memory_late_free(). Obě mají jako první parametr
- * #GenericAllocator. Ten je parametrem jak metody @c Init,
- * tak @c Destroy. V obou případech pod jménem @c allocator.
- *
+ * tr_memory_late_free(). Obě mají jako první parametr #GenericAllocator.
+ * Ten je parametrem jak metody @c Init, tak @c Destroy. V obou případech
+ * pod jménem @c allocator.
  */
 static inline void *tr_memory_alloc(Handle *H, size_t size);
 
@@ -463,7 +462,6 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
  * předefinovat jak potřebuje.
  */
 #define trFail goto tr_failed
-#undef trFail
 
 
 /**
@@ -510,6 +508,25 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
 
 
 /**
+ * @brief Přečte hodnotu atributu, ale nekontroluje validitu hodnoty ani daný
+ *        uzel nepřidá do readsetu.
+ *
+ * Předpokládá, že příslušný uzel již je součástí readsetu nebo je zamknut současnou
+ * transakcí.
+ *
+ * Rychlejší než trUncheckedRead_().
+ *
+ * @warning Nesprávné použití může vést k nekonzistenci databáze, protože může
+ *          zmařit detekci kolize transakcí.
+ */
+#define trInternalRead_(H, node, AttrName)
+#undef trInternalRead_
+/// Odpovídá trRead_(H, node, AttrName).
+#define trInternalRead(node, AttrName)
+#undef trInternalRead
+
+
+/**
  * @brief Zapíše hodnotu atributu.
  *
  * @warning
@@ -528,6 +545,23 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
 /// Odpovídá trWrite_(H, node, AttrName).
 #define trWrite(node, AttrName, value)
 #undef trWrite
+
+
+/**
+ * @brief Zapíše hodnotu atributu, předpokládá, že transakce již drží potřebný zámek.
+ *
+ * Na rozdíl od trWrite_() se nepokouší zabrat zámek potřebný k zápisu do daného
+ * uzlu, ale předpokládá, že ho transakce již vlastní.
+ *
+ * Rychlejší něž trWrite().
+ *
+ * @warning Používejte obezřetně, špatné použití může způsobit nekonzistenci databáze.
+ */
+#define trInternalWrite_(H, node, AttrName, value)
+#undef trInternalWrite_
+/// Odpovídá trInternalWrite_(H, node, AttrName).
+#define trInternalWrite(node, AttrName, value)
+#undef trInternalWrite
 
 
 /**
@@ -664,6 +698,24 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
 
 
 /**
+ * @brief Načte hodnotu z místa v paměti @a ptr, ale nekontroluje
+ *        správnost načtené hodnoty ani ji nepřidá do readsetu.
+ *
+ * @warning Nebezpečné.
+ *
+ * @see trMemoryRead_()
+ * @see trRead_()
+ * @see trUncheckedRead_()
+ * @see trInternalRead_()
+ */
+#define trMemoryInternalRead_(H, ptr)
+#undef trMemoryInternalRead_
+/// Odpovídá trMemoryInternalRead_(H, ptr).
+#define trMemoryInternalRead(ptr)
+#undef trMemoryInternalRead
+
+
+/**
  * @brief Zapíše hodnotu @a value do @a object @a Attr.
  *
  * @see trMemoryRead_()
@@ -675,6 +727,53 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
 /// Odpovídá trMemoryWrite_(H, object, Attribute, value).
 #define trMemoryWrite(object, Attribute, value)
 #undef trMemoryWrite
+
+
+/**
+ * @brief Zapíše hodnotu @a value do @a ptr, předpokládá, že transakce již
+ *        vlastní příslušný zámek.
+ *
+ * @warning Nebezpečné.
+ *
+ * @see trMemoryRead_()
+ * @see trRead_()
+ * @see trWrite_()
+ * @see trInternalWrite_()
+ */
+#define trMemoryInternalWrite_(H, ptr, value)
+#undef trMemoryInternalWrite_
+/// Odpovídá trMemoryInternalWrite_(H, ptr, value).
+#define trMemoryInternalWrite(ptr, value)
+#undef trMemoryInternalWrite
+
+
+/**
+ * @brief Zamkne pro zápis uzel @a node.
+ *
+ * Po provedení toho makra je bezpečné k příslušnému uzlu přistupovat
+ * pomocí trInternalRead() a trInternalWrite().
+ */
+#define trLock_(H, node)
+#undef trLock_
+/// Odpovídá trLock_(H, node).
+#define trLock(node)
+#undef trLock
+
+
+/**
+ * @brief Zamkne paměť @a ptr pro zápis.
+ *
+ * Je-li zapnuta volba #INPLACE_INDEX_LOCKS, musí být @ptr ukazatel
+ * na strukturu, která obsahuje prvek @c lock typu #IndexLock.
+ *
+ * Po provedení toho makra je bezpečné k příslušné paměti přistupovat
+ * pomocí trMemoryInternalRead() a trMemoryInternalWrite().
+ */
+#define trIndexLock_(H, ptr)
+#undef trIndexLock_
+/// Odpovídá trLock_(H, ptr).
+#define trIndexLock(ptr)
+#undef trIndexLock
 
 /** @} */
 

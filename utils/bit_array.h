@@ -42,7 +42,7 @@ typedef struct {} IsBitArray;
 
 /// Zjistí velikost bitového pole
 #define bit_array_size(array) StaticGetInt((array)->size)
-/// Počet slov typu #uint32_t, v nichž je pole uloženo.
+/// Počet slov typu @c uint32_t, v nichž je pole uloženo.
 #define _bit_array_words(a) (sizeof((a)->data) / sizeof((a)->data[0]))
 
 
@@ -81,6 +81,7 @@ typedef struct {} IsBitArray;
         if (__array->data[_ba_word] & (1 << _ba_bit)) { \
           const unsigned index = 32 * _ba_word + _ba_bit;
 
+/// Ukončovací zároka k bitArrayFor()
 #define bitArrayForEnd \
          } \
          _bit_array_continue: __attribute__((unused)); \
@@ -88,7 +89,9 @@ typedef struct {} IsBitArray;
     _bit_array_break: __attribute__((unused)); \
   } while (0)
 
+/// continue statement pro cyklus bitArrayFor()
 #define bitArrayContinue goto _bit_array_continue
+/// break statement pro cyklus bitArrayFor()
 #define bitArrayBreak goto _bit_array_break
 
 #endif

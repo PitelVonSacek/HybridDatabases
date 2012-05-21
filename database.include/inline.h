@@ -1,9 +1,17 @@
+/**
+ * @file
+ * @brief Definice inline funkcí.
+ */
+
 static inline enum DbFlags database_get_flags(Database *D) {
   return D->flags;
 }
 
+/// Zruší hlavní transakci.
 void _tr_abort_main(Handle*);
+/// Provede commit hlavní transakce.
 bool _tr_commit_main(Handle*, enum CommitType);
+/// Provede rollback až po událost určenou tranakcí @a tr.
 void _tr_handle_rollback(Handle *H, struct Transaction *tr);
 
 
@@ -115,12 +123,14 @@ static inline bool tr_node_check(Handle *H, Node *node) {
   return l_check(&_nodeGetLock(H->database, node), H, H->start_time);
 }
 
+/// Sníží čítač referencí uzlu.
 static inline bool _node_ref_count_increase(Handle *H, Node *node) {
   if (!util_lock(H, &_nodeGetLock(H->database, node))) return false;
   trMemoryInternalWrite_(H, &node->ref_count, node->ref_count + 1);
   return true;
 }
 
+/// Zvýší čítač referencí uzlu.
 static inline bool _node_ref_count_decrease(Handle *H, Node *node) {
   if (!util_lock(H, &_nodeGetLock(H->database, node))) return false;
   assert(node->ref_count > 0);

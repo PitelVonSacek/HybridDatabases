@@ -162,14 +162,16 @@ typedef struct {
     for (typeof(*_dict##$->buckets) var = _dict##$->buckets[_dict_it]; \
         var; var = var->next) { \
 
-/// Ukončovací závrka k ndictFor
+/// Ukončovací závrka k ndictFor()
 #define ndictForEnd \
       _ndict_continue_label: __attribute__((unused)); \
     } \
   _ndict_break_label: __attribute__((unused)); \
   } while (0)
 
+/// continue statement pro ndictFor()
 #define ndictContinue goto _ndict_continue_label
+/// break statement pro ndictFor()
 #define ndictBreak goto _ndict_break_label;
 
 #define Inline static inline
