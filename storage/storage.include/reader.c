@@ -1,3 +1,10 @@
+/**
+ * @file
+ * @brief Implementace funkcí pro čtení.
+ */
+
+
+/// Předpřipravený kontext pro načítání dat ze souboru.
 struct FileReaderContext {
   FILE *file;
   void *buf;
@@ -5,6 +12,7 @@ struct FileReaderContext {
   bool close;
 };
 
+/// Vytvoří kontext pro načítání dat ze souboru.
 static struct FileReaderContext *file_reader_context(FILE *f, bool close) {
   struct FileReaderContext *context = xmalloc(sizeof(*context));
 
@@ -18,6 +26,7 @@ static struct FileReaderContext *file_reader_context(FILE *f, bool close) {
   return context;
 }
 
+/// Callback funkce pro načtení dat ze souboru.
 static int file_reader_read(void *c, size_t length, void **output) {
   struct FileReaderContext *ctx = c;
 
@@ -35,6 +44,7 @@ static int file_reader_read(void *c, size_t length, void **output) {
   return ST_READ_FAIL;
 }
 
+/// Destruktor kontextu #FileReaderContext.
 static void file_reader_destroy(void *c) {
   struct FileReaderContext *ctx = c;
   free(ctx->buf);

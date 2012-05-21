@@ -1,6 +1,11 @@
 #ifdef __STORAGE_INLINE_INCLUDE_H__
 #undef __STORAGE_INLINE_INCLUDE_H__
 
+/**
+ * @file
+ * @brief Implementace inline funkcí
+ */
+
 // Reader
 
 static inline size_t reader_next(Reader *R) {
@@ -16,6 +21,7 @@ static inline size_t reader_next(Reader *R) {
   }
 }
 
+/// @internal Makro kontrolující, zda čtení nepřeteče kořenový element.
 #define _reader_ensure_space(size) \
   do { if (R->ptr + (size) > R->end) return false; } while (0)
 
@@ -88,13 +94,16 @@ static inline void reader_set_pos(Reader *R, size_t pos) {
 
 // Writer
 
+/// Zvětší buffer, aby se do něj vešlo jěště @a size bajtů.
 void _writer_get_space(Writer *W, size_t size);
+/// Zajistí, že na konci bufferu je alespoň @a size bajtů volných.
 #define _writer_ensure_space(size) \
   do { \
     if (W->ptr + (size) > W->end) \
       _writer_get_space(W, (W->ptr + (size)) - W->end); \
   } while (0)
 
+/// Zapíše řídící znak. Používáno pro vícebajtové řídící znaky.
 void _write_number(Writer *W, uint64_t n);
 
 static inline void write_array(Writer *W) {

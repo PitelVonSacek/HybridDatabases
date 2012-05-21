@@ -1,13 +1,14 @@
 #ifdef __STORAGE_MACROS_INCLUDE_H__
 #undef __STORAGE_MACROS_INCLUDE_H__
 
+/**
+ * @file
+ * @brief Definice čtecích a zápisových maker.
+ */
+
 /*****************
  * Reader macros *
  *****************/
-
-// when read fails, executes goto read_failed;
-
-#define readFailed goto read_failed
 
 #define rBegin \
   do { if (reader_begin(R) != ST_READ_SUCCESS) readFailed; } while (0)

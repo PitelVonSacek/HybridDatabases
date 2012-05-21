@@ -1,3 +1,12 @@
+/**
+ * @file
+ * @brief Utilita pro práci s nižší vrstvou diskového formátu.
+ *
+ * Slouží k záchraně dat z poškozeného souboru. Čte data ze standardního
+ * vstup a parsuje je. Každý korekteně načtený kotenový element opět
+ * serializuje a vypíše na standardní výstup. Při načtení nekorektních dat skončí.
+ */
+
 #include "storage.h"
 #include <stdio.h>
 

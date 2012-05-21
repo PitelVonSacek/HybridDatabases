@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief Implementace funkcí pro zápis.
+ */
+
 Writer* writer_create() {
   Writer *W = xmalloc(sizeof(*W));
   writer_init(W);

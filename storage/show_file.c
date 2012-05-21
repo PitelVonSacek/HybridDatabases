@@ -1,3 +1,10 @@
+/**
+ * @brief Utilita pro práci s nižší vrstvou diskového formátu.
+ *
+ * Načítá data ze standardního vstupu a vypisuje je v člověkem čitelné
+ * formě na standardní výstup.
+ */
+
 #include "storage.h"
 #include <stdio.h>
 

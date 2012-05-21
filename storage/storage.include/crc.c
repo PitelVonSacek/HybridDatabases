@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief Implementace výpočtu CRC kódu.
+ */
+
 static unsigned crc32_c(const unsigned char *b, 
                         const unsigned char *e, 
                         unsigned x) {
