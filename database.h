@@ -306,6 +306,16 @@ static inline bool tr_validate(Handle *H);
 #define trAbort
 #undef trAbort
 
+
+/**
+ * @brief Pomocné makro. Je vykonáno jinými tr* makry, pokud ta potřebují
+ *        propagovat neúspěch transakce.
+ *
+ * Defaultní hodnota je goto tr_failed, ale uživatelský kód si ho může
+ * předefinovat jak potřebuje.
+ */
+#define trFail goto tr_failed
+
 /** @} */
 
 
@@ -314,7 +324,7 @@ static inline bool tr_validate(Handle *H);
  *     Node functions    *
  *************************/
 
-/** @{ @name Uzly a indexy */
+/** @{ @name Uzly */
 
 /**
  * @brief Vytvoří nový uzel.
@@ -381,17 +391,6 @@ bool tr_node_write(Handle *H, Node *node, int attr, const void *value);
 
 
 /**
- * @brief Upraví indexy s ohledem na modifikaci uzlu @a node.
- *
- * @param H        Handle.
- * @param node     Modifikovaný uzel.
- *
- * @returns true v případě úspěchu. Vrátí-li false je třeba restartovat
- *          transakci.
- */
-static inline bool tr_node_update_indexes(Handle *H, Node *node);
-
-/**
  * @brief Ověří zda uzel nebyl modifikován jinou transakcí.
  *
  * @param H        Handle.
@@ -400,45 +399,6 @@ static inline bool tr_node_update_indexes(Handle *H, Node *node);
  * @returns true pokud nebyl modifikován.
  */
 static inline bool tr_node_check(Handle *H, Node *node);
-
-
-/**
- * @brief Alokuje transakční paměť.
- *
- * Pouze pro použití v indexech.
- *
- * Funkce pro alokaci paměti v rámci indexů.
- * Pro uvolnění použijte funkci tr_memory_free().
- *
- * Pokud potřebujete alokovat paměť v @c Init metodě
- * indexu použijte tr_memory_early_alloc(),
- * pro uvolnění paměti v metodě @c Destroy použijte
- * tr_memory_late_free(). Obě mají jako první parametr #GenericAllocator.
- * Ten je parametrem jak metody @c Init, tak @c Destroy. V obou případech
- * pod jménem @c allocator.
- */
-static inline void *tr_memory_alloc(Handle *H, size_t size);
-
-
-/**
- * @brief Uvolní transakční paměť.
- * @see tr_memory_alloc()
- */
-static inline void tr_memory_free(Handle *H, void *ptr);
-
-
-/**
- * @brief Alokuje transakční paměť při inicializaci indexu.
- * @see tr_memory_alloc()
- */
-static inline void *tr_memory_early_alloc(struct GenericAllocator *A, size_t size);
-
-
-/**
- * @brief Uvolní transakční paměť při prušení indexu.
- * @see tr_memory_alloc()
- */
-static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
 
 
 /**
@@ -452,16 +412,6 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
  */
 #define nodeCast(Type, node)
 #undef nodeCast
-
-
-/**
- * @brief Pomocné makro. Je vykonáno jinými tr* makry, pokud ta potřebují
- *        propagovat neúspěch transakce.
- *
- * Defaultní hodnota je goto tr_failed, ale uživatelský kód si ho může
- * předefinovat jak potřebuje.
- */
-#define trFail goto tr_failed
 
 
 /**
@@ -565,21 +515,6 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
 
 
 /**
- * @brief Aktualizuje indexy.
- *
- * Pokud se aktualizace nezdaří, provede makro #trFail. @see trUpdateIndexes()
- *
- * @param H        Handle.
- * @param node     Uzel, který byl modifikován.
- */
-#define trUpdateIndexes_(H, node)
-#undef trUpdateIndexes_
-/// Odpovídá trUpdateIndexes_(H, node)
-#define trUpdateIndexes(node)
-#undef trUpdateIndexes
-
-
-/**
  * @brief Ověří zda uzel nebyl modifikován jinou transakcí.
  *
  * Byl-li modifikován provede makro #trFail. @see trCheck()
@@ -630,6 +565,94 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
 /// Odpovídá trNodeDelete_(H, node).
 #define trNodeDelete(node)
 #undef trNodeDelete
+
+
+/**
+ * @brief Zamkne pro zápis uzel @a node.
+ *
+ * Po provedení toho makra je bezpečné k příslušnému uzlu přistupovat
+ * pomocí trInternalRead() a trInternalWrite().
+ */
+#define trLock_(H, node)
+#undef trLock_
+/// Odpovídá trLock_(H, node).
+#define trLock(node)
+#undef trLock
+
+/** @} */
+
+
+
+/*************************
+ *         Indexy        *
+ *************************/
+
+/** @{ @name Indexy */
+
+/**
+ * @brief Alokuje transakční paměť.
+ *
+ * Pouze pro použití v indexech.
+ *
+ * Funkce pro alokaci paměti v rámci indexů.
+ * Pro uvolnění použijte funkci tr_memory_free().
+ *
+ * Pokud potřebujete alokovat paměť v @c Init metodě
+ * indexu použijte tr_memory_early_alloc(),
+ * pro uvolnění paměti v metodě @c Destroy použijte
+ * tr_memory_late_free(). Obě mají jako první parametr #GenericAllocator.
+ * Ten je parametrem jak metody @c Init, tak @c Destroy. V obou případech
+ * pod jménem @c allocator.
+ */
+static inline void *tr_memory_alloc(Handle *H, size_t size);
+
+
+/**
+ * @brief Uvolní transakční paměť.
+ * @see tr_memory_alloc()
+ */
+static inline void tr_memory_free(Handle *H, void *ptr);
+
+
+/**
+ * @brief Alokuje transakční paměť při inicializaci indexu.
+ * @see tr_memory_alloc()
+ */
+static inline void *tr_memory_early_alloc(struct GenericAllocator *A, size_t size);
+
+
+/**
+ * @brief Uvolní transakční paměť při prušení indexu.
+ * @see tr_memory_alloc()
+ */
+static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
+
+
+/**
+ * @brief Upraví indexy s ohledem na modifikaci uzlu @a node.
+ *
+ * @param H        Handle.
+ * @param node     Modifikovaný uzel.
+ *
+ * @returns true v případě úspěchu. Vrátí-li false je třeba restartovat
+ *          transakci.
+ */
+static inline bool tr_node_update_indexes(Handle *H, Node *node);
+
+
+/**
+ * @brief Aktualizuje indexy.
+ *
+ * Pokud se aktualizace nezdaří, provede makro #trFail. @see trUpdateIndexes()
+ *
+ * @param H        Handle.
+ * @param node     Uzel, který byl modifikován.
+ */
+#define trUpdateIndexes_(H, node)
+#undef trUpdateIndexes_
+/// Odpovídá trUpdateIndexes_(H, node)
+#define trUpdateIndexes(node)
+#undef trUpdateIndexes
 
 
 /**
@@ -748,19 +771,6 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
 
 
 /**
- * @brief Zamkne pro zápis uzel @a node.
- *
- * Po provedení toho makra je bezpečné k příslušnému uzlu přistupovat
- * pomocí trInternalRead() a trInternalWrite().
- */
-#define trLock_(H, node)
-#undef trLock_
-/// Odpovídá trLock_(H, node).
-#define trLock(node)
-#undef trLock
-
-
-/**
  * @brief Zamkne paměť @a ptr pro zápis.
  *
  * Je-li zapnuta volba #INPLACE_INDEX_LOCKS, musí být @ptr ukazatel
@@ -776,7 +786,6 @@ static inline void tr_memory_late_free(struct GenericAllocator *A, void *ptr);
 #undef trIndexLock
 
 /** @} */
-
 
 
 /*************************
