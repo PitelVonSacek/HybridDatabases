@@ -136,7 +136,7 @@ void database_resume_service_thread(Database *D);
 
 
 /**
- * @breif Vrací čas (v sekundách), kdy se periodicky provede fsync().
+ * @brief Vrací čas (v sekundách), kdy se periodicky provede fsync().
  *
  * Je-li tato funkce vypnuta vrací 0.0.
  *

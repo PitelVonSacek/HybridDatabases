@@ -58,7 +58,7 @@ static inline void spin_or_yield(int try) {
 
 
 /**
- * Přetypuje pointer @c ptr na typ <em>Type*<em> způsobem, který
+ * Přetypuje pointer @c ptr na typ <em>Type*</em> způsobem, který
  * -fstrict-aliasing nerozbije.
  */
 #define utilCast(Type, ptr) \

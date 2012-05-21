@@ -2,7 +2,7 @@
 #define __BIT_ARRAY_H__
 /**
  * @file
- * @breif Definice datové struktury bitové pole.
+ * @brief Definice datové struktury bitové pole.
  *
  * Implementace inspirována bitovým polem v knihovně libucw
  * (http://www.ucw.cz/libucw/).
