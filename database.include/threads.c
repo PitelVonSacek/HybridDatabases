@@ -1,3 +1,16 @@
+/**
+ * @file
+ * @brief Implementace funkcí vláken.
+ */
+
+/**
+ * @brief Zpracuje transakční log.
+ *
+ * Z transakčního logu vyrobí data pro zápis (@a W) a uvolní
+ * paměť, která byla transakcí smazána.
+ * Pokud je nastaven volba #DB_DEFER_DEALLOC, tak paměť
+ * místo zmazání pouze přesune do zvláštního zásobníku (@a garbage_stack).
+ */
 static void process_transaction_log(TransactionLog *log, Database *D,
                                     Writer *W, size_t end_time
 #if SIMPLE_SERVICE_THREAD && DB_DEFER_DEALLOC
@@ -51,6 +64,7 @@ static void process_transaction_log(TransactionLog *log, Database *D,
 }
 
 #if SIMPLE_SERVICE_THREAD && DB_DEFER_DEALLOC
+/// Provede skutečné uvolnění paměti. Používano pouze při zapnutém #DB_DEFER_DEALLOC.
 static void free_garbage(GarbageStack *garbage_stack, Database *D, uint64_t end_time) {
   stack_for_each(item, garbage_stack) {
     size_t i = (size_t)*item;
@@ -66,6 +80,12 @@ static void free_garbage(GarbageStack *garbage_stack, Database *D, uint64_t end_
 }
 #endif
 
+/**
+ * @brief Zapíše @a length znaků z @a buffer do @a W.
+ *
+ * Pokud velikost @a W přesáhne limit #DB_WRITE_BUFFER_SIZE, zapíše
+ * jeho obsah do file deskriptoru @a fd a vyprázní ho.
+ */
 static inline void buffered_write(Writer *W, const void *buffer, size_t length, int fd) {
   long diff = (long)writer_length(W) + (long)length - (long)DB_WRITE_BUFFER_SIZE;
 
@@ -85,6 +105,7 @@ static inline void buffered_write(Writer *W, const void *buffer, size_t length, 
   }
 }
 
+/// Vypíše vše z @a W do file deskriptory @a fd a zavolá <tt>fsync(fd)</tt>.
 static inline void buffered_sync(Writer *W, int fd) {
   if (writer_length(W)) {
     util_fd_write(writer_ptr(W), writer_length(W), fd);
@@ -94,7 +115,11 @@ static inline void buffered_sync(Writer *W, int fd) {
   fsync(fd);
 }
 
-// true means dump finished
+/**
+ * @brief Vypíše jeden uzel z databáze na disk.
+ *
+ * Vrací @c true, pokud byl tímto uzlem výpis dokončen.
+ */
 static bool do_dump(Database *D, Writer *W, NodeType **dump_type) {
   do {
     for (int i = 0; i < DUMP__NODES_PER_TRANSACTION; i++) {
@@ -152,6 +177,11 @@ static bool do_dump(Database *D, Writer *W, NodeType **dump_type) {
   return true;
 }
 
+/**
+ * @brief Vrátí nejmenší z počátečních časů právě běžících transakcí.
+ *
+ * Užíváno jako callback funkce pro #GenericAllocator a #VPageAllocator.
+ */
 static uint64_t get_time(Database *D) {
   uint64_t current_time = ~(uint64_t)0;
 
@@ -167,12 +197,15 @@ static uint64_t get_time(Database *D) {
   return current_time;
 }
 
+/// Uklidí nepořádek.
 static void collect_garbage(Database *D) {
   dbDebug(I, "Collecting garbage...");
 
   dbDebug(I, "Collecting garbage done");
 }
 
+
+/// Funkce servisního vlákna.
 static void *service_thread(Database *D) {
   struct OutputList *job, *job_next;
   Writer W[1];
@@ -299,12 +332,14 @@ static void *service_thread(Database *D) {
   }
 }
 
+/// Převede @a d v sekundách na @c timespec strukturu @a ts.
 static inline void double_to_timespec(double d, struct timespec *ts) {
   ts->tv_sec = (time_t)d;
   ts->tv_nsec = ((long)((d - ts->tv_sec) * 1000 * 1000 * 1000));
   if (ts->tv_nsec > 999999999) ts->tv_nsec = 999999999;
 }
 
+/// Funkce vlákna časovače.
 static void *sync_thread(Database *D) {
   double period;
   struct timespec x;

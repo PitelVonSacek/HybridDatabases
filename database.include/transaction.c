@@ -1,4 +1,9 @@
-// unlocks all locks held by H
+/**
+ * @file
+ * @brief Implementace funkcí pro začátek / konec transakce.
+ */
+
+/// Odemkne všechny zámky držené @a H.
 static void _tr_unlock(Handle* H, uint64_t ver) {
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
   while (!stack_empty(H->acquired_locks))
@@ -11,6 +16,7 @@ static void _tr_unlock(Handle* H, uint64_t ver) {
 #endif
 }
 
+/// Funkce implementující čekání před restartem transakce.
 void _tr_retry_wait(int loop) {
   uint64_t t = 10000;
 
@@ -28,6 +34,7 @@ void _tr_retry_wait(int loop) {
   nanosleep(&timeout, 0);
 }
 
+/// Vyčistí handle.
 static void handle_cleanup(Handle *H) {
   atomic_write(&H->start_time, 0);
 
@@ -46,6 +53,7 @@ static void handle_cleanup(Handle *H) {
   H->commit_type = CT_ASYNC;
 }
 
+/// Provede rollback událost @a item.
 static void log_undo_item(Handle *H, struct LogItem *item, uint64_t end_time) {
   switch (item->type) {
     case LI_TYPE_RAW:
@@ -70,6 +78,11 @@ static void log_undo_item(Handle *H, struct LogItem *item, uint64_t end_time) {
   }
 }
 
+/**
+ * @brief Provede rollback až po vnořenou transakce @a tr.
+ *
+ * Je-li <tt>tr == NULL</tt> zruší celou hlavní transakci.
+ */
 void _tr_handle_rollback(Handle *H, struct Transaction *tr) {
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
   H->read_set.ptr = H->read_set.begin + tr->read_set;
@@ -90,6 +103,7 @@ void _tr_handle_rollback(Handle *H, struct Transaction *tr) {
   H->commit_type = tr->commit_type;
 }
 
+/// Zruší hlavní transakci.
 void _tr_abort_main(Handle *H) {
   struct Transaction empty_transaction;
   memset(&empty_transaction, 0, sizeof(empty_transaction));
@@ -102,6 +116,7 @@ void _tr_abort_main(Handle *H) {
   handle_cleanup(H);
 }
 
+/// Vloží prvek @a O do výstupní fronty. @a has_lock určuje zda je zámek fronty již držen.
 static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) {
   O->next = 0;
 
@@ -113,16 +128,16 @@ static void output_queue_push(Database *D, struct OutputList *O, bool has_lock) 
   sem_post(D->counter);
 }
 
+/// Provede commit hlavní transakce.
 bool _tr_commit_main(Handle *H, enum CommitType commit_type) {
   Database * const db = H->database;
   uint64_t end_time;
 
   if (commit_type == CT_ASYNC) commit_type = H->commit_type;
   
-  if (fstack_empty(H->log)) {
+  if (fstack_empty(H->log)) { // Pokud transakce jen četla
     uint64_t end_time = atomic_add_and_fetch(&H->database->time, 2);
     _tr_unlock(H, end_time);
-    // read-only transaction
     handle_cleanup(H);
 
     if (commit_type == CT_SYNC) {
