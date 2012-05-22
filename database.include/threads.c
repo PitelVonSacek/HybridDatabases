@@ -116,9 +116,9 @@ static inline void buffered_sync(Writer *W, int fd) {
 }
 
 /**
- * @brief Vypíše jeden uzel z databáze na disk.
+ * @brief Vypíše dávku uzlů z databáze na disk.
  *
- * Vrací @c true, pokud byl tímto uzlem výpis dokončen.
+ * Vrací @c true, pokud byl výpis dokončen.
  */
 static bool do_dump(Database *D, Writer *W, NodeType **dump_type) {
   do {
@@ -200,6 +200,12 @@ static uint64_t get_time(Database *D) {
 /// Uklidí nepořádek.
 static void collect_garbage(Database *D) {
   dbDebug(I, "Collecting garbage...");
+
+  generic_allocator_collect_garbage(D->tm_allocator);
+  simple_allocator_collect_garbage(&output_list_allocator);
+
+  vpage_allocator_collect_garbage(D->vpage_allocator);
+  page_allocator_collect_garbage(&page_allocator);
 
   dbDebug(I, "Collecting garbage done");
 }

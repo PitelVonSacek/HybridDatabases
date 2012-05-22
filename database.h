@@ -121,7 +121,6 @@ enum DbError database_create_new_file(Database *D);
  * @brief Pokusí se uvolnit přebytečnou paměť.
  *
  * Pošle zprávu servisnímu vláknu, aby uvolnilo přebytečnou paměť.
- * Vrátí se až po dokončení úklidu.
  *
  * @param D Databáze.
  */
