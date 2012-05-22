@@ -1,8 +1,17 @@
 #ifndef __NODE_ALLOCATOR_H__
 #define __NODE_ALLOCATOR_H__
 
-/*
- * Slab-like allocator, preferes space over speed
+/**
+ * @file
+ * @brief Alokátor uzlů.
+ *
+ * Alokuje paměť po blocích (blok odpovídá stránce) a každý blok
+ * rozděluje na jednotlivé uzly. Inspirováno alokátorem SLAB
+ * pro malé objekty.
+ *
+ * O podporu opožděného uvolńování se stará #VPageAllocator.
+ *
+ * @see allocators.h
  */
 
 #include <pthread.h>

@@ -1,3 +1,6 @@
+/// @file
+/// @brief Implementace @ref generic_allocator.h.
+
 #include "generic_allocator.h"
 
 void generic_allocator_init(struct GenericAllocator *A, size_t gc_threshold,

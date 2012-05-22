@@ -1458,7 +1458,8 @@ PREDEFINED             = NumDictionary():=struct{} \
                          Stack():=struct{} \
                          FastStack():=struct{} \
                          __STORAGE_MACROS_INCLUDE_H__:=1 \
-                         __STORAGE_INLINE_INCLUDE_H__:=1
+                         __STORAGE_INLINE_INCLUDE_H__:=1 
+#                         Database:=Database
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then 
 # this tag can be used to specify a list of macro names that should be expanded. 

@@ -1,3 +1,6 @@
+/// @file
+/// @brief Implementace @ref page_allocator.h.
+
 #include "page_allocator.h"
 
 #ifndef PAGE_ALLOCATOR_THRESHOLD
@@ -65,16 +68,19 @@ void *_page_allocator_alloc_pages(struct PageAllocator *A) {
   return block;
 }
 
+/// Kontrola velikosti stránky při startu aplikace.
 static __attribute__((constructor)) void _page_allocator_check_page_size() {
   assert(PAGE_ALLOCATOR_PAGE_SIZE == sysconf(_SC_PAGE_SIZE));
 }
 
 struct PageAllocator page_allocator;
 
+/// Kontruktor #page_allocator.
 static __attribute__((constructor)) void _pa_init() {
   page_allocator_init(&page_allocator, PAGE_ALLOCATOR_GC_THRESHOLD);
 }
 
+/// Destruktor #page_allocator.
 static __attribute__((destructor)) void _pa_destroy() { 
   page_allocator_destroy(&page_allocator);
 }

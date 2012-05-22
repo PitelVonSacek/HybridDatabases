@@ -1,20 +1,32 @@
-# note: Doxygen docs are generated from attributes.h and attributes.include.h
-# because it cannot parse this file
+/// @file
+/// @brief Definice typů atributů i s metodami.
+///
+/// Doxygen nedokáže naparsovat tento soubor, takže pro vygenerovanou
+/// dokumentaci vizte @ref attributes/attributes.h
+/// a @ref attributes/attributes.inline.h.
+
+/// @cond 0
 
 Interface {
-/// @file
+/**
+ * @file
+ * @brief Definice typů atributů.
+ *
+ * Typy atribututů:
+ * <tt>U?Int{8,16,32,64}</tt> -- podkladovým typem je <tt>(u)int*_t</tt>
+ *
+ * @c Float, @c Double, @c LDouble (@c float, @c double, <tt>long double</tt>)
+ *
+ * @c String - <tt>const char*</tt> ukončený <tt>'\0'</tt>
+ *
+ * @c RawString - <tt>const char*</tt> s délkou
+ *
+ * @c Pointer - ukazatel na uzel
+ */
+
 
 #include <stdint.h>
 #include <stdlib.h>
-
-/*
- * Attribute types:
- * UInt8-64, Int8-64 - underlaying type is (u)int*_t
- * Float, Double, LDouble (float, double, long double)
- * String - const char* terminated by '\0̈́'
- * RawString - const char * with length
- * Pointer - pointer to another Node
- */
 
 
 /**
@@ -46,24 +58,33 @@ struct RawString {
 
 struct Handle_;
 
-/// @returns Velikost daného typu atributu.
+/// Vrátí velikost daného typu atributu.
 static inline size_t attribute_size(int type);
 
+/// Inicializuje @a attr jako atribut typu @a type.
 static inline void attribute_init(int type, void *attr);
+/// Zničí @a attr za předpokladu, že je to odkaz na atribut typu @a type.
 static inline void attribute_destroy(int type, struct GenericAllocator *allocator,
                                      uint64_t end_time, void *attr);
 
+/// Zapíše hodnotu @a value do atributu @a attr.
 static inline bool attribute_write(int type, struct Handle_ *H,
                                    void * restrict attr, const void * restrict value);
 
+/// Zapíše na disk hodnotu @a value typu @a type.
 static inline void attribute_store(int type, Writer *W, const void *value);
+/// Načte hodnotu @a attr typu @a type.
 static inline bool attribute_load(int type, Reader *R,
                                   struct GenericAllocator *allocator,
                                   void *attr);
 }
 
 Implementation {
-/// @file
+/**
+ * @file
+ * @brief Implementace inline funkcí pro jenotlivé typy atributů.
+ */
+
 
 #include "../attributes/attributes.h"
 #include "../storage/storage.h"
@@ -252,4 +273,6 @@ AttributeType Pointer : union { Node *value; uint64_t id; } {
   Load { attr->id = rNumber }
   Store { wNumber(*value ? value[0]->id : 0) }
 }
+
+/// @endcond
 

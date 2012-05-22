@@ -11,6 +11,15 @@
  *    dohromady, není výsledek příliš velký
  *  - s jedním výsledným souborem je snazší manipulace
  *
+ * Implementace jednotlivých funkcí se nachází v
+ * @ref database.include/database.c,
+ * @ref database.include/database_create.c,
+ * @ref database.include/handle.c,
+ * @ref database.include/node.c,
+ * @ref database.include/read.c,
+ * @ref database.include/threads.c,
+ * @ref database.include/transaction.c a
+ * @ref database.include/write.c.
  */
 
 #include "database.h"

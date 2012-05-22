@@ -1,3 +1,6 @@
+/// @file
+/// @brief Implementace @ref vpage_allocator.h
+
 #include "vpage_allocator.h"
 
 void vpage_allocator_init(struct VPageAllocator *A, size_t gc_threshold,

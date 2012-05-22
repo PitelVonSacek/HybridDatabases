@@ -1,3 +1,6 @@
+/// @file
+/// @brief Implementace @ref node_allocator.h.
+
 #include "node_allocator.h"
 #include "../database.types/node.h"
 #include "../database.types/node_type.h"

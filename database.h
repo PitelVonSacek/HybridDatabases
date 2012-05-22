@@ -9,9 +9,24 @@
  * jsou považovány za vnitřní detaily a uživatel by na nich neměl záviset.
  *
  * Všechny zde uvedené funkce (není-li uvedeno jinak) jsou v souboru
- * database.include/type_magic.h obaleny makry tak, aby kromě typů, se kterými
+ * @ref database.include/type_magic.h obaleny makry tak, aby kromě typů, se kterými
  * jsou zde deklarovány, braly za parametry i jejich podtřídy.
  *
+ * V souboru @ref database.types/enums.h jsou definovány výčtové typy
+ * a konfigurační volby.
+ *
+ * Definice typů viz:
+ * @ref database.types/attributes.h
+ * @ref database.types/database.h
+ * @ref database.types/handle.h
+ * @ref database.types/index.h
+ * @ref database.types/node.h
+ * @ref database.types/node_type.h
+ *
+ * Implementace inline funkcí a marek se nachází v @ref database.include/macros.h
+ * a @ref database.include/inline.h.
+ *
+ * Implementace inline funkcí atributů v @ref attributes/attributes.inline.h
  */
 
 #include "database.types/attributes.h"
@@ -773,7 +788,7 @@ static inline bool tr_node_update_indexes(Handle *H, Node *node);
 /**
  * @brief Zamkne paměť @a ptr pro zápis.
  *
- * Je-li zapnuta volba #INPLACE_INDEX_LOCKS, musí být @ptr ukazatel
+ * Je-li zapnuta volba #INPLACE_INDEX_LOCKS, musí být @a ptr ukazatel
  * na strukturu, která obsahuje prvek @c lock typu #IndexLock.
  *
  * Po provedení toho makra je bezpečné k příslušné paměti přistupovat

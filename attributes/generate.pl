@@ -12,7 +12,7 @@ our @attr_types;
 our $int = "";
 our $impl = "";
 
-$Parse::RecDescent::skip = "(\\s|;|#[^\n]*\n)*";
+$Parse::RecDescent::skip = "(\\s|;|(#|//)[^\n]*\n)*";
 
 my $grammar = q{
   { my %c; }

@@ -1,17 +1,29 @@
 #ifndef __VPAGE_ALLOCATOR_H__
 #define __VPAGE_ALLOCATOR_H__
 
+/**
+ * @file
+ * @brief Alokátor stránek transakční paměti.
+ *
+ * Wrapper okolo #PageAllocator. Podporuje opožděné uvolňování paměti
+ * a je ho tedy možné použít pro alokaci transakční paměti.
+ *
+ * @see allocators.h
+ */
+
 #include <sys/mman.h>
 #include <limits.h>
 
 #include "../utils/basic_utils.h"
 #include "page_allocator.h"
 
+/// @internal
 struct VPageAllocatorItem {
   struct SList slist;
   uint64_t timestamp;
 };
 
+/// Alokátor stránek s podporou pro opožděné uvolňování.
 struct VPageAllocator {
   uint64_t (*get_time)(void*);
   void *get_time_context;
@@ -22,11 +34,23 @@ struct VPageAllocator {
   struct SList free_pages;
 };
 
+/**
+ * @brief Inicializuje #VPageAllocator.
+ *
+ * @param gc_threshold Maximální počet cachovaných stránek.
+ * @param get_time Callback funkce pro zjištění aktuálního času.
+ *                 Stránky starší než aktuální čas mohou být bezpečně uvolněny.
+ * @param context Kontext pro callback @a get_time.
+ */
 void vpage_allocator_init(struct VPageAllocator *A, size_t gc_threshold,
                           uint64_t (*get_time)(void*), void *context);
+/// Zničí #VPageAllocator.
 void vpage_allocator_destroy(struct VPageAllocator *A);
 
+
+/// Alokuje stránku transakční paměti.
 static inline void *vpage_allocator_alloc(struct VPageAllocator *A);
+/// Uvolní stránku transakční paměti v čase @a time.
 static inline void vpage_allocator_free(struct VPageAllocator *A,
                                         void *page, uint64_t time);
 
@@ -35,7 +59,10 @@ static inline void vpage_allocator_free(struct VPageAllocator *A,
  *   Implementation   *
  **********************/
 
+/// Uvolní přebytečné stránky.
 void _vpage_allocator_collect_garbage(struct VPageAllocator *A);
+
+/// Získá stránku z bufferu.
 static inline void *_vpage_allocator_get_page(struct VPageAllocator *A) {
   struct SList *page;
 

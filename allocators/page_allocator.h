@@ -1,6 +1,16 @@
 #ifndef __PAGE_ALLOCATOR_H__
 #define __PAGE_ALLOCATOR_H__
 
+/**
+ * @file
+ * @brief Jednoduchý alokátor stránek paměti.
+ *
+ * Umožňuje alokovat paměť po stránkách. Uvolněné stránky nepředáva
+ * ihned zpět systému, ale odkládá si je do bufferu pro další použití.
+ * Odložené stránky jsou uvolněny pokud jejich množství přeroste
+ * atribut @c gc_threshold.
+ */
+
 #include <sys/mman.h>
 #include <limits.h>
 
@@ -12,7 +22,7 @@
 
 
 /**
- * 1 pokud má být mmap() serializován pomocí mutexů
+ * 1 pokud má být mmap() serializován pomocí mutexů.
  * (paralelní vykonámí mmapu může způsobit alokaci příliš mnoha paměti,
  * takže se spustí gc)
  */
@@ -29,7 +39,7 @@
 
 /**
  * Určuje po kolika se mají alokovat stránky od systému.
- * Alokuje se vždy .gc_threshold / PAGE_ALLOCATOR_ALLOC_RATIO stránek.
+ * Alokuje se vždy <tt>.gc_threshold / PAGE_ALLOCATOR_ALLOC_RATIO</tt> stránek.
  */
 #ifndef PAGE_ALLOCATOR_ALLOC_RATIO
 #define PAGE_ALLOCATOR_ALLOC_RATIO 2
@@ -39,12 +49,16 @@
 #include <pthread.h>
 #endif
 
+/// Pevně zadrátovaná velikost stránky, protože ji potřebujeme již při kompilaci.
 #define PAGE_ALLOCATOR_PAGE_SIZE ((size_t)4096)
 
+/// Vrátí adresu stránky, do níž patří @a ptr.
 static inline void *page_allocator_get_page(const void *ptr) {
   return (void*)(((size_t)ptr) & ~(PAGE_ALLOCATOR_PAGE_SIZE - 1));
 }
 
+
+/// Alokátor stránek.
 struct PageAllocator {
   size_t gc_threshold;
 
@@ -56,15 +70,25 @@ struct PageAllocator {
 #endif
 };
 
+
+/// Inicializuje #PageAllocator.
 void page_allocator_init(struct PageAllocator *A, size_t gc_threshold);
+/// Zničí #PageAllocator.
 void page_allocator_destroy(struct PageAllocator *A);
 
+
+/// Alokuje stránku.
 static inline void *page_allocator_alloc(struct PageAllocator *A);
+/// Uvolí stránku.
 static inline void page_allocator_free(struct PageAllocator *A, void *page);
 
-// Global page allocator
+
+/// Globální instance PageAllocatoru.
 extern struct PageAllocator page_allocator;
+
+/// Zkratka za <tt>page_allocator_alloc(&page_allocator)</tt>.
 static inline void *page_alloc();
+/// Zkratka za <tt>page_allocator_free(&page_allocator, ptr)</tt>.
 static inline void page_free(void *page);
 
 
@@ -81,7 +105,10 @@ static inline void page_free(void *page) {
 }
 
 
+/// Vrátí paměť z buferu zpět systému.
 void _page_allocator_collect_garbage(struct PageAllocator *A);
+
+/// Vrátí stránku z vnitřínho bufferu.
 static inline void *_page_allocator_get_page(struct PageAllocator *A) {
   struct SList *page;
 
@@ -90,6 +117,7 @@ static inline void *_page_allocator_get_page(struct PageAllocator *A) {
   return page;
 }
 
+/// Alokuje blok stránek ze systému.
 void *_page_allocator_alloc_pages(struct PageAllocator *A);
 
 static inline void *page_allocator_alloc(struct PageAllocator *A) {

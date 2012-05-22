@@ -24,7 +24,6 @@ struct Handle_;
 typedef bool(*UpdateIndexes)(Handle*, enum CallbackEvent, Node*);
 
 struct Database_;
-#define Database struct Database_
 
 
 /**
@@ -35,8 +34,8 @@ typedef struct {
   const char *version;
   size_t size;
 
-  void (*init_indexes)(Database*);
-  void (*destroy_indexes)(Database*);
+  void (*init_indexes)(struct Database_*);
+  void (*destroy_indexes)(struct Database_*);
 
   DummyAncestor __ancestor;
 
@@ -99,10 +98,7 @@ struct OutputList {
   uint64_t *answer;
 };
 
-#undef Database
-/**
- * @brief Databáze, abstraktní třída, předek konkrétních typů databází.
- */
+
 typedef struct Database_ {
   const DatabaseType * const type; ///< Deskriptor typu databáze.
   

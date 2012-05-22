@@ -1,3 +1,9 @@
+/**
+ * @file
+ * @brief Hlavní zdorojový soubor alokátorů, ostatní zdrojové soubory jsou
+ *        do něj vloženy.
+ */
+
 #include "allocators.h"
 
 #include "generic_allocator.include.c"
