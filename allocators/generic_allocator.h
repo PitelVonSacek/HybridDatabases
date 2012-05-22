@@ -52,6 +52,8 @@ static inline void *generic_allocator_alloc(struct GenericAllocator *A, size_t s
 static inline void generic_allocator_free(struct GenericAllocator *A,
                                           void *ptr_, uint64_t end_time);
 
+/// Uvolní z fronty paměť, ktrou uvolnit lze.
+void generic_allocator_collect_garbage(struct GenericAllocator *A);
 
 /********************
  *  Implementation  *
@@ -63,9 +65,6 @@ static inline void *generic_allocator_alloc(struct GenericAllocator *A, size_t s
 
   return xmalloc(size);
 }
-
-/// Uvolní z fronty paměť, ktrou uolnit lze.
-void _generic_allocator_collect_garbage(struct GenericAllocator *A);
 
 static inline void generic_allocator_free(struct GenericAllocator *A,
                                           void *ptr_, uint64_t end_time) {
@@ -79,7 +78,7 @@ static inline void generic_allocator_free(struct GenericAllocator *A,
   slist_atomic_push(&A->free_list, &ptr->slist);
 
   if (atomic_read(&A->counter) > A->gc_threshold)
-    _generic_allocator_collect_garbage(A);
+    generic_allocator_collect_garbage(A);
 }
 
 #endif

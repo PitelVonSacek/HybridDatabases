@@ -19,7 +19,7 @@ void vpage_allocator_init(struct VPageAllocator *A, size_t gc_threshold,
 static void _vpage_allocator_gc(struct VPageAllocator *A, uint64_t time) {
   struct VPageAllocatorItem *page;
 
-  while (atomic_read(&A->free_pages_count) > A->gc_threshold) {
+  while (atomic_read(&A->free_pages_count)) {
     page = _vpage_allocator_get_page(A);
 
     if (!page) return;
@@ -50,7 +50,7 @@ void vpage_allocator_destroy(struct VPageAllocator *A) {
   _vpage_allocator_gc(A, ~(uint64_t)0);
 }
 
-void _vpage_allocator_collect_garbage(struct VPageAllocator *A) {
+void vpage_allocator_collect_garbage(struct VPageAllocator *A) {
   _vpage_allocator_gc(A, A->get_time(A->get_time_context));
 }
 

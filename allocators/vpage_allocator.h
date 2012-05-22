@@ -54,13 +54,13 @@ static inline void *vpage_allocator_alloc(struct VPageAllocator *A);
 static inline void vpage_allocator_free(struct VPageAllocator *A,
                                         void *page, uint64_t time);
 
+/// Uvolní přebytečné stránky.
+void vpage_allocator_collect_garbage(struct VPageAllocator *A);
+
 
 /**********************
  *   Implementation   *
  **********************/
-
-/// Uvolní přebytečné stránky.
-void _vpage_allocator_collect_garbage(struct VPageAllocator *A);
 
 /// Získá stránku z bufferu.
 static inline void *_vpage_allocator_get_page(struct VPageAllocator *A) {
@@ -90,7 +90,7 @@ static inline void vpage_allocator_free(struct VPageAllocator *A,
   slist_atomic_push(&A->free_pages, &page->slist);
 
   if (atomic_read(&A->free_pages_count) > atomic_read(&A->gc_threshold))
-    _vpage_allocator_collect_garbage(A);
+    vpage_allocator_collect_garbage(A);
 }
 
 #endif

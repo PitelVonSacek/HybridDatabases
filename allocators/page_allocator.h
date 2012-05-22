@@ -82,6 +82,9 @@ static inline void *page_allocator_alloc(struct PageAllocator *A);
 /// Uvolí stránku.
 static inline void page_allocator_free(struct PageAllocator *A, void *page);
 
+/// Vyčistí vnitřní buffer.
+static inline void page_allocator_collect_garbage(struct PageAllocator *A);
+
 
 /// Globální instance PageAllocatoru.
 extern struct PageAllocator page_allocator;
@@ -106,7 +109,7 @@ static inline void page_free(void *page) {
 
 
 /// Vrátí paměť z buferu zpět systému.
-void _page_allocator_collect_garbage(struct PageAllocator *A);
+void _page_allocator_collect_garbage(struct PageAllocator *A, size_t threshold);
 
 /// Vrátí stránku z vnitřínho bufferu.
 static inline void *_page_allocator_get_page(struct PageAllocator *A) {
@@ -134,7 +137,11 @@ static inline void page_allocator_free(struct PageAllocator *A, void *page) {
   slist_atomic_push(&A->free_pages, page);
 
   if (atomic_read(&A->free_pages_counter) > atomic_read(&A->gc_threshold))
-    _page_allocator_collect_garbage(A);
+    _page_allocator_collect_garbage(A, atomic_read(&A->gc_threshold) / 2);
+}
+
+static inline void page_allocator_collect_garbage(struct PageAllocator *A) {
+  _page_allocator_collect_garbage(A, 0);
 }
 
 #endif

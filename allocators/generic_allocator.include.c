@@ -22,7 +22,7 @@ void generic_allocator_destroy(struct GenericAllocator *A) {
   while (ptr = slist_pop(&A->free_list)) free(ptr);
 }
 
-void _generic_allocator_collect_garbage(struct GenericAllocator *A) {
+void generic_allocator_collect_garbage(struct GenericAllocator *A) {
   struct GenericAllocatorItem *item;
   uint64_t time = A->get_time(A->get_time_context);
 

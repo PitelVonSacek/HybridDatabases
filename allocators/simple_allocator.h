@@ -57,14 +57,16 @@ static inline void *simple_allocator_alloc(struct SimpleAllocator *A);
 /// Uvolní objekt.
 static inline void simple_allocator_free(struct SimpleAllocator *A, void *obj);
 
+/// Vyčistí vnitřní buffer.
+static inline void simple_allocator_collect_garbage(struct SimpleAllocator *A);
 
 /********************
  *  Implementation  *
  ********************/
 
 /// Vyčistí vnitřní buffer.
-static void _simple_allocator_gc(struct SimpleAllocator *A) {
-  while (atomic_read(&A->free_objs_count) > A->gc_threshold) {
+static void _simple_allocator_gc(struct SimpleAllocator *A, size_t threshold) {
+  while (atomic_read(&A->free_objs_count) > threshold) {
     void *obj = slist_atomic_pop(&A->free_objs);
 
     if (!obj) return;
@@ -91,7 +93,7 @@ static inline void simple_allocator_free(struct SimpleAllocator *A, void *obj) {
   atomic_inc(&A->free_objs_count);
   slist_atomic_push(&A->free_objs, obj);
   if (atomic_read(&A->free_objs_count) > A->gc_threshold)
-    _simple_allocator_gc(A);
+    _simple_allocator_gc(A, A->gc_threshold / 2);
 }
 
 static inline void simple_allocator_init(struct SimpleAllocator *A,
@@ -102,8 +104,11 @@ static inline void simple_allocator_init(struct SimpleAllocator *A,
 }
 
 static inline void simple_allocator_destroy(struct SimpleAllocator *A) {
-  A->gc_threshold = 0;
-  _simple_allocator_gc(A);
+  _simple_allocator_gc(A, 0);
+}
+
+static inline void simple_allocator_collect_garbage(struct SimpleAllocator *A) {
+  _simple_allocator_gc(A, 0);
 }
 
 #endif

@@ -21,17 +21,14 @@ void page_allocator_init(struct PageAllocator *A, size_t gc_threshold) {
 }
 
 void page_allocator_destroy(struct PageAllocator *A) {
-  A->gc_threshold = 0;
-  _page_allocator_collect_garbage(A);
+  _page_allocator_collect_garbage(A, 0);
 
 #if PAGE_ALLOCATOR_SERIALIZE_MMAP
   pthread_mutex_destroy(&A->mutex);
 #endif
 }
 
-void _page_allocator_collect_garbage(struct PageAllocator *A) {
-  size_t threshold = atomic_read(&A->gc_threshold);
-
+void _page_allocator_collect_garbage(struct PageAllocator *A, size_t threshold) {
   while (atomic_read(&A->free_pages_counter) > threshold) {
     void *page = _page_allocator_get_page(A);
 
