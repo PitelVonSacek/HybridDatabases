@@ -2,6 +2,7 @@
 #define __HANDLER_H__
 
 /// @file
+/// @brief Definice #Handle a přidružených typů.
 
 #include <semaphore.h>
 
@@ -14,6 +15,8 @@
 #include "../utils/inline_stack.h"
 #include "../utils/bit_array.h"
 
+
+/// Položka transakčního logu
 struct LogItem {
   void *ptr;
  
@@ -27,8 +30,11 @@ struct LogItem {
   char data_new[MAX_ATTR_SIZE];
 };
 
+#if !INPLACE_NODE_LOCKS && !INPLACE_INDEX_LOCKS
 typedef BitArray(DB_LOCKS) ReadSet;
+#endif
 
+/// Objekt představující vnořenou transakci.
 struct Transaction {
 #if INPLACE_NODE_LOCKS || INPLACE_INDEX_LOCKS
   unsigned read_set;

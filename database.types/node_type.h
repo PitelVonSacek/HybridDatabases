@@ -2,6 +2,7 @@
 #define __NODE_TYPE_H__
 
 /// @file
+/// @brief Definice deskriptoru typu uzlů.
 
 #include "../utils/basic_utils.h"
 #include "../storage/storage.h"

@@ -27,11 +27,7 @@ Organizace souborů:
 
 
 - allocators/* - implementace allokátorů
-  - node_allocator.* -- alokátor pro alokaci objektů pevě dané velikosti,
-                        uvolněné objekty ukládá do seznamu a při alokaci
-                        je znovu používá
-  - generic_allocator.* -- obecný alokátor, implementace je formálně korektní,
-                           ale extrémně hloupá, potřebuje vylepšit
+
 
 - attributes/*
   - def.h -- deklarace typů atributů
@@ -58,10 +54,10 @@ Organizace souborů:
 - generate/*
   -- perlové skripty generující z deklarací typů uzlů, indexů a databází
      odpovídající C-kový kód
-  -- potřebují moduly Data::Dumper a hlavně Parse::RecDescent
+  -- potřebují modul Parse::RecDescent
 
 - storage/*
-  -- implementace nízkoúrovňového souborového formátu
+  - implementace nízkoúrovňového souborového formátu
 
   - show_file.c -- utilitka pro vypsání souboru v lidsky čitelném tvaru
   - rescuer.c -- utilitka pro záchranu dat z poškozeného souboru

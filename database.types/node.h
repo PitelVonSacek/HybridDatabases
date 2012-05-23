@@ -2,6 +2,7 @@
 #define __NODE_H__
 
 /// @file
+/// @brief Definice typu #Node.
 
 #include "enums.h"
 #include "../utils/basic_utils.h"
@@ -18,12 +19,12 @@ typedef struct {
   Lock lock;
 #endif
 
-  DummyAncestor __ancestor; ///< @ref type_magic
+  DummyAncestor __ancestor;
 } Node;
 
 
 /*
-  Real node:
+  Příklad skutečného uzlu:
 
 typedef struct {
   Node __ancestor;

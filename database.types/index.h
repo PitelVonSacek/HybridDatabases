@@ -2,6 +2,7 @@
 #define __DATABASE_TYPES__INDEX_H__
 
 /// @file
+/// @brief Definice deskriptoru indexů.
 
 #include "../utils/basic_utils.h"
 #include "node.h"
@@ -20,6 +21,8 @@ typedef struct {
   void (*context_destroy)(void*, struct GenericAllocator*);
 } IndexType;
 
+/// @brief Zámek pro použití v indexech.
+/// Jsou-li zámky indxů v globální tabulce, je prázdnou srukturou.
 #if INPLACE_INDEX_LOCKS
 typedef Lock IndexLock;
 #else
@@ -27,7 +30,7 @@ typedef struct {} IndexLock;
 #endif
 
 /*
-  Real index:
+  Příklad indexu:
 
 typedef struct {
   ReturnType1 function_one(void *context, Handle *, Args...);

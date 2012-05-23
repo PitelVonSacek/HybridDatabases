@@ -2,6 +2,7 @@
 #define __DATABASE_TYPES_H__
 
 /// @file
+/// @brief Definice #Database a pomocných typů.
 
 #include <pthread.h>
 #include <semaphore.h>
