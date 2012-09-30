@@ -1,0 +1,55 @@
+\chapter*{Úvod}
+\addcontentsline{toc}{chapter}{Úvod}
+
+Tato práce se snaží vyplnit mezeru, která se rozevírá mezi (relačními) databázovými systémy
+na straně jedné a~klasickými datovými strukturami na straně druhé. Dnešní
+ databáze se zaměřují na zpracování obrovských množství dat, a~proto
+užívají velmi sofistikované metody manipulace s~nimi. Tyto
+pokročilé postupy mají však i~svou stinnou stránku -- nemalou časovou i~prostorovou
+režii. Ta se u~obrovských souborů dat neprojevuje,
+neboť je bohatě kompenzována vyšší efektivitou zpracování,
+ale u~malých dat bývá významná.
+Oproti tomu datové struktury jsou velmi rychlé a~mají flexibilnější rozhraní,
+které lze často přizpůsobit konkrétní aplikaci, ale postrádají možnost perzistentně
+ukládat data (tedy tak aby přežila restart či pád aplikace).
+
+V~důsledku zvětšování velikosti operační paměti počítačů
+stále častěji nastává situace, kdy se potřebná data vejdou do operační paměti.
+Pokud je u~dat požadováno trvalé uložení mezi běhy aplikace a~jsou tak cenná,
+že je nutné zajistit možnost jejich obnovy i~v~případě havárie systému,
+nezbývá programátorovi, než místo rychlé datové struktury použít databázi.
+Použití databáze zajistí potřebnou perzistenci a~konzistentnost dat, ale
+oproti použití datové struktury negativně ovlivní výkon aplikace.
+
+Z~toho důvodu jsem se rozhodl vytvořit hybridní databázi, která se snaží kombinovat
+výhody databází a~datových struktur. Udržuje všechna data v~paměti, 
+ve tvaru co nejpřátelštějším k~programovacímu
+jazyku dané aplikace. Zajišťuje uložení jejich konzistentní verze na disku
+a~umožňuje pracovat s~nimi pomocí transakcí. Podpora transakcí je důležitá
+jak z~důvodu určení konzistentní verze dat pro uložení na disku, tak především
+s~ohledem na stále narůstající počet (logických) procesorů v~dnešních
+počítačích, neboť elegantně eliminuje potřebu složité ruční synchronizace přístupu
+k~datům,
+která je velmi častým zdrojem těžko odhalitelných chyb.
+
+Součástí práce je i~ukázková implementace navržené databáze v~jazyce C ve~formě
+knihovny funkcí. Jazyk C byl zvolen pro svou rozšířenost, a~to především v~unixovém
+světě. Výhodou jazyka C oproti C{\tt++} je jeho rozšířenost a~\uv{kompatibilita} -- zatímco
+užívat z~C{\tt++} knihovny vytvořené v~C je velmi snadné, je použití knihoven
+vytvořených v~C{\tt++}, především obsahuje-li jejich rozhraní šablony, v~podstatě nemožné
+(přičemž podobná situace nastává s~vazbami do jiných programovacích jazyků).
+
+\subsection*{Rozčlenění práce}
+\begin{itemize}
+  \item První kapitola obsahuje motivaci k~vytvoření hybridní databáze a~hrubý
+    popis jejího fungování.
+  \item Druhá kapitola se zabývá softwarovou transakční pamětí a~její implementací
+    použitou v~této práci.
+  \item Třetí kapitola popisuje formát uložení databáze na disku.
+  \item Čtvrtá kapitola obsahuje popis rozhraní navržené databáze.
+  \item V~páté kapitole jsou rozebrány implementačně závislé aspekty hybridní
+    databáze.
+  \item Příloha 1 obsahuje příklad jednoduchého programu, který využívá hybridní databázi.
+  \item V~příloze 2 naleznete výsledky testů škálovatelnosti.
+\end{itemize}
+

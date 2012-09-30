@@ -1,0 +1,72 @@
+\chapwithtoc{Příloha 1: Ukázkový program}
+Jednoduchý program využívající hybridní databázi. Obsahuje databázi
+jmen a~pozdravů. Umožňuje přidat jméno či pozdrav a~vypsat náhodný pozdrav.
+
+\lstinputlisting[language=C,
+basicstyle=\footnotesize\tt,           % the size of the fonts that are used for the code
+  numbers=left,                   % where to put the line-numbers
+  stepnumber=1,                   % the step between two line-numbers. If it's 1, each line 
+                                  % will be numbered
+  numbersep=5pt,                  % how far the line-numbers are from the code
+  showspaces=false,               % show spaces adding particular underscores
+  showstringspaces=false,         % underline spaces within strings
+  showtabs=false,                 % show tabs within strings adding particular underscores
+  tabsize=2,                      % sets default tabsize to 2 spaces
+  captionpos=b,                   % sets the caption-position to bottom
+  breaklines=true,                % sets automatic line breaking
+  breakatwhitespace=true]{priklad.c}
+
+
+\chapwithtoc{Příloha 2: Výsledky testů}
+
+\section*{Měření rychlosti čtení}
+Hodnoty v~tabulce udavájí čas v~milisekundách, který trvalo provedení
+milionu transakcí. Za proměnnou \verb|$i| byl dosazen počet vláken.
+Testovací databáze byla vytvořena příkazem \verb|create2.exe| a~obsahovala
+milion prvků.
+
+\setlength{\parindent}{0cm}
+Příkaz: \verb|./read.exe /tmp/test_db $i $(((1000 * 1000) / $i)) 50 1|
+\setlength{\parindent}{1cm}
+
+\begin{center}
+  \input{mereni/read.tex}
+\end{center}
+
+\section*{Měření rychlosti zápisu}
+Hodnoty v~tabulce udavájí čas v~milisekundách, který trvalo provedení
+200~000 transakcí. Za proměnnou \verb|$i| byl dosazen počet vláken.
+Testy s~kolizemi a~bez kolizí se liší pouze tím, zda si pracovní vlákna
+rozdělila databázi na části a~každé pracovalo se svou částí nebo zda
+všechna vlákna přistupovala k~celé databázi.
+Testovací databáze byla vytvořena příkazem \verb|create2.exe| a~obsahovala
+100~000 prvků.
+
+
+\subsubsection*{Bez kolizí:}
+\setlength{\parindent}{0cm}
+Příkaz: \verb|./write.exe /tmp/test_db $i $(((1000 * 200) / $i)) 50 1|
+
+\begin{center}
+  \input{mereni/write.tex}
+\end{center}
+
+\newpage
+
+\subsubsection*{S kolizemi:}
+Příkaz: \verb|./write_col.exe /tmp/test_db $i $(((1000 * 200) / $i)) 50 1|
+
+\begin{center}
+  \input{mereni/write_col.tex}
+\end{center}
+
+\setlength{\parindent}{1cm}
+\subsubsection*{Kolize:}
+Následující tabulka obsahuje počet kolizí vyjádřený jako promile úspěšně dokončených
+transakcí. Data pocházejí z~běhu zápisového testu s~kolizemi.
+
+\begin{center}
+  \input{mereni/col.tex}
+\end{center}
+
+

@@ -1,0 +1,37 @@
+\chapter*{Závěr}
+\addcontentsline{toc}{chapter}{Závěr}
+
+V~této práci jsem se pokusil navrhnout a~naprogramovat datovou strukturu, která
+kombinuje výhody databází jako perzistenci a~transakce s~rychlostí běžných datových
+struktur. Výsledkem práce je návrh
+databáze, která udržuje data v~paměti, implementované jako knihovna
+funkcí. Práce s~databází a~podpora transakcí je realizována pomocí konceptu
+transakční paměti. Díky tomu je s~databází možné snadno pracovat paralelně z~více vláken.
+
+Stále ale zbývá mnoho možností, jak současnou implementaci rozšířit či vylepšit.
+Technicky nejjednodušší způsob zrychlení současné implementace je možnost přepsat
+některé části, především výpočet CRC, s~pomocí SSE instrukcí a~tak je významně urychlit.
+Mezi podstatně složitější, ale v~jistém směru užitečnější vylepšení patří implementace
+mechanismu pro automatické restartování transakcí. 
+
+Současná implementace sice obsahuje
+makra \verb|trBegin| a~\verb|trCommit|, která automatické restartování umožňují,
+ta ale používají
+exponenciálně dlouhé čekání před dalším pokusem. To
+je výhodné v~situaci, kdy jsou transakce malé a~množství kolizí nízké. Implementace
+pokročilejšího algoritmu by nejspíše vyžadovala možnost nějak zvýhodnit konkrétní
+transakce (především ty, které již opakovaně selhaly), což nyní není možné.
+
+Dalším rozšířením, které by mohlo být velmi užitečné z~praktického hlediska, je zavedení
+složených typů atributů jako jsou seznamy či slovníky (množiny párů klíč--hodnota
+s~rychlým hledáním podle klíče). Hlavní obtíží v~tomto případě je návrh vhodného
+rozhraní pro práci s~nimi a~serializaci daných operací na disk. Všechny současné atributy
+si totiž vystačí s~operacemi \uv{přečti hodnotu} a~\uv{přiřaď hodnotu},
+zatímco pro složené
+atributy jsou tyto operace krajně nevhodné a~bylo by nutné zavést operace nové.
+
+Posledním možným rozšířením, o~kterém se zmíním, jsou rozšířené kontexty indexů --
+tedy že by kontext indexu nebyla pouze jeden objekt globální pro celou databázi, ale
+indexy by mohly ukládat data i~do jednotlivých uzlů. To by mohlo zrychlit operace,
+kdy je třeba uzel vyhledat v~rámci datové struktury představující index.
+

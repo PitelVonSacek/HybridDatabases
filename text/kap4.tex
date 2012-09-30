@@ -1,0 +1,357 @@
+\chapter{Rozhraní databáze}
+Jak bylo zmíněno výše, hybridní databáze je implementována jako knihovna
+funkcí v~jazyce C. Protože jazyk C neumožňuje provést definice typů uzlů,
+indexů a~databází ve tvaru rozumně zpracovatelném pro člověka i~počítač,
+jsou tyto definice provedeny ve speciálním, k~tomuto účelu vytvořeném, jazyce.
+Tyto definice jsou následně přeloženy do jazyka C. (Při implementaci překladače
+jsem použil
+jazyk Perl \cite{Perl} s~knihovnou RecDescent \cite{RecDescent}.)
+Popis návrhu hybridní databáze začneme popisem rozhraní z~hlediska běžného uživatele,
+poté představíme jazyk pro generování definic. V~příloze 1 naleznete jednoduchý
+příklad použití databáze.
+
+\section{Hybridní databáze z~pohledu uživatele}
+
+Nejprve popíšeme rozhraní, které bude uživatel používat při běžné práci s~databází.
+Datové typy \verb|Node|, \verb|Handle| a~\verb|Database| jsou abstraktní
+třídy. Proto všechny funkce, které je mají jako parametr,
+jsou v~implementaci obaleny makry, takže bez explicitního
+přetypování je jim jako parametry možné předat i~podtřídy daných tříd.
+Pokud je nějaká funkce má jako návratovou hodnotu, většinou existuje makro
+s~jiným jménem obalující funkci tak, aby přímo vracela správný typ (často
+se parametry makra mírně liší od funkce, protože kupř. makra berou jako parametry
+místo deskriptorů typů jejich názvy).
+
+\subsection{Vytváření a~zánik databáze}
+\begin{verbatim}
+Database *database_create(const DatabaseType *type,
+                          const char *file,
+                          enum DbFlags flags);
+#define dbCreate(Type, file, flags)
+
+void database_close(Database *D);
+\end{verbatim}
+
+Databázi je možné vytvořit voláním funkce \verb|database_create| nebo makra
+\verb|dbCreate|. Výhodou makra je, že jeho návratový typ není \verb|Database*|,
+ale ukazatel na konkrétní podtřídu typu \verb|Database| (uvnitř makro stejně volá funkci
+\verb|database_create|).
+
+Funkce \verb|database_create| nejprve alokuje a~inicializuje objekt databáze.
+Poté zkontroluje schéma databáze \verb|file.schema| (tj. soubor obsahující popis typů
+uzlů a~jejich atributů, které databáze může obsahovat) a~načte data uložená v~souborech
+\verb|file.N|, kde \verb|N| je přirozené číslo. Čísla souborů nemusí začínat od
+jedné, ale posloupnost nesmí obsahovat mezeru, jinak vytváření databáze skončí chybou.
+(Protože dává smysl smazat první soubor za předpokladu, že databáze byla vypsána
+do druhého souboru, ale není možné odstranit nějaké transakce uprostřed historie.)
+První soubor v~posloupnosti také musí obsahovat výpis databáze.
+(Podobnější informace o~diskovém formátu naleznete ve třetí kapitole.)
+Když jsou všechna data v~paměti, proběhne inicializace indexů a~na závěr jsou spuštěna
+pomocná vlákna.
+
+Pomocná vlákna jsou dvě -- servisní vlákno a~vlákno časovače. Servisní vlákno se stará
+o~zápis transakcí na disk. Ty jsou mu předávány pomocí globální fronty jednotlivými
+transakčními vlákny. (Míra zpracování transakcí v~okamžiku jejich předání servisnímu
+vláknu závisí na konfiguračních volbách databáze.) Kromě toho ještě zajišťuje
+vypsání databáze na disk a~zakládání nových souborů. Servisní vlákno transakce
+nezapisuje okamžitě (není-li to explicitně vyžadováno), ale ukládá je do bufferu,
+který je zapsán, až když je plný. Aby bylo zajištěno, že i~pří nízkém množství zápisů
+budou data zapsána v~konečném čase, existuje vlákno časovače. Vlákno časovače periodicky
+(v~základním nastavení každých 5~s) posílá zprávu servisnímu vláknu, aby zapsalo obsah
+bufferu na disk a~zavolalo funkci \verb|fsync|. Ta přinutí systém data skutečně
+zapsat, a~ne držet je ve vlastních bufferech.
+
+Databáze se uzavírá voláním \verb|database_close|. Je na
+uživateli databáze, aby zajistil, že v~době tohoto volání již žádné vlákno s~databází
+nepracuje.
+
+\subsection{Handly a~transakce}
+\begin{verbatim}
+#define dbHandleCreate(D)
+Handle *db_handle_create(Database *D);
+
+void db_handle_free(Handle *H);
+
+void tr_begin(Handle *H);
+void tr_abort(Handle *H);
+bool tr_commit(Handle *H, enum CommitType commit_type);
+
+void tr_hard_abort(Hadler *H);
+\end{verbatim}
+
+Dříve než může vlákno začít transakci, potřebuje handle. Handle představuje
+jakýsi kontext transakce -- obsahuje transakční log, readset a~všechny další
+nezbytnosti pro její běh. Transakce samy nemají podobu objektů, ale vždy
+je funkcím v~rámci transakce předáván handle. Výhodou je, že jeden handle může
+být postupně využit pro mnoho transakcí, čímž se šetří opakované alokace paměti,
+a~protože databáze potřebuje mít přehled o~běžících transakcích, i~množství
+práce s~centrální strukturou.
+
+Funkce \verb|tr_begin| zahájí novou transakci. Co skutečně vykoná závisí na tom,
+zahajujeme-li hlavní transakci nebo běží-li již nějaká transakce a~zahajujeme pouze
+vnořenou transakci. Práce s~hlavní transakcí závisí na implementaci STM,
+která byla popsána ve druhé kapitole, takže se ji zde nebudu
+věnovat. Naopak vnořené transakce se odehrávají zcela v~rámci příslušné hlavní
+transakce a~fungují jako \uv{záložky} v~transakčním logu -- když je zahájena vnořená
+transakce, je na zásobník vnořených transakcí, který každý handle obsahuje, umístěna
+položka popisující současný stav transakčního logu a~readsetu.
+
+Obdobně při úspěšném ukončení transakce pomocí \verb|tr_commit| nebo jejím zrušení
+voláním \verb|tr_abort|. Při ukončení vnořené
+transakce pomocí \verb|tr_commit|, volání \verb|tr_commit| vždy uspěje a~pouze
+odstraní položku z~vrcholu zásobníku vnořených transakcí, čímž se daná vnořená transakce
+stane součástí nadřazené transakce. Parametr \verb|commit_type| určuje, zda bude commit
+synchronní, tj. funkce \verb|tr_commit| se vrátí až po zapsání celé transakce na disk,
+či asynchronní, kdy návrat z~funkce proběhne okamžitě po předání dat servisnímu
+vláknu.
+
+Funkce \verb|tr_abort| a~\verb|tr_hard_abort| provedou rollback transakce (tedy vrátí
+změny, které transakce doposud provedla). Rozdíl mezi nimi je ten, že \verb|tr_abort|
+zruší pouze aktuální (vnořenou) transakci, zatímco \verb|tr_hard_abort| vždy zruší celou
+hlavní transakci. To je užitečné pokud nějaká operace uvnitř transakce selže z~důvodu
+kolize s~jinou transakcí. V~ideálním světě by v~tu chvíli příslušná operace sama
+provedla rollback a~restart transakce (například vyvoláním k~tomu určené výjimky).
+Jelikož ale jazyk C neobsahuje výjimky a~použití nějaké konkrétní implementace výjimek
+by uživatele nutilo používat danou implementaci v~celém jeho kódu, vracejí všechny
+funkce, které mohou selhat, hodnotu typu \verb|bool| přičemž \verb|true| značí úspěch
+a~\verb|false| selhání. Při selhání je pak na uživateli, aby zajistil zrušení transakce
+voláním \verb|tr_hard_abort| a~její následné restartování.
+
+\subsection{Makra pro usnadnění práce s~transakcemi}
+\begin{verbatim}
+#define trFail
+
+#define trBegin
+#define trCommit(commit_type, restart_action)
+#define trAbort
+\end{verbatim}
+
+Pro pohodlnější práci s~transakcemi jsme implementovali i~makra, která doplňují jistou
+podporu pro automatické restartování transakcí. Makra \verb|trBegin| a~\verb|trCommit|
+spolu tvoří závorky obalující transakci. Pokud selže commit nebo nějaká operace uvnitř
+transakce, tak se transakce sama zruší a~restartuje. Aby se předešlo live-locku,
+transakce před restartem počká náhodný čas, přičemž maximální čas čekání exponenciálně
+roste v~závislosti na tom, o~kolikátý restart dané transakce se jedná.
+
+Jak tato makra zjistí, že operace uvnitř transakce selhala, když nemají k~dispozici
+výjimky? Jednoduše -- každé makro při selhání vykoná makro \verb|trFail|. To je
+defaultně nastaveno jako skok na návěstí \verb|tr_failed|, které je definované uvnitř
+makra \verb|trCommit|. Tento přístup má samozřejmě svá omezení, např. nefunguje
+transparentně, pokud práce s~databází probíhá uvnitř volání funkce. Naopak ale umožňuje
+uživateli přizpůsobit ho svým potřebám předefinováním makra \verb|trFail|. Z~důvodu
+jisté omezenosti toho přístupu má makro \verb|trCommit| jako druhý, volitelný parametr
+kousek kódu, který je proveden, pokud daná transakce selže a~není transakcí hlavní.
+V~tom případě nemůže být přímo restartována, ale musí propagovat selhání až do hlavní
+transakce.
+
+Makra \verb|trBegin|, \verb|trCommit| a~\verb|trAbort| pracují s~handlem jménem
+\verb|H|. Pokud je nutné použít jiný handle, existují k~těmto makrům varianty,
+které mají na konci jména podtržítko a~mají navíc jako první parametr handle.
+
+\subsection{Práce s~uzly a~indexy}
+\begin{verbatim}
+#define trNodeCreate(NodeType)
+#define trNodeDelete(node)
+
+#define trRead(node, Attribute)
+#define trWrite(node, Attribute, new_value)
+
+#define trUpdateIndexes(node)
+
+#define nodeCast(NodeType, node)
+\end{verbatim}
+
+Stejně jako výše uvedená makra, i~tato pracují s~handleem jménem \verb|H| (kromě makra
+\verb|nodeCast|) a~při selhání provedou makro \verb|trFail|. Makro \verb|trNodeCreate|
+vytvoří nový uzel daného typu a~aktualizuje příslušné indexy. Obdobně makro 
+\verb|trNodeDelete|
+uzel smaže a~provede aktualizaci indexů. Naopak makro \verb|trWrite|, které slouží pro
+zápis do existujícího uzlu, po svém provedení indexy neaktualizuje.
+
+K~tomuto chování
+má dva důvody: Za prvé není neobvyklé, že v~rámci jedné transakce je jednomu uzlu
+modifikováno několik atributů, a~pokud by indexy byly aktualizovány po zápisu každého
+z~nich, představovalo by to zbytečnou režii. Druhý důvod je možná ještě důležitější
+-- pro indexy může být výhodné předpokládat, že každý uzel splňuje určité invarianty,
+čehož není možné dosáhnout, je-li index aktualizován po každém zápisu, protože přechod
+mezi korektními stavy může vyžadovat modifikaci několika atributů. Proto existuje
+makro \verb|trUpdateIndexes|, které informuje indexy o~změně příslušného uzlu.
+Toto makro je nutné zavolat na každý modifikovaný uzel před koncem příslušné transakce.
+
+Makro \verb|trRead| slouží ke čtení hodnot atributů uzlů. Jeho důležitou vlastností
+je, že poskytuje konzistentní pohled na data (problematika konzistentního čtení
+je důkladněji probrána v~následující kapitole), takže uživatel je odstíněn od změn
+prováděných jinými transakcemi. 
+
+\subsection{Práce s~indexy}
+
+\begin{verbatim}
+#define trIndex(jméno_indexu, metoda_index, parametry...)
+\end{verbatim}
+Jak bylo zmíněno výše, indexy jsou klíčem pro přístup k~jednotlivým uzlům.
+V~rámci této práce rozumíme indexem libovolnou datovou strukturu, jejíž
+stav je jednoznačně určen stavem databáze, nad níž je vytvořena. Protože jsou indexy,
+jako jediný způsob pro (počáteční) přístup k~uzlům databáze, pro práci s~ní
+klíčové, byly navrhovány se snahou vytvořit je co nejobecnější při zachování
+jednoduchosti práce.
+
+Z~hlediska databáze
+je rozhraní indexů velmi jednoduché -- každý index se skládá z~kontextu, tedy vlastní
+datové struktury (která je databází automaticky alokována) a~callback funkce, která
+je volána při změně (relevantní části) databáze. Callback má jako parametry kontext,
+typ události, uzel, k~němuž se daná událost váže, a~samozřejmě handle, protože update
+indexů vždy probíhá v~rámci příslušné transakce. Protože je i~celý kontext indexu
+součásti transakční paměti, chová se z~pohledu ostatních vláken stejně jako zbytek
+databáze -- především tedy ostatní vlákna vždy vidí index v~konzistentním stavu.
+Kromě callback funkce obsahuje každý index ještě funkce pro inicializaci kontextu
+a~uvolnění prostředků indexem užívaných.
+
+Z~pohledu uživatele je rozhraní indexu zcela v~režii jeho tvůrce. K~jednotlivým metodám
+se přistupuje pomocí makra \verb|trIndex|. Toto makro obaluje skutečnou funkci, která 
+má hlavičku:
+\begin{verbatim}
+bool jméno_metody(const Typ_kontextu* context, Handle *H,
+                  NávratovýTyp *value, další_parametry...)
+\end{verbatim}
+
+Návratová hodnota je vždy typu \verb|bool| a~signalizuje, zda bylo volání úspěšné,
+nebo došlo ke kolizi a~je nutné transakci restartovat (\verb|true| značí úspěch).
+Toto chování je uživateli neviditelné. V~případě selhání makro \verb|trIndex| provede
+\verb|trFail| a~bude tak selhání propagovat dále. V~případě úspěchu vrátí hodnotu
+\verb|*value|. Z~pohledu tvůrce indexu stojí za pozornost, že uvnitř definice metody
+indexu je makro \verb|trFail| definováno jako \verb|return false| místo běžné definice
+\verb|goto tr_failed|.
+
+
+\section{Generování definic}
+Součástí ukázkové implementace je i~jazyk pro deklarování typů indexů, uzlů a~databází.
+Původně jsem se chtěl obejít bez tvorby nového jazyka, ale ukázalo se, že tyto
+typy není možné dost přehledně deklarovat pouze pomocí jazyka C a~jeho vestavěného
+preprocesoru. Proto jsem vytvořil jazyk pro tyto definice. Zdrojový kód v~tomto jazyce
+je překládán pomocí skriptu v~jazyce Perl \cite{Perl} do jazyka C.
+Kromě deklarací typů užívám obdobný jazyk i~pro generování funkcí pro práci
+s~jednotlivými typy atributů.
+Perlový překladač staví na knihovně RecDescent \cite{RecDescent}, která umožňuje
+snadné parsování textu na základě jeho gramatiky. 
+Nejprve ukážeme základní syntaxi navrženého jazyka, a~poté
+popíšeme jednotlivé typy definic.
+
+\subsection{Základní syntaxe}
+\begin{alltt}
+{\sl{}file} := ( {\sl{}interface} | {\sl{}implementation} | {\sl{}include} | {\sl{}node\_type} | 
+        {\sl{}index\_type} | {\sl{}database\_type} )*
+
+{\sl{}interface} := 'Interface' {\sl{}block}
+{\sl{}implementation} := 'Implementation' {\sl{}block}
+{\sl{}include} := 'Include' /"([^"]+)"/
+\end{alltt}
+
+Nejprve pár slov k~syntaxi. Jazyk rozlišuje velikost písmen.
+Parser zpracovává kód po tokenech, které mohou být odděleny
+libovolným počtem bílých znaků. Za bílý znak je považován i~středník a~komentáře,
+které začínají znakem~\verb|#| a~pokračují do konce řádku.
+Element \verb|block| představuje blok kódu uzavřený ve složených závorkách. Ty se
+mohou uvnitř bloku vyskytovat za předpokladu, že jsou spárované. Celý blok je považován
+za jeden token.
+
+Element \verb|Include| slouží k~načtení obsahu jiného souboru. Jméno souboru v~uvozovkách
+je interpretováno jako relativní či absolutní, nedochází k~prohledávání žádných
+adresářů s~hlavičkovými soubory. Při vkládání souboru není kontrolováno opakované vložení
+souboru. Sémanticky odpovídá direktivě \verb|#include|
+jazyka C. Elementy \verb|Interface| a~\verb|Implementation| slouží k~vložení bloku
+kódu v~jazyce C před vygenerované deklarace resp. definice. (Tedy pokud v~implementaci
+indexu budu chtít použít funkce z~hlavičkového souboru \verb|foo.h|, tak do kódu
+vložím \verb|Implementation { #include "foo.h" }|.) Těchto elementů se v~jednom souboru
+může nacházet libovolné množství, přičemž ve výsledném souboru jsou za sebou tak,
+jak byly uvedeny.
+
+\subsection{Definice uzlů}
+\begin{alltt}
+{\sl{}node\_type} := 'NodeType' {\sl{}name} '\{' {\sl{}node\_attribute}* '\}'
+{\sl{}node\_attribute} := 'Attribute' {\sl{}name} ':' {\sl{}attribute\_type}
+\end{alltt}
+
+Typy uzlů se definují pomocí klíčového slova \verb|NodeType|. Definice pak obsahuje
+jména atributů a~jejich typy, přičemž na pořadí atributů záleží.
+Současně implementované jsou následující typy atributů
+(které pokrývají základní typy jazyka C):
+
+\begin{itemize}
+  \item Znaménkové typy \verb|Int8|, \verb|Int16|, \verb|Int32| a~\verb|Int64|
+    jsou v~paměti realizovány datovými typy \verb|int{8,16,32,64}_t|.
+  \item Neznaménkové typy \verb|UInt8|, \verb|UInt16|, \verb|UInt32| a~\verb|UInt64|
+    jsou v~paměti realizovány datovými typy \verb|uint{8,16,32,64}_t|.
+  \item Reálná čísla \verb|Float|, \verb|Double| a~\verb|LDouble| jsou realizovány
+    datovými typy \verb|float|, \verb|double| a~\verb|long double|.
+  \item Typ \verb|String| představuje textový řetězec ukončený znakem \verb|'\0'|
+    a~je realizován datovým typem \verb|char*|.
+  \item Typ \verb|RawString| představuje řetězec, který může obsahovat hodnotu
+    \verb|'\0'|. V~paměti je reprezentován typem \verb|struct RawString|.
+  \item Typ \verb|Pointer| představuje ukazatel na jiný uzel. Z~technických důvodů
+    je realizován jako \verb|union| identifikátoru uzlu a~ukazatele na uzel. Z~pohledu
+    uživatele se jeví jako pouze jako \verb|Node*|. Použití \verb|union|u je nutné,
+    protože při načítání dat ze souboru je do atributu typu \verb|Pointer|
+    nejprve uložen identifikátor uzlu, na který ukazuje, a~až když jsou načteny
+    všechny uzly,
+    je možné je projít a~změnit identifikátory uzlů na ukazatele na ně.
+\end{itemize}
+
+
+\subsection{Definice indexů}
+\begin{alltt}
+{\sl{}index\_type} := 'IndexType' {\sl{}name} ':' {\sl{}type\_of\_context}
+              '\{' {\sl{}i\_init i\_destroy i\_update i\_method}* '\}'
+{\sl{}i\_init} := 'Init' {\sl{}block}
+{\sl{}i\_destroy} := 'Destroy' {\sl{}block}
+{\sl{}i\_update} := 'Update' {\sl{}block}
+{\sl{}i\_method} := 'Method' {\sl{}name} ( '(' {\sl{}arguments...} ')' )? ':' 
+            {\sl{}return\_type block}
+\end{alltt}
+
+Každý typ indexu se skládá alespoň z~typu kontextu, konstruktoru, destruktoru
+a~metody \verb|Update|. Dále by měl obsahovat alespoň jednu metodu, protože
+metody indexu jsou jediným způsobem, jak z~něj získat informace.
+Typ kontextu je datový typ, který bude sloužit jako kontext 
+pro příslušný typ indexu,
+tj. ukazatel na objekt toho typu bude předáván všem metodám indexu.
+
+Konstruktor a~destruktor (tedy metody \verb|Init| a~\verb|Destroy|) jako jediné
+pracují mimo transakce, protože pracují ještě před startem, resp. po zastavení
+transakční paměti. Obě mají jako parametr kontext a~\verb|GenericAllocator|, pomocí
+něhož mohou alokovat, resp. uvolňovat paměť. K~práci nemohou použít \verb|malloc|
+a~\verb|free|, protože celý index musí být součástí transakční paměti, aby
+mohl správně fungovat případný rollback transakce.
+
+Metoda \verb|Update| slouží k~aktualizaci indexu a~je kromě konstruktoru a~destruktoru
+jedinou metodou, která smí upravovat kontext. Jejími parametry jsou kontext, handle
+transakce, druh události a~uzel, jehož se událost týká. Událost smazání uzlu je
+provedena dříve, než je příslušný uzel smazán, takže metoda \verb|Update| s~ním
+může pracovat. Naopak při vytvoření uzlu je událost vyvolána, až když je uzel vytvořen
+a~inicializován. V~metodě \verb|Update| lze k~práci s~pamětí používat funkce
+\verb|tr_memory_alloc()| a~\verb|tr_memory_free()|. Obě mají jako první parametr
+handle.
+
+Uživatelské metody vytvořené pomocí klíčového slova \verb|Method| mají jako parametry
+kontext, handle transakce, ukazatel na návratovou hodnotu a~uživatelem definované
+argumenty. Uživatelské metody stejně jako \verb|Update| vždy probíhají v~rámci transakce
+a~mají návratovou hodnotu typu \verb|bool|, která značí, zda metoda byla úspěšná
+(\verb|true|), nebo došlo ke kolizi a~je třeba restartovat transakci (\verb|false|).
+Proto uživatelské metody nemohou vracet žádnou další informaci přímo, ale je nutné
+využít parametru typu ukazatel.
+
+\subsection{Definice databází}
+\begin{alltt}
+{\sl{}database\_type} := 'DatabaseType' {\sl{}name} '(' {\sl{}version} ')' 
+                 '\{' ( {\sl{}node} | {\sl{}index} )? '\}'
+{\sl{}node} := 'NodeType' {\sl{}name}
+{\sl{}index} := 'Index' {\sl{}name} 'for' ( {\sl{}node\_type} | 'all' ) ':' {\sl{}index\_type}
+\end{alltt}
+
+Databáze je určena jménem, verzí (což je libovolné \uv{slovo}, jediným účelem je
+moci rozlišit mezi různými verzemi databáze téhož jména) a~typy uzlů, které obsahuje.
+U~typů uzlů záleží na pořadí, v~němž jsou uvedeny. Důležité je, že definice indexů
+na disk ukládána není, takže je možné používat jednu databázi v~různých programech
+s~různými indexy. Každý index je určen jménem, pod nímž bude uživatelům přístupný,
+svým typem a~typem uzlů, na který je navázán. Je-li jako typ uzlu uvedeno klíčové
+slovo \verb|all|, je index informován o~změnách všech uzlů v~databázi.
+

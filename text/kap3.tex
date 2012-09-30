@@ -1,0 +1,302 @@
+\chapter{Ukládání na disk}
+
+V~této kapitole nejprve prozkoumám úpravy, které je nutné provést v~implementaci
+transakční paměti, aby mohl být průběh každé transakce zaznamenán, takže po restartu
+aplikace může být průběh transakce \uv{přehrán}. Nejprve
+popíši v~jakých formátech je možné ukládat obsah databáze na disk, a~poté jaký formát
+jsem při implementaci zvolil.
+
+\section{Rozšíření STM o~zápis změn}
+
+Pro implementaci hybridní databáze je třeba STM rozšířit tak, aby při commitu transakce
+zajistila zapsání změn na disk. Tedy doplnit logování v~průběhu transakce
+o~informace, které umožní její opětovné provedení, a~upravit commit, aby tyto informace
+zapsal na disk.
+
+Zápis na disk může být pomalý a~vlákno s~transakcí nemusí chtít
+čekat na jeho dokončení. Navíc zapisovaná data je nutno v~souboru seřadit (při použití
+globálních hodin nejlépe dle času commitu). Proto je vhodné zavést pomocné vlákno (dále
+servisní vlákno), které
+bude od ostatních vláken dostávat data, která mají být zapsána, a~bude se starat
+o~vlastní zápis. Data je nejlépe předávat pomocí globální fronty požadavků
+(která se postará o~správné pořadí zápisu).
+
+\subsection{Ukládání dat v~průběhu transakce}
+Možností, jak držet potřebná data v~průběhu transakce, je několik. Nejpřímočařejší
+je zapisovat do bufferu transakci tak, jak má být uložena
+na disku. Výhodou je relativně snadná implementace (pokud je diskový formát vhodný),
+naopak nevýhodnou může být prodloužení doby transakce (\uq{každý zápis se dělá dvakrát}).
+Další variantou je místo zapisování logu v~nějakém vhodném interním formátu, který
+budu převeden do formátu pro zápis až při / po (úspěšném) commitu. 
+
+Toto řešení s~předchozím
+sdílí problém vyššího množství zápisů do paměti, avšak při vhodném návrhu je výhodnější,
+protože zkracuje čas strávený uvnitř transakce. Naopak zvětšuje čas pro zápis logu
+na disk, ale to tolik nevadí, protože tato operace může probíhat již mimo transakční
+paměť. Významnou výhodou obou těchto přístupů je nezávislost na implementaci
+transakční paměti, takže mohou být použity i~v~případě, že implementace transakční
+paměti je pevně daná -- což může být užitečné s~nástupem hardwarových implementací
+transakční paměti.
+
+Poslední variantou je integrace logu pro zápis na disk do standardního transakčního
+logu, který je již součástí implementace transakční paměti. Výhodou tohoto přístupu
+je snížení jak paměťové, tak časové režie, protože místo dvou logů obsahujících
+z~velké části duplicitní informace (např. adresy, kam bylo zapisováno) máme log
+pouze jeden. Podmínkou pro použití tohoto přístupu je samozřejmě možnost modifikovat
+implementaci transakční paměti. Protože implementace transakční paměti je součástí
+této práce, rozhodl jsem se pro tento přístup.
+
+\subsection{Zpracování dat při commitu}
+Pokud jsou potřebná data v~průběhu transakce ukládána do bufferu přímo v~diskovém
+formátu, stačí je v~průběhu commitu zařadit do fronty ke zpracování servisním vláknem.
+Pokud jsou ovšem uložena v~jiném tvaru, nabízí se otázka, zda je má do formátu
+pro zápis převést vlákno vykonávající příslušnou transakci, nebo až servisní vlákno.
+Otázka času zpracování se nabízí také pro uvolňování paměti (které vždy funguje
+jako dopředný log).
+
+Výhodou odsunutí práce do servisního vlákna je zrychlení commitu. To může vést k~vyššímu
+výkonu aplikace, pokud zápisů není tolik, aby servisní vlákno zahltily (výrazného
+zrychlení lze dosáhnout především ve chvíli, kdy zapisuje pouze jedno vlákno).
+Druhou výhodou může být snazší implementace, protože paměť uvolňuje
+pouze servisní vlákno (při vhodném řešení rollbacku), takže odpadají synchronizační
+problémy.
+
+Naopak výhodou ponechání práce na jednotlivých vláknech je vyšší propustnost servisního
+vlákna. Problémem však může být komplikovanější synchronizace servisního vlákna,
+jelikož frontu nestačí implementovat jako spojový seznam (chráněný zámkem při přidávání
+položek vlákny transakcí) se semaforem, který určuje počet nezpracovaných položek v~něm,
+ale je nutné nejprve transakci zařadit do fronty, poté zpracovat transakční log
+a~nakonec oznámit servisnímu vláknu, že transakce je připravena k~zápisu.
+(Složitější synchronizaci se lze vyhnout zpracováním logu pod ochranou zámku fronty,
+což je ale nevhodné, protože to výrazně prodlouží dobu držení zámku, nebo zpracováním
+na počátku commitu před přidáním do fronty, což zvyšuje riziko
+kolize s~jinou transakcí.)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Zvolený diskový formát}
+
+V~této sekci popíši možnosti, jak ukládat databázi na disk, a~jaké řešení jsem
+zvolil pro hybridní databázi.
+
+\subsection{Datové formáty obecně}
+Většina databází (především relačních) používá souborový formát respektující strukturu dat
+-- typicky soubory odpovídají tabulkám a~každý soubor je vnitřně rozdělen na části
+stejné velikosti, které odpovídají jednotlivým řádkům (v~praxi používané formáty
+jsou samozřejmě složitější kvůli podpoře pro data neomezené délky, přímo do datového
+souboru zakomponované indexy atp.). Výhodou je jednoduchá práce s~daty, protože
+ta lze přímo načítat a~zapisovat do souboru bez složitého zpracování v~paměti. Naopak
+problémem je nízká rychlost zápisu, protože změny v~různých řádcích databáze znamenají
+zápisy na různá místa různých souborů, což je u~rotačních disků velmi pomalé a~u~ssd
+disků může velmi snižovat životnost (protože disky SSD jsou schopny přepisovat data
+pouze po velkých blocích (řádově desítky až stovky kilobytů \cite{ssd})
+a~každý blok vydrží jen omezené množství přepsání a~i~sebemenší změna v~databázi přepíše
+celý blok).
+
+Ještě významnějším problém je nemožnost zaručení konzistence dat, protože
+zápis změn zjevně není atomickou operací. Proto se většinou tento způsob uložení dat
+doplňuje ještě o~transakční log, kam se zapisují operace, které se na databázi provádějí.
+S~jeho pomocí je v~případě havárie možné převést data zpět do posledního uloženého
+konzistentního stavu. Užití logu může mít i~pozitivní dopad na výkon. Celková propustnost
+se sice sníží, protože je kromě změn přímo v~datových souborech je navíc zapisován
+i~log, ale transakci je při vhodné implementaci možné považovat za úspěšnou již
+po jejím zapsání logu, které je rychlejší než modifikace datových souborů, protože
+do logu se zapisuje sekvenčně, takže latence při commitu transakce může výrazně klesnout.
+
+Datový formát založený na logu změn je naopak oblíben u~noSQL in-memory databází
+(např. Redis \cite{Redis}).
+Jeho výhodou je snadný zápis a~rychlý zápis. Naopak problémem může být nutnost
+zpracovat celý log dříve, než můžeme číst data (což příliš nevadí, čteme-li
+log pouze při startu databáze). Závažnější je zvětšování logu v~průběhu práce
+s~databází, protože do logu se data pouze připisují a~nikdy se neodebírají.
+Běžným řešením je při překročení určité velikosti logu vygenerovat log
+nový, který obsahuje nejkratší posloupnost operací vedoucí k~současnému stavu databáze,
+a~jím nahradit ten starý, příliš dlouhý. Aby tento přístup fungoval, nesmí
+být množství zápisů do databáze příliš velké.
+
+
+\subsection{Formát Hybridní databáze}
+Protože Hybridní databáze uchovává za běhu všechna data v~paměti, zvolil jsem
+diskový formát založený na logu.
+Navržený diskový formát se skládá ze dvou vrstev. Spodní vrstva se stará o~detaily
+uložení na disku a~poskytuje vyšší vrstvě jednoduchou abstrakci pro strukturovaná data.
+Vyšší vrstva pak definuje prostředky té nižší, jak jsou uloženy jednotlivé uzly
+a~operace s~nimi.
+
+\subsubsection*{Nižší vrstva}
+
+Cílem spodní vrstvy je poskytnout vyšší vrstvě abstrakci pro strukturovaná
+data, v~jejímž rámci je pak vybudován vlastní formát databáze, při zachování maximální
+jednoduchosti a~tím i~rychlosti zpracování. Každý datový soubor se skládá z~jednotlivých
+tzv. kořenových elementů. Kořenovým elementem může být pole (seznam) či řetězec.
+Řetězcem je zde myšlena konečná posloupnost bytů (tedy speciálně může obsahovat znak
+\verb|'\0'|) a~pole je konečná posloupnost jiných polí a~řetězců. 
+
+Klíčovou odlišností
+kořenových elementů oproti elementům vnořeným je, že před každým z~nich je uvedena
+celková délka daného elementu a~na konci každého z~nich může být CRC kód.
+Pro přehlednost uveďme gramatiku popisující nižší vrstvu, přičemž
+přesný způsob uložení jednotlivých částí bude popsán dále:
+
+\begin{alltt}
+{\sl{}soubor} := {\sl{}kořenový\_element}*
+{\sl{}kořenový\_element} := '[' "délka kořenového elementu" ']'
+                    {\sl{}element} ( '#' "CRC32 Castagnoli" )? '.'
+
+{\sl{}element} := {\sl{}řetězec} | {\sl{}pole}
+{\sl{}pole}    := '(' {\sl{}element}* ')'
+{\sl{}řetězec} := "délka řetězce" "obsah řetězce"
+\end{alltt}
+
+
+Délka kořenových elementů je užitečná spíše pro snadné načítání, kdy je celý kořenový
+element načten do bufferu v~paměti, takže při čtení jednotlivých řetězců může být
+předáván přímo ukazatel do tohoto bufferu. CRC (Cyclic Redundacy Check) je druh
+kontrolního součtu, který umožňuje odhalovat chyby při přenosu
+či ukládání dat. Jeho přítomnost v~kořenových elementech je důležitá pro
+implementaci transakcí. Každá transakce je uložena jako pole na kořenové úrovni,
+takže CRC kód na jejím konci lze použít k~ověření, že byla korektně uložena.
+Z~různých verzí CRC byla zvolena verze CRC32 Castagnoli \cite{CRC32c},
+která je použita
+kupř. v~protokolu iSCSI \cite{iSCSI} či souborovém systému Btrfs \cite{btrfs}.
+Navíc je implementace této varianty CRC jednou z~instrukcí
+SSE4.2 \cite{sse42},
+takže v~moderních procesorech může být výpočet CRC kódu výrazně urychlen.
+(Ač tato optimalizace není v~současné implementaci obsažena.)
+Měření totiž ukazují, že výpočet CRC je, po práci s~diskem samozřejmě, časově
+nejnáročnější částí práce s~daty v~tomto formátu.
+
+Co se týče způsobu uložení jednotlivých prvků, tak délka kořenového elementu a~CRC kód
+jsou vždy uloženy jako 8-bajtové resp. 4-bajtové celé číslo v~little-endian tvaru.
+Zajímavější je uložení řídicích znaků \verb|[]()#.| a~délek řetězců. Řídicí znaky
+jsou zobrazeny na celá čísla (tzv. řídicí kódy) z~rozsahu 0 až 15 (interval je větší
+než počet řídících
+znaků pro případ, že by se ukázalo jako vhodné formát nějak rozšířit) a~délky řetězců
+na řídicí kódy od 16 výše (tedy např. řetězec délky 10 bude mít kód 26). Díky tomuto 
+přístupu se délky řetězců nijak neodlišují od jiných řídicích znaků a~zjistit další
+element lze načtením jednoho řídicího kódu. 
+
+Rozsah řídicích kódů je 0 až $2^{64} - 1$.
+Pro úsporu místa však nejsou ukládány s~pevnou šířkou, ale způsobem připomínajícím
+UTF-8 \cite{utf8}, např. kódy menší než 128 jsou uloženy v~jednom bajtu způsobem
+\verb|0b0xxxxxxx|, kódy od 128 do $2^{14} - 1$ ve tvaru \verb|0b10xxxxxx xxxxxxxx| atd.
+Tedy počet jedniček na začátku prvního bajtu je o~jedna menší, než kolik bajtů celý
+řídící kód zabírá. Pokud je těchto jedniček méně než osm, následuje po nich nula
+a~až za ní vlastní kód. Je-li první bajt \verb|OxFF|, tak žádná nula vložena není
+a~následuje přímo osm bajtů kódu. Do vyhrazených bitů je kód uložen následovně:
+Nejvyšší bity jsou uloženy v~prvním bajtu a~zbylé jsou uloženy do následujících bajtů
+little-endian způsobem.
+
+\subsubsection*{Vyšší vrstva}
+Vyšší vrstva obsahuje popis formátů databáze prostřednictvím prostředků nižší vrstvy.
+Databáze se skládá z~několika souboru, přičemž jméno každého z~nich se skládá ze
+jména konkrétní databáze a~přípony. Vždy přítomný je soubor s~příponou \verb|.schema|,
+který obsahuje popis databáze, tj. název typu databáze, seznam typů uzlů a~u~každého
+typu uzlu popis jeho atributů. Při otevírání databáze je tento soubor porovnán
+s~popisem příslušné databáze v~paměti, aby se předešlo otevření nekompatibilní databáze.
+
+Ostatní soubory jsou datové a~mají jako příponu přirozené číslo. Absolutní hodnota
+čísla není důležitá, slouží pouze k~seřazení souborů do správného pořadí a~zjištění,
+zda v~posloupnosti souborů nejsou díry. Přípona není na detekci správného
+pořadí dostatečná, jelikož je snadné soubory pomíchat, především ve~chvíli, kdy se
+je z~snažíme přejmenovat tak, aby začínaly od jedné. Proto obsahuje každý datový soubor
+na začátku a~na konci magický řetězec. Magický řetězec je osm bajtů dlouhý a~náhodně
+generovaný, přičemž jeho hodnota se na konci jednoho souboru a~začátku na něj
+navazujícího souboru shoduje. Tím je zajištěno (s~rozumnou pravděpodobností), že se
+soubory nepomíchají.
+
+Uložení dat ve více souborech je nutné především kvůli možnosti zkrátit log
+vypsáním databáze do nového souboru. Výhodou
+takového uspořádání je také možnost velmi snadného vytváření snímků stavu databáze
+v~určitém čase -- ve chvíli, kdy chceme vytvořit snímek, založíme nový datový soubor
+a~všechny následující transakce budou zapisovány do něj.
+
+Samotný formát datových souborů je velmi prostý. Prvním kořenovým elementem je pole
+obsahující typ databáze, k~níž soubor patří, pak následuje řetězec obsahující magický
+řetězec a~případně řetězec označující začátek výpisu databáze. První načítaný soubor
+vždy musí obsahovat výpis databáze. Poté následují jednotlivé
+transakce, přičemž každá transakce je uložena jako pole na kořenové úrovni. Prvky
+transakce jsou opět pole. Každé z~nich popisuje jednu operaci s~databází a~to
+následujícím způsobem. Prvním prvkem je řetězec popisující druh operace (možné operace
+jsou vytvoření či smazání uzlu a~změna hodnoty atributu uzlu), za ním následuje
+identifikátor uzlu (celé kladné číslo). Dále podle druhu operace buď číslo typu uzlu
+(pro vytvoření nového uzlu), nic (při mazání), nebo pořadí upravovaného atributu
+a~jeho nová hodnota. Pokud je soubor ukončený (což jsou všechny kromě posledního),
+obsahuje na konci ukončovací řetězec a~magický řetězec navazujícího souboru.
+
+Formát uložení jednotlivých typů atributů je následující: 
+Řetězce (\verb|String| a~\verb|RawString|) jsou uloženy jako řetězce stejně jako v~paměti,
+pouze ukončovací \verb|'\0'| u~typu \verb|String| se do souboru neukládá.
+Znaménkové číselné typy
+(\verb|Int{8,16,32,64}|) a~čísla s~plovoucí řádovou čárkou (\verb|Float|,
+\verb|Double| a~\verb|LDouble|) jsou uložena jako řetězce tak,
+jak je architektura AMD64 ukládá
+v~paměti (tedy little-endian tvar a~čísla s~plovoucí řádovou čárkou
+jsou v~tvaru dle normy \hbox{IEEE 754}
+\cite{IEEE754}). 
+Bezznaménková celá čísla také zachovávají little-endian tvar, ale pro úsporu místa
+se nejvyšší nulové bajty neukládají. Ukazatele na uzly jsou na disku reprezentovány
+identifikátorem uzlu, na nějž odkazují. Ten je uloženo jako bezznaménkové celé číslo.
+
+\subsection{Vypsání databáze}
+Důležitou součástí každého formátu databáze založeného na logu je způsob, jakým
+řeší nahrazení příliš dlouhého logu novým, krátkým se stejným obsahem. První možností
+by bylo ve chvíli, kdy se rozhodneme, že současný log je příliš dlouhý, zastavit
+databázi, vypsat její obsah do nového souboru a~pokračovat v~práci. Problém toho
+přístupu je, že čas strávený výpisem databáze může být dlouhý a~nemusí být žádoucí
+aplikaci na tuto dobu zastavit.
+
+Druhou možností, použitou např. v~databázi Redis \cite{Redis}, je provést systémové
+volání \verb|fork|.
+To \uv{rozdělí} současné vlákno na dvě, přičemž nově vytvořená kopie se stane
+samostatným procesem. Tento proces má zkopírované všechny zdroje (paměť
+i~otevřené file deskriptory) svého rodiče. Může tedy vypsat databázi, protože
+vlastní snímek paměti rodiče ze chvíle, kdy bylo volání \verb|fork| vykonáno.
+Poté pouze informuje rodiče, že vypsal databázi, ten do ní dopíše kousek logu,
+co vznik v~čase, kdy výpis probíhal, a~pokračuje v~práci s~novým logem.
+Nevýhody \verb|fork|u spočívají právě v~jeho schopnosti vyrobit snímek zdrojů
+rodičovského procesu. Kromě potenciálně velkého počtu zkopírovaných file deskriptorů,
+které musí potomek uklidit, ač je vůbec nepotřeboval, může nastat problém s~nedostatkem
+paměti. 
+
+Linux implementuje \verb|fork|, pomocí přístupu copy-on-write
+\cite{linuxCOW}, takže samotné volání je velmi rychlé a~efektivní. Pokud ale rodič
+začne do paměti více zapisovat, jsou měněné stránky kopírovány, protože jsou
+sdíleny s~potomkem, který v~nich pořád musí vidět původní data. V~extrémním případě
+tedy potomek spotřebovává tolik paměti, co jeho rodič. Že by se toto stalo s~pamětí
+užívanou hybridní databází je nepravděpodobné, ale velmi snadno může tyto problémy
+způsobit část programu, která s~databází vůbec nesouvisí a~pouze hodně zapisuje do paměti.
+V~případě
+Redisu to nevadí, protože běží jako samostatný proces a~má tedy svou paměť 
+i~deskriptory pod kontrolou.
+Naopak databáze implementovaná jako knihovna funkcí nemá žádnou kontrolu nad prostředky,
+které alokuje zbytek aplikace, takže využití \verb|fork|u je nevhodné.
+
+Proto jsem zvolil komplikovanější přístup, který se ale obejde jak bez zastavení
+práce s~databází, tak bez volání \verb|fork|. Když chceme vypsat databázi,
+tak je založen nový datový soubor a~na jeho začátek je zapsáno, že obsahuje výpis
+databáze. Nové transakce se zapisují do tohoto nového souboru. Výpis databáze
+vypadá jako speciální druh transakcí (v~souborovém formátu má jako první prvek
+v~poli řetězec nulové délky), které jsou zamíchány mezi běžné transakce. Tyto speciální
+transakce obsahují výpisy jednotlivých uzlů (současná implementace obsahuje v~každé
+transakci výpis jednoho uzlu). Výpis uzlu je pole, v~němž je identifikátor typu uzlu
+(jeho pořadí v~rámci typu databáze, číslováno od 0), 
+identifikátor uzlu
+a~za nimi následují hodnoty atributů. Když jsou vypsány všechny uzlu, je do souboru
+zapsána značka \uv{konec výpisu}, takže při načítání databáze lze určit, zda vypsání
+proběhlo úplně, nebo bylo přerušeno.
+
+Samotné vypisování uzlů je prováděno servisním vláknem. To ve chvíli, kdy by mělo
+z~fronty vybrat další požadavek, zkontroluje, zda neprobíhá výpis databáze.
+Pokud probíhá,
+tak provede vypsání přednastaveného počtu uzlů (v~základním nastavení 5,
+ale počet je možné změnit
+konfigurační volbou), a~až pak provede další událost čekající ve frontě. Je-li fronta
+prázdná, vypíše další uzly a~opět zkontroluje frontu. Drobným zádrhelem, na který je
+dobré pamatovat, je, že současná implementace při výpisu obchází frontu transakcí
+(což je z~hlediska výkonu dobře),
+takže výpis uzlu se v~souboru může objevit před transakcí, která ho vytvořila.
+Proto kód načítající databázi musí být na tuto možnost připraven a~správně ji ošetřit,
+tedy požadavek na vytvoření existujícího uzlu ignorovat a~ne vyvolat chybu.
+

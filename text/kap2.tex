@@ -1,0 +1,288 @@
+\chapter{Softwarová transakční paměť}
+
+\section{STM obecně}
+
+Softwarová transakční paměť je koncept pro řízení přístupu ke sdíleným datům.
+Oproti řešením založeným na zámcích je to koncept optimistický -- tedy zatímco
+se zámky vlákno vždy nejprve musí získat potřebné zdroje (zámky) a~až poté
+provést svou činnost, při použití STM vlákno začne optimisticky vykonávat, co
+potřebuje, prostředky získává implicitně za běhu, když je potřebuje, a~případný
+konflikt s~jiným vláknem se řeší, až k~němu dojde. Typicky se konflikt řeší tím,
+že jedno z~vláken odstraní provedené změny, čímž uvolní prostředky, takže druhé
+může pokračovat, a~zrušené vlákno se zkusí provést později.
+
+
+\subsection{Fungování transakcí}
+Základním kamenem transakční paměti jsou transakce. Transakce je posloupnost
+operací se sdílenými daty, která se vnějšímu pozorovateli jeví atomicky. Tedy
+každé vlákno kromě toho, které danou transakci provádí, vidí sdílená data tak,
+že transakce buď nebyla provedena vůbec, nebo byla provedena celá, ale nikdy
+nepozoruje žádné mezistavy. Z~vnějšího pohledu transakce převádějí data
+z~jednoho konzistentního stavu do jiného konzistentního stavu.
+
+Protože jsou transakce vykonávány optimisticky a~prostředky pro svůj běh získávají,
+až když je potřebují, může se stát, že požadované prostředky již vlastní jiná transakce.
+Takováto situace se nazývá {\bf kolize}. Řešit kolizi čekáním, než jsou potřebné zdroje
+uvolněny, není obecně možné, protože není globálně dáno žádné pořadí, v~němž jsou
+zdroje získávány. Kvůli může snadno nastat deadlock (tedy situace, kdy graf vztahu
+\uv{čekám až transakce $X$ uvolní zdroje, které potřebuji} obsahuje orientovaný
+cyklus). Standardním řešením je v~případě kolize zrušit změny provedené jednou
+z~transakcí -- provést tzv. {\bf rollback} -- čímž se uvolní prostředky a~druhá
+transakce může pokračovat. 
+
+Aby bylo možné transakci zrušit, musí provádět pouze
+operace, které je možné vrátit zpět (typicky může zapisovat do paměti, ale nesmí
+provádět vstup a~výstup či komunikaci s~jinými procesy). Všechny všechny operace
+vykonané v~průběhu transakce jsou zaznamenávány do tzv. {\bf logu}. Rozlišujeme
+dva základní typy logů -- zpětný a~dopředný. {\bf Zpětný (undo) log} zaznamenává
+původní hodnoty dat, která transakce přepisuje. {\bf Dopředný (redo) log} naopak
+funguje tak, že požadavky na zápis nejsou provedeny ihned, ale jsou uloženy do logu
+a~provedeny až na konci transakce, když už víme, že kolize nenastala.
+
+Vraťme se k~restartování transakcí.
+Pokud budeme -- tak jako v~této práci -- vždy rušit transakci, která chce získat
+nedostupné zdroje, vystavujeme se při vysokém zatížení systému riziku livelocku
+(situaci, kdy se transakce
+vzájemně ruší, aby získaly zdroje, ale žádná není dokončena, protože dříve, než se
+stihne dokončit je zrušena). Livelocku se dá vzdorovat zavedením nějaké varianty priorit
+transakcí, kdy několikrát restartovaná transakce získá vyšší prioritu, a~při kolizi
+je zrušena transakce s~nižší prioritou, nebo snižováním limitu současně běžících
+transakcí, pokud nastává příliš mnoho kolizí. Za variantu snižování počtu současně
+běžících transakcí lze považovat i~exponenciálně dlouhé čekání před restartem transakce.
+
+V~závislosti na implementaci může transakce detekovat kolizi v~okamžiku, kdy
+k~ní dojde, nebo až při pokusu o~úspěšné ukončení transakce, tzv. {\bf commitu}.
+Kolize při commitu nejčastěji nastává v~případě, kdy zjistíme, že data čtená
+transakcí (tzv. {\bf readset}) byla změněna jinou transakcí.
+
+
+\subsection{Historie a~budoucnost transakční paměti}
+Poprvé byla transakční paměť představena v~článku \cite{HTM}, kde byla předvedena
+hardwarová transakční paměť -- počítala tedy s~podporou ze strany hardware. Jako
+taková se příliš neujala, ale v~roce 1995 byl i~na základě jejích myšlenek publikován
+článek \cite{STM95}, kde byla představena softwarová varianta transakční paměti,
+která nevyžadovala (explicitní) hardwarovou podporu. Na tuto práci posléze
+navázalo mnoho dalších.
+
+Za pozornost také stojí snaha integrovat podporu transakční paměti do překladače
+GCC \cite{gccTM} a~hardwarová implementace transakční paměti, která bude obsažena
+v~procesorech generace Haswell firmy Intel \cite{haswellTM}. 
+Integrace do překladače a~s~tím spojené rozšíření jazyka
+o~atomické konstrukce umožní snadnější vývoj a~hardwarová podpora může přinést výrazné
+vylepšení výkonu. Jelikož ale implementace transakční paměti v~GCC je zatím ve velmi
+raném stádiu a~procesory Haswell budou uvedeny na trh až v~příštím roce, nebudu
+se jim zde dále věnovat.
+
+
+\section{STM TL2 engine a~jeho rozšíření}
+
+V~této práci jsem jako ideový základ použil
+rozšířenou verzi TL2 enginu z~dizertační práce \cite{STMcur}. TL2 engine
+vznikl v~roce 2006 \cite{TL2engine}. V~původní implementaci pracoval s~redo logem,
+zamykal paměť po slovech a~zámky tedy byly uloženy v~globální tabulce. V~roce
+2007 v~práci \cite{STMcur} byl tento engine rozšířen o~podporu undo logu, zamykání
+objektů a~umísťování zámků do objektů.
+
+Kromě toho byla implementace výkonnostně optimalizována např. zjednodušením operace
+čtení, kde bylo nahrazeno dvojí kontrolování zámku (před a~po načtení hodnoty)
+jednou kontrolou po načtení.
+
+V~následujících sekcích
+jsou probrány jednotlivé aspekty rozšířeného TL2 enginu
+spolu s~popisem a~zdůvodněním postupů zvolených v~implementaci hybridní databáze.
+
+
+\subsection{Průběh transakce}
+
+\subsubsection*{Globální hodiny a~verzované zámky}
+Základním prvkem STM stavící na TL2 enginu jsou verzované zámky spolu s~globálními
+hodinami. {\bf Verzovaný zámek} je neblokující zámek,
+který ve stavu odemčeno uchovává i~informaci
+o~době poslední změny a~v~uzamčeném stavu obsahuje ukazatel na transakci, která
+ho uzamkla. Neblokující zámek znamená, že jím lze chránit data proti paralelnímu
+přístupu, ale operace \uv{zamkni} nikdy neblokuje -- odpovídá tedy operaci
+\verb|trylock| běžných zámků.
+Typicky je implementován pomocí 8-bajtového slova, jehož nejnižší
+bit určuje stav zamčeno/odemčeno a~zbylé bity podle situace ukazatel na vlastníka 
+či verzi
+(používáme-li zarovnané ukazatele, nevadí že nemůžeme uložit jejich nejnižší bit,
+neboť je vždy nulový). 
+
+{\bf Globální hodiny} jsou vlastně verzovaný zámek, který se vždy
+nachází v~odemčeném
+stavu a~zvětšuje svou hodnotu s~ukončením (i~neúspěšným) každé transakce,
+která zapisovala.
+
+Transakce začíná načtením hodnoty globálních hodin.  Při zápisu (skutečném zápisu,
+který v~případě dopředného logu nastává až při commitu) je nejprve
+získán příslušný zámek
+(při tom se kontroluje, má-li hodnotu nejvýše rovnou začátku transakce),
+následně je hodnota zapsána. Zámky jsou uvolněny na konci transakce.
+
+Každé čtení nejprve
+zkopíruje čtenou hodnotu do privátní paměti (tj. paměti přístupné jen danému vláknu)
+a~poté zkontroluje, zda příslušný
+zámek je odemčený a~jeho hodnota je menší nebo rovna času začátku transakce (nebo může
+být zámek zamčen, je-li vlastněn danou transakcí).
+
+ Teoreticky by stačilo kontrolovat
+readset až při commitu, čímž by se snížila režie. Vznikl by však problém,
+že transakce může vidět nekonzistentní data.
+U~takovéto transakce by sice commit
+nikdy neuspěl, takže by konzistence databáze nebyla porušena, ale v~kódu transakce
+by přestaly platit invarianty, které mají o~datech platit. Pokud s~tím kód nepočítá
+(a~může být obtížné a~pracné ošetřit všechny možné patologické případy),
+může se program např. dostat do nekonečné smyčky. Nebo jsou-li načtená data ukazatel,
+může nastat neoprávněný přístup do paměti, protože není zaručeno, kam ukazuje.
+
+Kvůli výkonově kritickým částem je v~implementaci hybridní databáze možnost
+kontrolu čtených dat obejít přímým přístupem k~položkám uzlu. Po načtení dat
+je však nutné použité uzly explicitně ověřit, aby byly zařazeny do readsetu. Také
+je nezbytné ověřovat stav všech ukazatelů dříve než jsou dereferencovány.
+
+
+\subsubsection*{Schéma průběhu transakce}
+
+Průběh transakce je následující:
+\begin{enumerate}
+  \item Načtení globálních hodin.
+  \item Vlastní obsah transakce -- čtení a~zápisy dat.
+  \item V~případě redo logu jsou zabrány všechny zámky potřebné k~zápisu.
+  \item Je zkontrolován readset -- tedy že všechny zámky, jimiž chráněná data byla
+        čtena, mají hodnotu nejvýše počátku transakce či jsou aktuální transakcí
+        vlastněny.
+  \item V~případě redo logu jsou všechna data zapsána.
+  \item Globální hodiny jsou inkrementovány.
+  \item Jsou uvolněny zámky. Jejich nová hodnota odpovídá nové hodnotě globálních
+        hodin.
+\end{enumerate}
+
+V~případě, že transakce pouze četla a~čtená data průběžně validovala,
+je možné kroky 3 až 7 přeskočit. Transakce
+totiž nedrží žádné zámky, a~nemusí tedy modifikovat globální hodiny. Kontrolu
+readsetu lze pominout, jelikož i~kdyby případná validace skončila neúspěchem,
+nemůže tím být poškozena integrita databáze (protože ta nebyla transakcí měněna)
+a~okolní svět nemůže poznat, v~jakém pořadí transakce skutečně provedly commit.
+
+\subsection{Zamykání bloků vs. zamykání objektů}
+
+Důležitým rozhodnutím pro výkon STM je volba vhodného modelu zamykání paměti.
+Zamykat paměť lze po blocích -- typicky přirozeně zarovnaných slovech či
+řádcích cache paměti
+dané architektury -- či lze zamykat jednotlivé objekty (ve smyslu úseků paměti,
+které mají nějaký rozumný význam). Výhodou zamykaní po blocích je, že STM engine
+nemusí nic vědět o~datech a~kromě využívání funkcí STM ke čtení a~zápisu
+dat není potřeba jiná spolupráce. Naopak problémem může být zápis do paměti
+přes hranice bloků či nevhodná granularita -- zamykání po slovech může být příliš
+jemné, zatímco u~zamykání po řádcích cache paměti hrozí, že tentýž zámek hlídá zcela
+nesouvisející data. Navíc zámky musejí být uloženy v~globální tabulce
+a~jsou blokům přiřazeny pomocí hashovací funkce -- a~zde opět hrozí
+riziko, že jeden zámek hlídá nesouvisející data.
+
+Avšak u~tabulky zámků určuje kolize hashovací
+funkce a~přesné adresy dat v~paměti, a~tedy mají více náhodný charakter.
+Jejich pravděpodobnost lze také snížit zvětšením tabulky, což může mít
+negativní dopad na cache paměti (tabulka v~nich zabírá více místa) a~na rychlost
+transakcí pokud je např. readset ukládán jako bitmapa tabulky zámků.
+
+Naopak zamykání objektů vyžaduje spolupráci se STM enginem, který musí být
+schopen každé čtené či zapisované adrese přiřadit objekt (třeba tak, že rozhraní bude
+\uv{čti položku z~objektu} místo \uv{čti z~adresy}). Dále je možné zámky ukládat i~přímo
+do objektů místo do globální tabulky, takže nemohou nastávat problémy, kdy jeden
+zámek chrání nesouvisející data. To samozřejmě zvýší paměťovou náročnost, jelikož
+zámků globální tabulce bývá podstatně méně než objektů.
+
+\subsubsection*{Zvolená implementace}
+Z~pohledu granularity je, po vzoru mnoha relačních databázových enginů,
+nejvhodnější zamykání po uzlech jakožto nejmenších samostatných objektech.
+Stejně jsou zamykány indexy, ačkoli u~nich je až konkrétní implementací určeno,
+co je objekt (a~tedy kolika zámky je celý index chráněn).
+
+Původním cílem bylo implementovat zamykání s~globální tabulkou, protože v~běžných
+implementacích STM výkonem nezaostává za zámky v~objektech a~přitom je implementačně
+jednodušší a~šetří paměť. Po provedení měření jsem implementoval i~zamykání po objektech,
+jelikož implementace s~globální tabulkou zámků špatně škálovala v~závislosti na počtu
+vláken. Tato odchylka od běžných STM je způsobena především prací navíc
+při commitu -- tedy zpracováním transakčního logu, aby ho bylo možné zapsat
+na disk.
+
+V~případě, že jsou transakce velmi malé (a~řešení
+s~globální tabulkou tedy v~průběhu transakce může škálovat), je jich velký počet,
+takže čas strávený při commitu je významný (a~nebo je zahlceno servisní vlákno,
+navíc vysoké množství commitů přispívá ke cachovému \uv{ping pongu} mezi transakčními
+vlákny a~servisním vláknem). A~jsou-li transakce větší, tak se pravděpodobnost kolize
+velmi rychle blíží jedné, takže se transakce vzájemně serializují. Použití
+globální tabulky větší než několik stovek zámků také není vhodné, protože
+příliš velká tabulka zabírá příliš místa v~cache paměti, a~tím výrazně zpomaluje program.
+
+
+\subsection{Zpětný vs. dopředný log}
+
+Jelikož transakce musí být v~případě kolize schopny odčinit provedené změny,
+je nezbytné nějakým způsobem tyto změny zaznamenávat. K~tomu existují dva přístupy
+-- zpětný (undo)  a~dopředný (redo) log.
+Při použití zpětného logu transakce zapisuje
+do logu hodnoty sdílených dat, které změnila, a~při kolizi projde log
+pozpátku a~obnoví přepsaná data. Naopak dopředný log zaznamenává požadavky na
+zápis do sdílené paměti a~skutečně je provede až při commitu, poté co bylo
+ověřeno, že žádná kolize nenastává.
+
+\subsubsection*{Zpětný log}
+Výhodou zpětného logu je jeho jednoduchost, kdy k~implementaci stačí prostý
+zásobník, a~minimum práce navíc při commitu, kdy po jeho úspěšném provedení
+stačí jen uvolnit paměť zpětného logu. Průběh zápisu se zpětným  logem je
+přímočarý.
+Nejprve získáme potřebný zámek, původní hodnotu přidáme na zásobník
+(spolu s~informacemi o~její adrese) a~zapíšeme novou hodnotu. Nastane-li
+rollback transakce, projdeme zásobník od vrcholu a~obnovíme hodnoty, poté
+odemkneme zámky.
+
+Nevýhodou této implementace je, že velikost zásobníku je přímo úměrná počtu zápisů,
+ačkoli míst, kam bylo zapisováno, může být mnohem méně. Za jistých velmi specifických
+okolností (mezi zámky a~objekty je bijekce, do logu ukládáme vždy celý objekt
+a~nemáme vnořené transakce) lze prostorovou složitost této implementace snížit
+na lineární s~počtem modifikovaných míst tím, že do logu zapíšeme hodnotu,
+pouze pokud daný zámek opravdu zamkneme, a~ne pokud ho již vlastníme.
+
+Pokud potřebujeme optimální prostorovou složitost a~se zásobníkovou implementací
+jich nelze dosáhnout, nezbývá než užít k~ukládání logu datovou strukturu jako
+strom či hashovací tabulka, což zvýší režii, v~případě stromu dokonce logaritmus-krát
+zpomalí každou transakci.
+
+\textbf{Poznámka:} Protože uvolnění paměti obecně nelze vrátit, je vhodné paměť,
+která měla
+být uvolněna v~průběhu transakce, zapisovat do logu a~uvolnit ji až při úspěšném
+commitu. (Tedy z~hlediska uvolňování paměti fungovat jako dopředný log.)
+
+\subsubsection*{Dopředný log}
+Dopředný log je na implementaci složitější, ovšem oproti zpětnému logu minimalizuje
+dobu držení zámků, a~tím usnadňuje paralelní běh transakcí. Větší složitost je
+způsobena nutností při každém čtení kontrolovat, zda čtená data nebyla modifikována
+a~nejsou tedy uložena v~logu. Kvůli tomu musí být modifikovaná data
+uložena v~hashovací tabulce či podobné struktuře s~možností rychlého vyhledávání
+a~modifikace.
+
+Výjimkou může být situace, kdy víme, že transakce sebou modifikovaná
+data nepotřebuje číst, či jí nevadí číst jejich starou verzi.
+(Což zjevně neplatí, chceme-li podporovat skládání transakcí.)
+V~takovémto případě lze dopředný log
+implementovat pomocí fronty, jejíž každý prvek je požadavek na zápis.
+Další nevýhodou může být prodloužení commitu, neboť v~jeho průběhu je nutné
+veškerá modifikovaná data skutečně zapsat do sdílené paměti.
+
+\textbf{Poznámka:} Alokaci paměti není samozřejmě možné odsunout a~musí být alokována
+již v~průběhu transakce, takže se s~ní musí pracovat pomocí zpětného logu.
+
+\subsubsection*{Zvolená implementace}
+Transakce typicky více čtou než zapisují,
+takže optimalizace čtení má větší efekt než optimalizace zápisu.
+Proto jsem v~ukázkové implementaci použil zpětný log implementovaný zásobníkem.
+Zpětný log vyžaduje při čtení kromě čtené hodnoty pouze kontrolu stavu příslušného
+zámku, takže jde o~velmi rychlou operaci.
+
+Použitá zásobníková
+implementace je vhodná za předpokladu, že jedna transakce nebude opakovaně přepisovat
+totéž místo. To je rozumný předpoklad, jelikož transakce by se celkově měly snažit
+minimalizovat přístupy do sdílené paměti a~provádět výpočty v~rychlejší privátní
+paměti.
+

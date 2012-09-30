@@ -1,0 +1,228 @@
+\chapter{Ukázková implementace}
+
+Tato kapitola popisuje specifika provedené implementace a~její omezení. Nejprve je
+krátce pojednáno o~zvoleném programovacím jazyce a~platformě. Následuje popis
+správy paměti a~dalších vnitřních mechanismů, především 
+generování definic typů databází / uzlů
+/ indexů uživatelem. Na závěr jsou zmíněny omezení provedené implementace
+a~výsledky několika jednoduchých benchmarků.
+
+Ukázková implementace je napsána
+pod licencí GPL verze 2 \cite{GPLv2}. Jelikož nejsem zběhlý v~programování
+v~assembleru a~překladač GCC neposkytuje vhodné atomické operace, převzal jsem
+implementaci atomických operací z~linuxového jádra verze 3.3.4 \cite{linux3.3.4}.
+(Jedná se o~soubor 
+\verb|utils/atomic_amd64.h|, je pod licencí GPL verze 2, čímž implikuje
+licenci pro celý projekt, neboť ten lze považovat za odvozené dílo.)
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Jazyk implementace}
+
+Ukázková implementace je provedena v~jazyce C, přesněji v~jeho verzi C99 \cite{C99}
+s~použitím
+GNU rozšíření a~vestavěných funkcí překladače GCC dostupných ve verzi 4.5
+\cite{gccGNUexts}. Jako implementační platforma
+byl zvolen Linux na architektuře AMD64.
+
+Architektura AMD64
+byla upřednostněna před IA-32,
+protože na rozdíl od ní obsahuje všechny 8-bajtové
+atomické instrukce (především \verb|xadd|, \verb|xchg| a~\verb|cmpxchg|)
+nutné pro implementaci
+verzovaných zámků a~dalších struktur pracujících atomicky (např. globální
+hodiny či některé alokátory zmíněné níže vnitřně užívají atomické instrukce).
+Implementaci je možné portovat i~na procesory architektury IA-32, které
+podporují 8-bajtovou instrukci compare-exchange (\verb|cmpxchg8|), což jsou procesory
+Intel Pentium a~novější. Je však nutné neexistující instrukce emulovat pomocí
+\verb|cmpxchg8|.
+
+Proč jsem použil GNU rozšíření jazyka C a~nezůstal u~standardizované verze C99 \cite{C99}?
+Hlavním důvodem byla podpora operátoru \verb|typeof| a~vestavěných funkcí
+\verb|__builtin_types_compatible| a~\verb|__builtin_choose_expr|. Díky nim je
+možné implementovat makra \verb|trRead| a~\verb|trWrite| tak, že jako
+parametry mají pouze uzel a~jméno jeho atributu s~nímž pracují, přičemž potřebná
+typová informace se odvodí uvnitř makra.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Správa paměti}
+
+\subsection{Opožděné uvolňování paměti}
+Když transakce uvolní paměť, může nastat problém, pokud jiná transakce drží na tuto
+paměť ukazatel a~pokusí se ho dereferencovat. Původní řešení v~TL2 enginu bylo
+užití instrukcí, které při pokusu o~čtení paměti, kam nemá program přístup,
+vrací nulovou hodnotu. Architektury IA-32 ani AMD64 žádné takové instrukce
+nemají, a~tak se port TL2 enginu tyto architektury \cite{STMcur} s~tímto
+problémem musel vypořádat jinak.
+
+Řešením v~\cite{STMcur} bylo odchytávat signál neoprávněného přístupu do paměti.
+Ač je tento signál možné odchytit, tak jedinou užitečnou informací, kterou
+handler dostane je adresa, k~níž bylo přistupováno. Ta však nestačí k~ověření,
+zda důvodem tohoto signálu byl skutečně přístup k~uvolněné transakční paměti
+či chyba v~programu, takže handler musí signál prostě zahodit, čímž může
+skrýt chybu v~programu. Dalším problémem je, že handler neoprávněného přístupu
+do paměti se nesmí vrátit, neboť to způsobí nekonečnou smyčku. Proto musí být
+užita nějaká varianta nelokálních skoků (např. volání \verb|setjmp| / \verb|longjmp|).
+Z~důvodu režie
+dává smysl použít \verb|setjmp| pouze na počátku transakce a~pomocí \verb|longjmp|
+transakci rovnou restartovat, což je v~rozporu s~tím, že ukázková implementace
+neobsahuje automatické restartování transakcí. Navíc registrací signal handleru
+se můžeme dostat do konfliktu s~jinou částí aplikace, protože pro každý signál
+může být registrován pouze jeden handler.
+Naopak výhodou tohoto přístupu
+je kromě jednoduchosti i~výkon, jelikož šance, že transakce $A$ načte ukazatel,
+transakce $B$ uvolní paměť odkazovanou tímto ukazatelem a~transakce $A$ ukazatel
+dereferencuje, je velmi malá.
+
+V~této práci jsem místo tohoto přístupu použil opožděné uvolňování paměti --
+paměť není uvolněna, když transakce žádá její uvolnění, ale až ve chvíli,
+kdy je jisté, že žádná transakce na ni nemůže držet ukazatel.
+Tohoto chování je docíleno tak, že transakční paměť se nealokuje pomocí volání
+\verb|malloc|, ale pomocí volání \verb|node_allocator_alloc| pro alokaci uzlů
+a~\verb|generic_allocator_alloc| pro zbylou paměť užívanou v~transakcích. Při uvolňování
+je předán jako parametr i~čas, kdy byla paměť uvolněna. (Pokud byla paměť uvolněna
+v~čase $x$, tak na ni mohou mít pointer pouze transakce, které začaly nejpozději
+v~čase $x - 1$.) Skutečné uvolnění paměti ve správnou dobu pak zajistí příslušný
+alokátor.
+
+Výhodou opožděného uvolňování paměti je, že nemůže zakrývat chyby při
+práci s~pamětí, ani nevyžaduje použití \verb|setjmp| / \verb|longjmp|. Nevýhodou
+může být nutnost udržovat uvolněné bloky v~paměti a~s~tím spojená režie.
+Tuto režii je možné vyvážit tím, že bloky k~uvolnění budeme používat
+k~uspokojení požadavků na alokaci nové paměti, jak to činí \verb|VPageAllocator|.
+
+\subsection{GenericAllocator}
+\verb|GenericAllocator| je určen pro alokaci různě velkých bloků paměti užívané 
+v~transakcích.
+V~současné implementaci pouze zdržuje uvolnění paměti,
+tím způsobem, že uvolňovanou paměť umístí do vnitřního seznamu a~když velikost
+seznamu přesáhne danou mez (makro \verb|DB_GENERIC_ALLOCATOR_CACHE|),
+tak zjistí počáteční čas nejstarší transakce $t$ a~uvolní ze seznamu paměť starší
+než $t$. Uvnitř \verb|GenericAllocator|u je k~práci s~pamětí užívány funkce
+\verb|malloc| a~\verb|free|, protože jejich implementace v~knihovně \verb|glibc|
+je dobře optimalizovaná a~implementace rychlého alokátoru paměti je velmi
+netriviální záležitost.
+
+\subsection{NodeAllocator}
+\verb|NodeAllocator| slouží k~alokaci uzlů. Zatímco \verb|GenericAllocator| je globální
+pro každou instanci databáze, \verb|NodeAllocator| má v~rámci databáze každý typ
+uzlu vlastní. Protože jsou všechny uzly jednoho typu stejně velké, je implementace
+\verb|NodeAllocatoru| více optimalizovaná a~odpovídá struktuře alokátoru SLAB
+\cite{BonwickSlabAllocator} pro malé objekty.
+Tím je dána i~limitace současné implementace -- uzel nemůže být větší než cca 4000 bajtů
+(velikost stránky minus hlavičky).
+
+Jako v~alokátoru SLAB, jsou objekty alokovány z~větších bloků -- v~současné implementaci
+bloky přímo odpovídají stránkám paměti -- a~ty jsou uloženy jako spojový seznam,
+přičemž ne zcela zaplněné bloky jsou udržovány na konci seznamu. Je-li potřeba alokovat
+prvek, je alokován z~bloku na konci seznamu. Pokud je tím blok zaplněn, je přesunut
+na počátek seznamu. Pokud je poslední blok zcela plný, alokuje se nový blok.
+
+Pro alokaci bloků je užíván \verb|VPageAllocator|. Vyprázdněný blok je okamžitě
+předán \verb|VPageAllocator|u a~jako čas uvolnění je předán čas uvolnění posledního
+uzlu z~daného bloku (což je korektní, protože posloupnost časů uvolnění je neklesající).
+
+Významným důvodem pro použití
+alokátoru typu SLAB byla potřeba šetřit místo.
+Kromě ukazatelů spojového seznamu bylo možné z~uzlů odstranit i~ukazatel na
+typ uzlu. Ten se přesunul na počátek bloku a~je k~němu možné se dostat díky tom,
+že bloky odpovídají stránkám paměti, které jsou vždy zarovnané na svou velikost.
+Pokud by uzly byly alokovány např. \verb|malloc|em, musel by v~hlavičce každého
+z~nich být uložen ukazatel na typ uzlu, k~němuž přísluší, a~dva ukazatele, které
+by všechny uzlu propojily do spojového seznamu (nutné pro jejich uvolnění
+při uzavírání databáze a~pro vypsání databáze na disk). Připočteme-li režii
+\verb|malloc|u, uspoříme použitím
+alokátoru typu SLAB až 40 bytů na uzel, což
+může být víc než je velikost užitečných dat v~daném uzlu.
+
+\subsection{PageAllocator}
+\verb|PageAllocator| slouží jako zdroj stránek pro jiné alokátory a~strukturu
+\verb|FastStack| (implementaci zásobníku, která alokuje paměť po blocích, používanou
+pro transakční log).
+Stránky alokuje po blocích pomocí funkce \verb|mmap| a~nepoužité
+stránky ukládá do spojového seznamu pro další využití. Pokud množství volných
+stránek přesáhne daný limit, jsou navráceny systému voláním \verb|munmap|.
+V~celé aplikaci typicky existuje jeden globální \verb|PageAllocator|.
+
+\subsection{VPageAllocator}
+\verb|VPageAllocator| je tenká vrstva
+nad \verb|PageAllocator|em, která se stará o~opožděné
+uvolňování paměti. Funguje jako \verb|GenericAllocator| s~tím
+rozdílem, že stránky v~seznamu může použít pro uspokojení nových alokací.
+Existuje jeden pro každou instanci databáze.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Omezení ukázkové implementace}
+Protože implementace, která je součástí této práce, je zamýšlena spíše jako
+ukázková
+a~základ pro další testování různých implementací konkrétních
+částí databáze (různé varianty servisního vlákna či přístupu k~zamykání atp.), než
+jako kód připravený pro ostré nasazení, obsahuje také jistá omezení. Ta se pokusím
+shrnout v~této sekci.
+
+První omezení se týká práce se~signály. Pokud vlákno přijme signál a~začne vykonávat
+uživatelem přiřazený handler ve chvíli, kdy je zablokováno v~určitých systémových
+voláních (např. \verb|sem_wait|), skončí tato volání s~chybou
+\verb|EINTR|, pokud vracejí chybový status. Co hůře systémové volání \verb|write|
+může skončit
+s~tím, že zapsalo pouze část dat. Chybě \verb|EINTR| se lze vyhnout, je-li při
+registraci signal handleru použit příznak \verb|SA_RESTART|. S~ním systém dané volání
+místo vrácení chyby restartuje. Protože současná implementace chybu \verb|EINTR|
+neošetřuje, je při registraci handlerů signálů nutné použít příznak \verb|SA_RESTART|.
+
+Další omezení spočívají v~implementaci alokátorů paměti. Méně významné z~nich souvisí
+s~\verb|NodeAllocator|em. Protože ten staví na \verb|PageAllocator|u, je omezena
+maximální možná velikost uzlu na cca 4000 bajtů (jedna stránka mínus hlavička přidaná
+\verb|NodeAllocator|em). Vzhledem k~tomu, že největší z~atributů má velikost
+10 bajtů (\verb|long double|), a~tedy uzel přesahující velikost 4000 bajtů by musel
+mít přes 400 atributů, nepovažuji toto omezení za významné. Navíc k~jeho odstranění
+by bylo potřeba alokaci paměti významně pozměnit (pravděpodobně by způsob alokace pro
+uzly pod touto hranicí zůstal stejný a~byl by přidán speciální způsob alokace pro uzly
+příliš velké (např. skrz \verb|GenericAllocator|)).
+
+Poslední problém, který tu zmíním se týká \verb|GenericAllocator|u.
+Současná implementace pouze odkládá uvolňování paměti (jak bylo popsáno výše), ale
+není schopna paměť recyklovat. Hlavním důvodem k~tomuto chování je nemožnost zjistit
+velikost u~bloku alokovaného pomocí funkce \verb|malloc|. Aby tedy bylo možné
+bloky čekající na uvolnění použít znovu, bylo by nutné de facto implementovat
+celý alokátor pro paměťové bloky různé velikosti. Jelikož toto samo o~sobě je
+velmi komplikované, pokud chceme získat maximální výkon, a~s~ohledem k~optimalizacím,
+které jsou v~GNU implementaci obsaženy (jelikož je dlouhodobě používána a~vylepšována),
+jsem usoudil, že tato implementace bude stále rychlejší než neuměle napsaný obecný
+alokátor s~integrovaným recyklováním bloků paměti.
+
+\section{Výsledky testů}
+Na závěr této kapitoly uvede ještě výsledky několika testů. Jde o~jednoduché syntetické
+benchmarky, které prověřují škálování ukázkové implementace při provádění různých
+operací a~při různých nastaveních databáze. Data, ze kterých byly vytvořeny tyto grafy,
+naleznete v~příloze 2.
+
+Všechny testy probíhaly na notebooku s~procesorem Intel Core i5 520M, který má
+dvě fyzická jádra doplněná HyperThread technologií (takže má 4 logická jádra), 8~GB
+paměti a~Linuxem verze 3.3.4. Frekvence procesoru byla pevně nastavena na 2133~MHz,
+abych předešel zkreslení výsledků v~důsledku technologie TurboBoost.
+Při všech testech byla databáze vytvořena s~příznakem \verb|DB_READ_ONLY|, který
+způsobí, že výstup je místo do souboru s~databází zapisován do \verb|/dev/null|,
+aby výsledky měření nebyly ovlivněny rychlostí pevného disku.
+
+První test zjišťuje škálování uvedené implementace při čtení. V~každém testu byl
+program spuštěn s~různým počtem vláken, přičemž mezi běhy zůstával stejný celkový
+počet vykonaných transakcí a~odpovídajícím způsobem se měnil počet transakcí vykonaných
+jedním vláknem. Z~grafu je patrné, že implementace dle očekávání škáluje do čtyř vláken
+a~poté rychlost zůstává konstantní.
+
+\centerline{\includegraphics[width=15cm]{mereni/read.pdf}}
+
+Test zápisu také podává dobré výsledky, pokud spolu transakce nekolidují. Pokud
+začnou pracovat na stejných datech, je zřejmé výrazné zpomalení v~důsledku restartování
+transakcí. Jelikož cílovou skupinou jsou aplikace s~nízkým množstvím zápisů,
+tak to příliš nevadí.
+
+\centerline{\includegraphics[width=15cm]{mereni/write.pdf}}
+

@@ -1,0 +1,181 @@
+\chapter{Popis hybridní databáze}
+V~této kapitole stručně popíšeme z~jakých předpokladů jsme při návrhu hybridní
+databáze vycházeli, jak se promítly do požadavků na ni kladených a~jak se
+nám tyto povedlo naplnit. Závěr kapitoly je věnován popisu základního
+fungovaní navržené struktury, který je hlouběji rozveden v~kapitolách následujících.
+
+\section{Motivace}
+Jak bylo zmíněno v~úvodu, hlavním motivem této práce je nabídnout alternativu
+programům, které potřebují perzistentně uchovávat data, a~přitom nepotřebují
+komplexní databázový systém. Pro začátek uveďme, jaké klíčové vlastnosti
+od vytvářené databáze chceme:
+
+\begin{itemize}
+  \item Implementovat databázi jako knihovnu funkcí, takže komunikace
+    s~databází znamená přímé volání těchto funkcí bez dalších mezivrstev.
+  \item Ukládat data v~paměti, takže čtení je vždy rychlé, a~přitom paralelně
+    udržovat obraz dat na disku, aby v~případě havárie programu bylo možné
+    obnovit data v~konzistentní verzi.
+  \item Vyhledávání dat místo dotazovacího jazyka zajišťují uživatelem vytvořené
+    indexy. Ty mají s~indexy v~relačních databázích společné, že obsah obou je
+    jednoznačně určen obsahem databáze. Na rozdíl od nich je jejich rozhraní mnohem
+    flexibilnější -- uživatel komunikuje s~indexem přímo a~rozhraní indexu
+    určuje jeho tvůrce, není pevně zadrátováno v~implementaci databáze.
+  \item Podpora více vláken a~udržování konzistence dat za pomoci transakcí.
+  \item Skládání operací do větších celků pomocí zanořování transakcí.
+\end{itemize}
+
+\subsection{Knihovna funkcí vs. samostatný proces}
+Většina databázových systémů, a~to i~nerelačních, se drží koncepce samostatného
+databázového serveru, s~nímž klient komunikuje (typicky protokolem TCP/IP).
+To je výhodné pro velké systémy, neboť je možné server samostatně ovládat
+a~přistupovat k~němu z~více aplikací. Navíc získáme síťovou transparentnost a~větší
+spolehlivost, protože pád aplikace neublíží serveru a~aplikace také nevidí
+paměť databáze, takže ji nemohou poškodit.
+
+Pro naše potřeby, kdy počítáme s~aplikací menších rozměrů, je síťová
+transparentnost nadbytečná a~samostatné ovládání serveru spolu s~přístupem
+k~němu z~více aplikací také není předpokládaným použitím. (Ačkoliv
+s~úpravami ohledně alokace paměti je teoreticky možné navrhovanou
+databázi provozovat jako samostatný proces, který komunikuje s~ostatními
+přes sdílenou paměť.)
+
+Naopak díky integraci do klientského procesu získáváme rychlou komunikaci
+s~databází spočívající v~přímém volání jejích metod. A~jako
+identifikátory jednotlivých objektů uložených v~databázi můžeme používat přímo
+ukazatele, což opět výrazně snižuje režii.
+
+\subsection{Primární úložiště v~paměti, záloha na disku}
+Jelikož cílíme na menší objemy dat, je výhodné implementovat hybridní
+databázi, aby pracovala s~daty přímo v~paměti, a~jejich kopii na disku užívat
+jen jako zálohu,
+ze které budou obnovena při příštím startu. Tím sice zvýšíme paměťové
+nároky (dat nicméně není tolik, aby to představovalo výrazný problém), ale
+zároveň nemusíme mít diskový formát, ve kterém lze rychle vyhledávat.
+Můžeme tedy upustit od formátů, které respektují strukturu dat,
+a~databázi zapisovat na disk jako log -- tedy posloupnost operací, které
+vedly k~jejímu současnému stavu.
+(Log samozřejmě nemusí obsahovat všechny události od vytvoření databáze. Běžný
+postup je, že pokud velikost logu přeroste rozumnou mez, je vygenerován nový,
+který obsahuje nejkratší posloupnost operací vedoucí k~současnému stavu.)
+
+To výrazně snižuje jak složitost
+zápisu, tak i~počet I/O operací nutných k~jeho provedení (protože
+nezapisujeme na přeskáčku, ale vždy jen na konec souboru), což
+se významně projeví především u~rotačních pevných disků (ačkoli i~pro
+disky SSD je tento přístup výhodnější, neboť jednotlivé zápisy jsou výrazně
+větší). Navíc při použití datového formátu respektujícího strukturu dat
+by stejně bylo nutné udržovat logu nebo jiným způsobem zajistit atomicitu
+prováděných operací.
+
+\subsection{Organizace dat v~paměti}
+Data v~paměti budeme chceme organizovat podobně jako datové struktury. Základní
+jednotkou dat je {\bf uzel}. Každý uzel se skládá z~{\bf atributů}, které obsahují
+vlastní data, přičemž jak atributy jaké atributy obsahuje je určeno jeho typem.
+Při porovnání s~relační databází typy uzlů odpovídají tabulkám, uzly řádkům tabulek
+a~atributy jednotlivým buňkám. Z~hlediska objektového programování, které je bližší
+skutečné implementaci, jsou typy uzlů třídami, uzly instancemi těchto
+tříd a~atributy jednotlivými instančními proměnnými.
+
+Objektovému pohledu také odpovídá, že každý uzel má svou jednoznačnou identitu
+-- dokážeme rozlišit dva uzly, i~když mají stejný obsah. Za běhu je vhodné jako
+identifikátor uzlu používat ukazatel na něj.
+
+Atributy nemohou obsahovat libovolné hodnoty, ale každý má pevně určený typ. Typy
+atributů pokrývají základní typy jazyka C -- jsou mezi nimi tedy celá čísla
+různých rozsahů s~či bez znaménka a~čísla s~plovoucí řádovou čárkou -- a~obsahují
+několik užitečných typů navíc -- řetězec schopný pojmout libovolnou posloupnost
+bytů (který se ale chová jako jednoduchý hodnotový typ, ne jako pole) a~ukazatel na jiný
+uzel.
+
+\subsection{Uživatelsky definované indexy}
+Na rozdíl od relačních databází, kde indexy slouží \uv{pouze} k~urychlení
+dotazů, v~navrhované hybridní databázi hrají, především kvůli absenci
+dotazovacího jazyka, klíčovou roli. Indexem rozumíme uživatelem definovanou
+datovou strukturu jejíž stav (myšlen je samozřejmě stav z~pohledu vnějšího
+světa, ne zakódování tohoto stavu uvnitř indexu) je jednoznačně určen stavem
+databáze bez ohledu
+na posloupnost operací, které k~jejímu současnému stavu vedly.
+
+Z~pohledu databáze je index určen callback funkcí, kterou databáze volá při
+vytvoření, smazaní či změně uzlu, a~kontextu, který je předán callback funkci.
+Uživatelské rozhraní indexu určuje jeho tvůrce
+s~tím, že by uživatelské
+funkce neměly index modifikovat (protože jeho stav má být určen pouze stavem
+databáze). U~každého indexu je při jeho definici možno určit, zda bude
+sledovat všechny uzly v~databázi, nebo bude vázán pouze na určitý typ uzlu.
+Tento způsob svázání indexů s~databází byl zvolen, protože představuje rozumný
+kompromis.
+
+Pokud by všechny indexy byly globální a~uživatel by filtroval zajímavé
+události až v~callback funkci, mohlo by to znamenat nemalou režii, protože
+většina volání by končila zjištěním, že daný index událost nezajímá.
+Na druhou stranu
+možnost mít globální index je nezbytná, protože není možné ho přímočaře nahradit
+více menšími indexy. Jedinou zbývající možností je nechat uživatele při registraci
+indexu určit, k~jakým uzlům je vázán. 
+
+Zde se nabízí mnoho variant, jak takovou volbu
+provést. Například vytvořit dotazovací jazyk, který by uživateli dovolil filtrovat
+události podle typu uzlu a~jeho obsahu. 
+Tím by bylo možné vyhnout se zbytečným voláním callback funkcí, ovšem režie
+takto komplexního systému by nejspíše převážila nad získanou úsporou.
+Proto jsem zvolil co nejjednodušší metodu, která by zároveň měla vyhovovat většině
+nasazení -- tedy že indexy jsou registrované jako globální, nebo jsou vázány na
+jeden typ uzlu.
+
+\subsection{Podpora transakcí}
+Podpora transakcí je klíčová ze dvou důvodů. Za prvé databáze musí mít přehled,
+kdy jsou data v~ní obsažená v~konzistentním stavu, aby je jako taková označila
+při zápisu na disk. Kdyby tak nečinila, bylo by obtížné po pádu aplikace zjistit,
+zda jsou data poškozena, a~nemožné obnovit korektní stav dat bez složité
+spolupráce uživatele databáze. Druhým a~neméně významným důvodem pro používaní
+transakcí je velké zjednodušení práce s~databází z~více vláken současně, jelikož
+odpadá komplikovaná ruční synchronizace.
+
+
+\section{Abstraktní popis rozhraní databáze}
+Jak bylo řečeno v~úvodu, hybridní databáze bude implementována jako knihovna funkcí
+v~jazyce C. Protože definovat typy uzlů, index a~databází v~jazyce C by bylo velmi
+nepohodlné, bude k~tomuto účelu vytvořen samostatný jazyk, který bude překládán
+do jazyka C. Popis jazyka definic i~skutečného rozhraní databáze naleznete 
+ve čtvrté kapitole.
+Zde pouze zmíním základní principy fungování databáze.
+
+\subsection{Transakce}
+Transakce budeme implementovat pomocí konceptu softwarové transakční paměti (STM).
+Každé vlákno, které bude chtít s~databází pracovat, si nejprve vytvoří {\bf handle}
+-- objekt skrze, který bude probíhat další práce. Kdybychom nezavedli handle,
+musela by každá transakce existovat jako objekt. To by znamenalo, že každá transakce
+na počátku musela provést alokaci tohoto objektu a~na svém konci jeho uvolnění.
+To je možné implementovat celkem efektivně, ale databáze navíc potřebuje
+vědět o~bežících transakcích. Proto by se tyto musely vždy nějak registrovat,
+a~tedy modifikovat hlavní strukturu popisující databázi, což není žádoucí.
+
+Pokud máme handly, tak každá transakce existuje uvnitř příslušného handlu. Ten je
+lokální pro dané vlákno, takže není problém s~přístupem k~němu. Aby měla databáze
+přehled o~probíhajících transakcích, musejí se i~handly registrovat. V~případě handlů
+to ale nevadí, protože na rozdíl od transakcí existují dlouho a~vznikají málokdy.
+(Typický scénář je, že každé vlákno si vytvoří jeden handle, který bude používat po
+celou dobu svého běhu.)
+Nad handlem jsou definovány všechny ostatní funkce pro práci s~databází. Mezi základní
+operace patří začátek a~konec transakce, zrušení probíhající transakce a~funkce
+pro práci s~uzly (tedy vytvoření a~smazání uzlu, přečtení hodnoty atributu
+a~zápis hodnoty atributu). 
+
+\subsection{Indexy}
+Indexy byli již popsány výše v~této kapitole, takže pouze pár doplnění.
+Jaké indexy databáze obsahuje je vždy definováno už před jejím vytvořením
+a~za běhu indexy není možné přidávat ani odebírat. Naopak v~diskovém
+formátu se přítomnost indexů nijak neprojeví -- je tedy možné používat
+tutéž databázi v~různých aplikacích s~různými indexy.
+
+Všem indexům je společné,
+že z~pohledu databáze jsou tvořeny kontextem a~callback funkcí. Kontexty
+indexů jsou součástí transakční paměti. 
+To je nezbytné, aby stav indexů zůstal konzistentní se stavem databáze.
+Kvůli tomu je i~s~indexy nutné pracovat výhradně pomocí transakcí.
+O~alokaci kontextů se databáze stará sama a~uživateli nejsou přímo přístupné.
+S~tím souvisí, že z~pohledu uživatele jsou metody indexy obaleny makrem,
+které se stará o~předání správného kontextu.
+
